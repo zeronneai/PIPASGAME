@@ -1,0 +1,48 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/world/colonia_greybox.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/vehicle/pipa.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/camera/camera_rig.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="6"]
+
+[sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
+sky_top_color = Color(0.35, 0.55, 0.8, 1)
+sky_horizon_color = Color(0.7, 0.75, 0.8, 1)
+ground_bottom_color = Color(0.3, 0.3, 0.32, 1)
+ground_horizon_color = Color(0.7, 0.75, 0.8, 1)
+
+[sub_resource type="Sky" id="Sky1"]
+sky_material = SubResource("SkyMat")
+
+[sub_resource type="Environment" id="Env1"]
+background_mode = 2
+sky = SubResource("Sky1")
+ambient_light_source = 3
+tonemap_mode = 0
+fog_enabled = true
+fog_light_color = Color(0.7, 0.75, 0.8, 1)
+fog_density = 0.004
+
+[node name="Main" type="Node3D"]
+script = ExtResource("1")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env1")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 0, 30, 0)
+shadow_enabled = true
+directional_shadow_max_distance = 50.0
+
+[node name="Colonia" parent="." instance=ExtResource("2")]
+
+[node name="Player" parent="." instance=ExtResource("3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+
+[node name="Pipa" parent="." instance=ExtResource("4")]
+
+[node name="CameraRig" parent="." instance=ExtResource("5")]
+
+[node name="HUD" parent="." instance=ExtResource("6")]

@@ -1,0 +1,13 @@
+# Godot
+.godot/
+*.translation
+export_presets.cfg
+.import/
+
+# Android build
+android/
+*.apk
+*.aab
+
+# Sistema
+.DS_Store
