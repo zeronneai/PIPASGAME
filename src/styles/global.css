@@ -45,6 +45,64 @@ canvas {
   touch-action: none;
 }
 
+/* ---- Zonas táctiles y joystick ---- */
+
+.touch-zone {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  touch-action: none;
+}
+
+.touch-zone.left {
+  left: 0;
+  width: 50%;
+}
+
+.touch-zone.right {
+  right: 0;
+  width: 50%;
+}
+
+.joystick-base {
+  position: fixed;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--color-text) 40%, transparent);
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.joystick-knob {
+  position: fixed;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-accent) 80%, transparent);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* ---- Overlay de debug ---- */
+
+.debug-overlay {
+  position: fixed;
+  top: calc(8px + var(--safe-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  pointer-events: none;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  background: color-mix(in srgb, var(--color-bg) 70%, transparent);
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+
 /* ---- Overlays (gates y pantallas) ---- */
 
 .overlay {
