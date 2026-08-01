@@ -1,0 +1,23 @@
+/*
+ * Identidad visual de PIPERO.
+ * Todo color y tipografía de la UI se define aquí; ningún otro archivo
+ * debe declarar colores ni familias de fuente en duro.
+ */
+:root {
+  /* Paleta base */
+  --color-bg: #141418;
+  --color-text: #f2f2f2;
+
+  /* Acentos */
+  --color-accent: #4da3ff; /* azul agua: marca, títulos, elementos activos */
+  --color-accent-2: #37d0a7; /* verde agua: resaltes secundarios */
+
+  /* Estado */
+  --color-success: #3ddc84;
+  --color-warning: #ffb74d;
+  --color-danger: #ff5252;
+
+  /* Tipografía */
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: var(--font-ui); /* títulos; cambiar aquí cuando haya fuente propia */
+}

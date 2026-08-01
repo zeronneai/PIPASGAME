@@ -1,11 +1,10 @@
+@import './theme.css';
+
 :root {
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
-  --bg: #141418;
-  --fg: #f2f2f2;
-  --accent: #4da3ff;
 }
 
 * {
@@ -21,9 +20,9 @@ html {
   overscroll-behavior: none;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
-  background: var(--bg);
-  color: var(--fg);
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-ui);
 }
 
 body {
@@ -59,9 +58,9 @@ canvas {
   text-align: center;
   padding: calc(16px + var(--safe-top)) calc(16px + var(--safe-right))
     calc(16px + var(--safe-bottom)) calc(16px + var(--safe-left));
-  background: var(--bg);
+  background: var(--color-bg);
   border: none;
-  color: var(--fg);
+  color: var(--color-text);
   font: inherit;
 }
 
@@ -83,7 +82,7 @@ canvas {
 .phone-icon {
   width: 34px;
   height: 60px;
-  border: 3px solid var(--fg);
+  border: 3px solid var(--color-text);
   border-radius: 8px;
   margin-bottom: 12px;
   animation: rotate-phone 1.6s ease-in-out infinite;
@@ -108,10 +107,11 @@ canvas {
 }
 
 .start-screen h1 {
+  font-family: var(--font-display);
   font-size: 3rem;
   letter-spacing: 0.3em;
   text-indent: 0.3em;
-  color: var(--accent);
+  color: var(--color-accent);
 }
 
 .start-screen .tap {
