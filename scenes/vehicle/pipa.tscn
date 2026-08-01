@@ -69,48 +69,48 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.05, 0.4, -2.1)
 use_as_steering = true
 wheel_radius = 0.55
 wheel_rest_length = 0.25
-wheel_friction_slip = 3.0
+wheel_friction_slip = 2.5
 suspension_travel = 0.25
-suspension_stiffness = 70.0
-suspension_max_force = 120000.0
-damping_compression = 0.85
-damping_relaxation = 0.95
+suspension_stiffness = 110.0
+suspension_max_force = 200000.0
+damping_compression = 0.88
+damping_relaxation = 1.0
 
 [node name="WheelFR" type="VehicleWheel3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.05, 0.4, -2.1)
 use_as_steering = true
 wheel_radius = 0.55
 wheel_rest_length = 0.25
-wheel_friction_slip = 3.0
+wheel_friction_slip = 2.5
 suspension_travel = 0.25
-suspension_stiffness = 70.0
-suspension_max_force = 120000.0
-damping_compression = 0.85
-damping_relaxation = 0.95
+suspension_stiffness = 110.0
+suspension_max_force = 200000.0
+damping_compression = 0.88
+damping_relaxation = 1.0
 
 [node name="WheelRL" type="VehicleWheel3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.05, 0.4, 1.9)
 use_as_traction = true
 wheel_radius = 0.55
 wheel_rest_length = 0.25
-wheel_friction_slip = 3.5
+wheel_friction_slip = 3.0
 suspension_travel = 0.25
-suspension_stiffness = 70.0
-suspension_max_force = 120000.0
-damping_compression = 0.85
-damping_relaxation = 0.95
+suspension_stiffness = 110.0
+suspension_max_force = 200000.0
+damping_compression = 0.88
+damping_relaxation = 1.0
 
 [node name="WheelRR" type="VehicleWheel3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.05, 0.4, 1.9)
 use_as_traction = true
 wheel_radius = 0.55
 wheel_rest_length = 0.25
-wheel_friction_slip = 3.5
+wheel_friction_slip = 3.0
 suspension_travel = 0.25
-suspension_stiffness = 70.0
-suspension_max_force = 120000.0
-damping_compression = 0.85
-damping_relaxation = 0.95
+suspension_stiffness = 110.0
+suspension_max_force = 200000.0
+damping_compression = 0.88
+damping_relaxation = 1.0
 
 [node name="DoorArea" type="Area3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.6, 1.5, -2.5)

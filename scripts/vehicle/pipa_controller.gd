@@ -7,19 +7,20 @@ extends VehicleBody3D
 ## Fuerza en N: ~12,000 kg cargada → aceleración máxima ~2 m/s².
 @export var max_engine_force := 26000.0
 @export var max_reverse_force := 14000.0
-@export var max_brake_force := 45000.0
+## Ojo: el freno de VehicleBody3D no está en Newtons; valores chicos frenan mucho.
+@export var max_brake_force := 400.0
 ## Freno ligero permanente cuando sueltas todo (resistencia al rodado).
-@export var rolling_brake := 800.0
-@export var parking_brake := 12000.0
+@export var rolling_brake := 4.0
+@export var parking_brake := 80.0
 @export var top_speed_kmh := 62.0
 @export var max_reverse_kmh := 12.0
 
 @export_group("Dirección")
-@export var max_steer_deg := 32.0
+@export var max_steer_deg := 28.0
 ## Qué tan rápido responde el volante (lerp por segundo).
 @export var steer_speed := 3.5
 ## Cuánto se reduce la dirección a velocidad tope (0..1).
-@export_range(0.0, 1.0) var steer_reduction_at_speed := 0.6
+@export_range(0.0, 1.0) var steer_reduction_at_speed := 0.75
 
 # Entradas que el HUD empuja cada frame (0..1, steer -1..1).
 var throttle_input := 0.0
@@ -30,7 +31,7 @@ var controls_enabled := false
 
 func _ready() -> void:
 	center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
-	center_of_mass = Vector3(0, 0.85, 0.2)
+	center_of_mass = Vector3(0, 0.6, 0.2)
 	if GameState.has_pipa_transform:
 		global_transform = GameState.pipa_transform
 	if has_node("DoorArea"):
