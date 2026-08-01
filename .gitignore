@@ -1,0 +1,16 @@
+# Godot
+.godot/
+*.translation
+
+# Builds
+build/
+export/
+*.apk
+*.aab
+
+# Android build template (se instala desde el editor)
+android/
+
+# Sistema
+*.tmp
+.DS_Store
