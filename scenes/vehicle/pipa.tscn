@@ -1,7 +1,8 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scripts/vehicle/pipa_controller.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/world/interactable.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/vehicle/tank_slosh.gd" id="3"]
 
 [sub_resource type="BoxShape3D" id="col_chassis"]
 size = Vector3(2.4, 1.0, 7.0)
@@ -118,3 +119,6 @@ prompt = "Subir"
 
 [node name="DoorShape" type="CollisionShape3D" parent="DoorArea"]
 shape = SubResource("col_door")
+
+[node name="TankSlosh" type="Node" parent="."]
+script = ExtResource("3")
