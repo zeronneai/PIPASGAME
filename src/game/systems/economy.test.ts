@@ -10,6 +10,7 @@ import {
   refillCost,
   refillSeconds,
   refillTick,
+  settleDelivery,
   settleRefill,
   type Pedido,
 } from './economy'
@@ -168,6 +169,46 @@ describe('settleRefill', () => {
       B,
     )
     expect(s.liters).toBe(1000)
+  })
+})
+
+describe('settleDelivery', () => {
+  B.entrega.cleanBonusPct = 0.1
+
+  it('a tiempo y limpio: pago con propina más bono, litros fuera del tanque', () => {
+    const s = settleDelivery(
+      { liters: 1000, money: 100 },
+      { delivered: 500, spilled: 0, perfil: 'paciente', puntualidad: 'A_TIEMPO', clean: true },
+      B,
+    )
+    // 500 L × $1 × 1.1 propina = 550; bono 10% = 55.
+    expect(s.pago.total).toBe(550)
+    expect(s.bonus).toBe(55)
+    expect(s.money).toBe(705)
+    expect(s.liters).toBe(500)
+  })
+
+  it('tarde y con derrame: pago reducido, sin bono, y el derrame también sale del tanque', () => {
+    const s = settleDelivery(
+      { liters: 1000, money: 100 },
+      { delivered: 300, spilled: 50, perfil: 'paciente', puntualidad: 'TARDE', clean: false },
+      B,
+    )
+    expect(s.pago.total).toBe(150) // 300 × $1 × 0.5
+    expect(s.bonus).toBe(0)
+    expect(s.money).toBe(250)
+    expect(s.liters).toBe(650)
+  })
+
+  it('el pedido cancelado no paga nada, ni con entrega limpia', () => {
+    const s = settleDelivery(
+      { liters: 1000, money: 100 },
+      { delivered: 500, spilled: 0, perfil: 'exigente', puntualidad: 'MUY_TARDE', clean: true },
+      B,
+    )
+    expect(s.pago.cancelled).toBe(true)
+    expect(s.money).toBe(100)
+    expect(s.bonus).toBe(0)
   })
 })
 

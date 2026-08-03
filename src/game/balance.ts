@@ -98,6 +98,41 @@ export const balance = {
     /** Cancelar un pedido aceptado, venga de donde venga. */
     cancelacion: -8,
   },
+  /*
+   * El minijuego de la manguera (sección 2.6): conectar, controlar la
+   * presión, no derramar. Máximo diez segundos, porque se repite cientos de
+   * veces. La banda buena de presión se pasea (seno determinista) para pedir
+   * microcorrecciones; sobre la banda se derrama, debajo apenas fluye.
+   */
+  entrega: {
+    /** Duración máxima del minijuego en segundos. El tope de diseño. */
+    maxSeconds: 10,
+    /** Litros por segundo con la presión en la banda. 900 L/s surte el
+     *  pedido más grande (6000 L) en ~6.7 s, que deja aire para conectar. */
+    flowInZone: 900,
+    /** Flujo con la presión por debajo de la banda: pierdes tiempo. */
+    flowLow: 200,
+    /** Derrame en L/s con la presión por encima de la banda. */
+    spillRate: 350,
+    /** Derrame fijo por fallar el timing de conexión. */
+    badConnectSpill: 120,
+    /** Segundos que tarda el marcador de conexión en ir y volver. */
+    connectPeriod: 1.6,
+    /** Ancho de la zona buena de conexión, en fracción de la barra. */
+    connectZoneSize: 0.24,
+    /** Velocidad de la presión (fracción de la barra por segundo). */
+    pressureRise: 1.4,
+    pressureFall: 1.8,
+    /** Banda buena de presión: ancho, centro y vaivén (amplitud y rad/s). */
+    zoneSize: 0.26,
+    zoneCenterBase: 0.6,
+    zoneAmp: 0.16,
+    zoneSpeed: 0.9,
+    /** Derrame tolerado (fracción del pedido) para contar como limpio. */
+    cleanFraction: 0.02,
+    /** Bono sobre el pago por entrega limpia («hacerlo bien da un bono»). */
+    cleanBonusPct: 0.12,
+  },
   pedidos: {
     /**
      * Fracción FINAL de la ventana en la que el reloj del pedido entra en

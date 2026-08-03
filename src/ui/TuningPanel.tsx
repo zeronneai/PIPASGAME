@@ -265,6 +265,97 @@ export default function TuningPanel() {
   )
 
   useControls(
+    'entrega',
+    {
+      'duración máx (s)': {
+        value: balance.entrega.maxSeconds,
+        min: 5,
+        max: 20,
+        step: 0.5,
+        onChange: (n: number) => void (balance.entrega.maxSeconds = n),
+      },
+      'flujo en banda (L/s)': {
+        value: balance.entrega.flowInZone,
+        min: 200,
+        max: 2000,
+        step: 50,
+        onChange: (n: number) => void (balance.entrega.flowInZone = n),
+      },
+      'flujo bajo (L/s)': {
+        value: balance.entrega.flowLow,
+        min: 0,
+        max: 600,
+        step: 25,
+        onChange: (n: number) => void (balance.entrega.flowLow = n),
+      },
+      'derrame (L/s)': {
+        value: balance.entrega.spillRate,
+        min: 0,
+        max: 1000,
+        step: 25,
+        onChange: (n: number) => void (balance.entrega.spillRate = n),
+      },
+      'derrame por mala conexión (L)': {
+        value: balance.entrega.badConnectSpill,
+        min: 0,
+        max: 500,
+        step: 10,
+        onChange: (n: number) => void (balance.entrega.badConnectSpill = n),
+      },
+      'banda de presión ×': {
+        value: balance.entrega.zoneSize,
+        min: 0.1,
+        max: 0.5,
+        step: 0.02,
+        onChange: (n: number) => void (balance.entrega.zoneSize = n),
+      },
+      'vaivén de la banda ×': {
+        value: balance.entrega.zoneAmp,
+        min: 0,
+        max: 0.35,
+        step: 0.02,
+        onChange: (n: number) => void (balance.entrega.zoneAmp = n),
+      },
+      'vaivén velocidad (rad/s)': {
+        value: balance.entrega.zoneSpeed,
+        min: 0,
+        max: 3,
+        step: 0.1,
+        onChange: (n: number) => void (balance.entrega.zoneSpeed = n),
+      },
+      'zona de conexión ×': {
+        value: balance.entrega.connectZoneSize,
+        min: 0.08,
+        max: 0.5,
+        step: 0.02,
+        onChange: (n: number) => void (balance.entrega.connectZoneSize = n),
+      },
+      'marcador (s por ciclo)': {
+        value: balance.entrega.connectPeriod,
+        min: 0.6,
+        max: 4,
+        step: 0.1,
+        onChange: (n: number) => void (balance.entrega.connectPeriod = n),
+      },
+      'bono limpio ×': {
+        value: balance.entrega.cleanBonusPct,
+        min: 0,
+        max: 0.5,
+        step: 0.01,
+        onChange: (n: number) => void (balance.entrega.cleanBonusPct = n),
+      },
+      'umbral limpio ×': {
+        value: balance.entrega.cleanFraction,
+        min: 0,
+        max: 0.1,
+        step: 0.005,
+        onChange: (n: number) => void (balance.entrega.cleanFraction = n),
+      },
+    },
+    CERRADA,
+  )
+
+  useControls(
     'aceptación',
     {
       'prob con rep 0': {
@@ -606,6 +697,13 @@ export default function TuningPanel() {
         max: 30,
         step: 0.5,
         onChange: (n: number) => void (tuning.interaction.pozoRadius = n),
+      },
+      deliverRadius: {
+        value: tuning.interaction.deliverRadius,
+        min: 4,
+        max: 30,
+        step: 0.5,
+        onChange: (n: number) => void (tuning.interaction.deliverRadius = n),
       },
       exitSpeed: {
         value: tuning.interaction.exitSpeed,

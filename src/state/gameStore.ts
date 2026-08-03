@@ -8,7 +8,10 @@ import {
   COLONIAS,
   getCliente,
   newClientHistory,
+  withCancellation,
   withDecline,
+  withDelivery,
+  withSpill,
   type ClientHistory,
   type PerfilCliente,
 } from '../game/systems/clients'
@@ -16,7 +19,15 @@ import {
   evaluarOferta,
   type MotivoRechazo,
 } from '../game/systems/acceptance'
-import { clampLiters, settleRefill, type Pedido } from '../game/systems/economy'
+import {
+  clampLiters,
+  orderClock,
+  settleDelivery,
+  settleRefill,
+  type Pedido,
+  type Puntualidad,
+} from '../game/systems/economy'
+import { esLimpio } from '../game/systems/hose'
 import { applyRep, newReputation } from '../game/systems/reputation'
 import type { SaveData } from '../game/systems/persistence'
 
@@ -29,9 +40,9 @@ export type GameMode = 'ON_FOOT' | 'DRIVING'
  * debe saber que existen los locales, ni traducir ids a etiquetas.
  */
 export type ContextAction = {
-  kind: 'BOARD' | 'EXIT' | 'SERVICE' | 'REFILL'
+  kind: 'BOARD' | 'EXIT' | 'SERVICE' | 'REFILL' | 'DELIVER'
   label: string
-  /** Id del Interactable, cuando la acción viene de uno. */
+  /** Id del Interactable (o del cliente, en DELIVER). */
   targetId?: string
 }
 
@@ -143,6 +154,14 @@ export type OfferState = {
  *  cuando llega un mensaje nuevo mientras el anterior sigue en pantalla. */
 export type Notice = { id: number; text: string }
 
+/**
+ * Entrega en curso (Paso 5). La puntualidad se FIJA al conectar: el pago no
+ * cambia de escalón a media manguera, o los últimos segundos del minijuego
+ * se sentirían una trampa. El minijuego vive en el DOM (HoseMinigame) y
+ * reporta al terminar; aquí solo quién, qué pedido y a qué escalón.
+ */
+export type DeliveryState = { pedido: Pedido; puntualidad: Puntualidad }
+
 /** Lo que el cliente contesta cuando no hay trato, en su voz. */
 const VOZ_RECHAZO: Record<MotivoRechazo, string> = {
   FUERA_DE_HORARIO: '«A esta hora ya no, joven»',
@@ -188,6 +207,7 @@ type GameState = {
   camera: { phi: number }
   offer: OfferState | null
   notice: Notice | null
+  delivery: DeliveryState | null
   /**
    * Estado que cambia cada frame: se MUTA sobre estos objetos estables y se
    * lee con getState() (regla de la sección 5 del doc). El modo y la acción de
@@ -224,6 +244,14 @@ type GameState = {
    *  gratis, rechazar sería una tómbola de litros hasta que salga la buena. */
   rejectOffer: () => void
   clearNotice: (id: number) => void
+  /** Llegaste con la pipa a un local con pedido: abre el minijuego, o
+   *  resuelve sin abrirlo (exigente que cancela, tanque que no alcanza). */
+  startDelivery: (clientId: string) => void
+  /** El minijuego terminó: litros fuera, dinero dentro, pedido cerrado. */
+  finishDelivery: (result: { delivered: number; spilled: number }) => void
+  /** Soltaste la manguera (o no conectaste): el pedido sigue activo y lo
+   *  derramado sí se perdió. */
+  abortDelivery: (spilled: number) => void
   addReputation: (colonia: string, delta: number) => void
   setClientHistory: (clientId: string, history: ClientHistory) => void
   setOrders: (orders: Pedido[]) => void
@@ -240,6 +268,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   camera: { phi: 0 },
   offer: null,
   notice: null,
+  delivery: null,
   player: {
     pos: { x: 0, y: 1, z: 0 },
     stamina: 1,
@@ -393,6 +422,101 @@ export const useGameStore = create<GameState>((set, get) => ({
   clearNotice: (id) => {
     // Solo si sigue siendo el mismo aviso: uno nuevo trae su propio timer.
     if (get().notice?.id === id) set({ notice: null })
+  },
+  startDelivery: (clientId) => {
+    const s = get()
+    if (s.delivery) return
+    const pedido = s.economy.orders.find((o) => o.clientId === clientId)
+    if (!pedido) return
+    const cliente = getCliente(clientId)
+    const nombre = cliente?.name ?? clientId
+    const { economy, clock } = s
+    const reloj = orderClock(pedido, clock.daySeconds)
+
+    // El exigente no espera (sección 2.5): muy tarde, al llegar ya no hay
+    // pedido. Se cancela aquí y no antes para que el jugador VEA el momento.
+    if (reloj.puntualidad === 'MUY_TARDE' && pedido.perfil === 'exigente') {
+      const h = economy.clientHistory[clientId] ?? newClientHistory()
+      s.setClientHistory(
+        clientId,
+        withCancellation(h, economy.day, clock.daySeconds),
+      )
+      set((st) => ({
+        economy: {
+          ...st.economy,
+          orders: st.economy.orders.filter((o) => o.id !== pedido.id),
+        },
+        notice: {
+          id: ++noticeSeq,
+          text: `${nombre}: «Demasiado tarde — cancelo el pedido»`,
+        },
+      }))
+      return
+    }
+
+    if (economy.liters < pedido.liters) {
+      set({
+        notice: {
+          id: ++noticeSeq,
+          text: `No te alcanza el agua para ${pedido.liters.toLocaleString('es-MX')} L — pasa al pozo`,
+        },
+      })
+      return
+    }
+
+    set({ delivery: { pedido, puntualidad: reloj.puntualidad } })
+  },
+  finishDelivery: (result) => {
+    const s = get()
+    const d = s.delivery
+    if (!d) return
+    const { pedido } = d
+    const clean = esLimpio(result.spilled, pedido.liters)
+    const settled = settleDelivery(s.economy, {
+      delivered: result.delivered,
+      spilled: result.spilled,
+      perfil: pedido.perfil,
+      puntualidad: d.puntualidad,
+      clean,
+    })
+
+    let h = s.economy.clientHistory[pedido.clientId] ?? newClientHistory()
+    h = withDelivery(h, d.puntualidad, s.economy.day)
+    if (!clean) h = withSpill(h)
+
+    // Misma sincronía que el pozo: fillLevel se muta, economy va con set().
+    s.vehicle.fillLevel = settled.liters / balance.tank.capacity
+    const nombre = getCliente(pedido.clientId)?.name ?? pedido.clientId
+    const cobrado = settled.pago.total + settled.bonus
+    const partes = [`${nombre}: +$${cobrado.toFixed(2)}`]
+    if (settled.bonus > 0) partes.push('limpio')
+    if (result.spilled > 0 && !clean)
+      partes.push(`${Math.round(result.spilled)} L derramados`)
+    set((st) => ({
+      delivery: null,
+      notice: { id: ++noticeSeq, text: partes.join(' · ') },
+      economy: {
+        ...st.economy,
+        money: settled.money,
+        liters: settled.liters,
+        orders: st.economy.orders.filter((o) => o.id !== pedido.id),
+        clientHistory: { ...st.economy.clientHistory, [pedido.clientId]: h },
+      },
+    }))
+  },
+  abortDelivery: (spilled) => {
+    const s = get()
+    if (!s.delivery) return
+    const liters = clampLiters(s.economy.liters - Math.max(0, spilled))
+    s.vehicle.fillLevel = liters / balance.tank.capacity
+    set((st) => ({
+      delivery: null,
+      notice: {
+        id: ++noticeSeq,
+        text: 'Entrega interrumpida — el pedido sigue activo',
+      },
+      economy: { ...st.economy, liters },
+    }))
   },
   addReputation: (colonia, delta) =>
     set((s) => ({

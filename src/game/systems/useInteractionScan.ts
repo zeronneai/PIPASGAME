@@ -5,8 +5,11 @@ import { tuning } from '../tuning'
 import { useGameStore, type ContextAction } from '../../state/gameStore'
 import { PIPA_DOOR } from '../vehicle/pipaParts'
 import { nearestInteractable } from '../world/interactableRegistry'
-import { WATER_SOURCE } from '../world/layout'
+import { locales, WATER_SOURCE } from '../world/layout'
 import { canStartRefill } from './economy'
+
+/** Puerta de cada local: la entrega se hace llegando ahí CON LA PIPA. */
+const DOORS = new Map(locales.map((l) => [l.id, l.door]))
 
 // Temporales de módulo: esto corre 10 veces por segundo, no vale la pena
 // asignar vectores nuevos cada pasada.
@@ -58,6 +61,26 @@ export function useInteractionScan() {
     } else {
       // Bajarse solo con la pipa detenida, o saldrías en movimiento.
       if (Math.abs(s.vehicle.speed) < tuning.interaction.exitSpeed) {
+        const v = s.vehicle.pos
+
+        /*
+         * Entregar gana sobre todo (Paso 5): si estás detenido junto a un
+         * local que tiene pedido, a eso viniste. Se mide de la PIPA a la
+         * puerta — la entrega es con la pipa, no a pie (sección 2.6). Con
+         * varios pedidos en la misma cuadra gana el más cercano.
+         */
+        let entregaId: string | null = null
+        let entregaDist = tuning.interaction.deliverRadius
+        for (const o of s.economy.orders) {
+          const door = DOORS.get(o.clientId)
+          if (!door) continue
+          const d = Math.hypot(door[0] - v.x, door[1] - v.y, door[2] - v.z)
+          if (d < entregaDist) {
+            entregaId = o.clientId
+            entregaDist = d
+          }
+        }
+
         /*
          * El pozo no pasa por el registro de interactuables: ese es para
          * cosas que se alcanzan A PIE, y aquí lo que tiene que estar cerca
@@ -65,13 +88,15 @@ export function useInteractionScan() {
          * gana sobre bajar; ya cargando (o llena, o sin dinero) el botón
          * vuelve a «Bajar».
          */
-        const v = s.vehicle.pos
         const [px, py, pz] = WATER_SOURCE.pos
-        const d = Math.hypot(px - v.x, py - v.y, pz - v.z)
+        const dPozo = Math.hypot(px - v.x, py - v.y, pz - v.z)
         const { liters, money } = s.economy
-        if (
+
+        if (entregaId && !s.delivery) {
+          action = { kind: 'DELIVER', label: 'Entregar agua', targetId: entregaId }
+        } else if (
           !s.refill.active &&
-          d < tuning.interaction.pozoRadius &&
+          dPozo < tuning.interaction.pozoRadius &&
           canStartRefill(liters, money)
         ) {
           action = { kind: 'REFILL', label: 'Cargar agua' }

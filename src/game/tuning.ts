@@ -69,6 +69,12 @@ export const tuning = {
      */
     pozoRadius: 12,
     /**
+     * Radio para entregar, de la pipa a la puerta del local, en metros.
+     * Mismo criterio que el pozo: la puerta está en la banqueta y la pipa
+     * se queda en la calle.
+     */
+    deliverRadius: 12,
+    /**
      * Cada cuánto corre el escaneo de proximidad, en segundos. No cada frame:
      * la sección del Paso 9 pide throttle y esto ya lo deja listo.
      */

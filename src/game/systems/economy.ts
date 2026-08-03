@@ -200,6 +200,42 @@ export function deliveryPayment(
 }
 
 /**
+ * Liquida una entrega completa (Paso 5): pago por los litros ENTREGADOS
+ * (jugar lento surte menos y cobra menos), bono si fue limpia, y del tanque
+ * sale todo lo que pasó por la manguera — entregado más derramado.
+ */
+export function settleDelivery(
+  wallet: { liters: number; money: number },
+  entrega: {
+    delivered: number
+    spilled: number
+    perfil: PerfilCliente
+    puntualidad: Puntualidad
+    clean: boolean
+  },
+  b: Balance = balance,
+): { liters: number; money: number; pago: Pago; bonus: number } {
+  const pago = deliveryPayment(
+    {
+      liters: entrega.delivered,
+      perfil: entrega.perfil,
+      puntualidad: entrega.puntualidad,
+    },
+    b,
+  )
+  const bonus =
+    entrega.clean && !pago.cancelled
+      ? centavos(pago.total * b.entrega.cleanBonusPct)
+      : 0
+  return {
+    liters: clampLiters(wallet.liters - entrega.delivered - entrega.spilled, b),
+    money: centavos(wallet.money + pago.total + bonus),
+    pago,
+    bonus,
+  }
+}
+
+/**
  * El pago que se le enseña al jugador ANTES de aceptar (pantalla del Paso 3).
  * Es el mejor caso —a tiempo, con propina— porque eso es lo que está en juego.
  */

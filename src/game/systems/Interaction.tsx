@@ -59,6 +59,12 @@ export function Interaction({
       return
     }
 
+    if (pending.kind === 'DELIVER') {
+      // Igual que SERVICE: la lógica vive en el store, el minijuego en el DOM.
+      if (pending.targetId) store.startDelivery(pending.targetId)
+      return
+    }
+
     const pb = playerBody.current
     if (!pb) return
 

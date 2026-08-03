@@ -637,6 +637,156 @@ canvas {
   background: var(--color-accent);
 }
 
+/* ---- Minijuego de la manguera ----
+   Reusa la tarjeta del pedido (offer-card): mismo lugar, mismo peso visual.
+   Diez segundos de juego: todo grande, nada que leer con letra chica. */
+
+.hose-card {
+  width: min(360px, 92vw);
+}
+
+.hose-puntualidad {
+  font-weight: 700;
+}
+
+.hose-puntualidad.a_tiempo {
+  color: var(--color-success);
+}
+
+.hose-puntualidad.tarde {
+  color: var(--color-warning);
+}
+
+.hose-puntualidad.muy_tarde {
+  color: var(--color-danger);
+}
+
+.hose-timer {
+  margin-top: 10px;
+  height: 6px;
+}
+
+.hose-timer .hud-bar-fill {
+  background: var(--color-warning);
+}
+
+.hose-instruccion {
+  margin-top: 12px;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+/* Fase 1: barra horizontal con zona buena al centro y marcador que corre. */
+.hose-connect-bar {
+  position: relative;
+  margin: 14px 0 16px;
+  height: 26px;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--color-text) 12%, transparent);
+  overflow: hidden;
+}
+
+.hose-connect-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  /* left y width los pone el componente desde balance.entrega. */
+  background: color-mix(in srgb, var(--color-success) 35%, transparent);
+}
+
+.hose-connect-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  margin-left: -2px;
+  background: var(--color-text);
+}
+
+/* Fase 2: barra de presión vertical con banda buena que se pasea. */
+.hose-flow {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 18px;
+  margin: 14px 0 16px;
+}
+
+.hose-pressure {
+  position: relative;
+  width: 46px;
+  height: 130px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-text) 12%, transparent);
+  overflow: hidden;
+}
+
+.hose-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: color-mix(in srgb, var(--color-success) 35%, transparent);
+}
+
+.hose-pressure-fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: bottom;
+  transform: scaleY(0);
+  background: color-mix(in srgb, var(--color-accent) 80%, transparent);
+}
+
+.hose-numeros {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  min-width: 120px;
+  text-align: left;
+}
+
+.hose-derrame {
+  color: var(--color-danger);
+  min-height: 1.3em;
+}
+
+.hose-hold {
+  min-height: 56px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.hose-soltar {
+  margin-top: 10px;
+  border: none;
+  background: none;
+  color: var(--color-text);
+  opacity: 0.55;
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  text-decoration: underline;
+  touch-action: none;
+}
+
+/* Sacudida al fallar la conexión: el castigo se tiene que SENTIR. */
+.hose-fallo {
+  animation: hose-sacudida 0.3s ease-out;
+}
+
+@keyframes hose-sacudida {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-7px);
+  }
+  75% {
+    transform: translateX(7px);
+  }
+}
+
 /* ---- Botón de contexto ----
    Abajo a la derecha, pero por encima de los pedales: manejando conviven el
    freno y el botón de bajar, y no pueden pelearse el mismo pulgar. */

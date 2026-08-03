@@ -5,6 +5,7 @@ import { ClockChip } from './ui/ClockChip'
 import { ContextButton } from './ui/ContextButton'
 import { DebugOverlay } from './ui/DebugOverlay'
 import { DriveControls } from './ui/DriveControls'
+import { HoseMinigame } from './ui/HoseMinigame'
 import { HUD } from './ui/HUD'
 import { NoticeToast } from './ui/NoticeToast'
 import { OfferPanel } from './ui/OfferPanel'
@@ -49,6 +50,7 @@ export default function App() {
           <NoticeToast />
           {/* Encima de todo lo jugable: aceptar un pedido es LA decisión. */}
           <OfferPanel />
+          <HoseMinigame />
           <DebugOverlay />
           <TuningDrawer />
         </>
