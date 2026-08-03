@@ -54,6 +54,14 @@ export const tuning = {
     /** Segundos sin tocar la pantalla antes de empezar a recentrar. */
     driveRecenterDelay: 1,
   },
+  /** Red de seguridad para caídas fuera del mundo (las paredes del borde
+   *  son la primera línea; esto es el «por si de todos modos»). */
+  rescue: {
+    /** Debajo de esta Y (m) se considera caída al vacío. */
+    belowY: -12,
+    /** Altura a la que se suelta de regreso: cae un metro y asienta. */
+    dropY: 3,
+  },
   interaction: {
     /** Radio de la zona de detección en la puerta de la pipa, en metros. */
     boardRadius: 3.5,

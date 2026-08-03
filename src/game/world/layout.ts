@@ -234,6 +234,27 @@ export const waterParts = {
   } as Box,
 }
 
+// ------------------------------------------------------- paredes del borde
+
+/*
+ * Perímetro invisible: cuatro paredes justo afuera de los 200×200. Solo son
+ * colliders (WorldColliders las suma sin malla): la pipa rebota contra el
+ * borde en vez de salir volando del mundo. Altas de sobra, porque una pipa
+ * cargada bajando de un tope agarra vuelo.
+ */
+export const PERIMETER_WALLS: Box[] = (() => {
+  const alto = 30
+  const grosor = 2
+  const medio = MAP_SIZE / 2 + grosor / 2 // cara interna al ras del borde
+  const largo = MAP_SIZE + grosor * 2 // cubre esquinas
+  return [
+    { pos: [0, alto / 2, -medio], size: [largo, alto, grosor] },
+    { pos: [0, alto / 2, medio], size: [largo, alto, grosor] },
+    { pos: [-medio, alto / 2, 0], size: [grosor, alto, largo] },
+    { pos: [medio, alto / 2, 0], size: [grosor, alto, largo] },
+  ]
+})()
+
 // ------------------------------------------------------------------ topes
 
 /*

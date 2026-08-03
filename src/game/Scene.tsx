@@ -9,6 +9,7 @@ import { DayClock } from './systems/DayClock'
 import { Interaction } from './systems/Interaction'
 import { RadioDispatch } from './systems/RadioDispatch'
 import { Refill } from './systems/Refill'
+import { Rescue } from './systems/Rescue'
 import { RenderStats } from './systems/RenderStats'
 import { PHYSICS_STEP, tuning } from './tuning'
 
@@ -38,6 +39,7 @@ export function Scene() {
           {/* Después de Interaction: usa la posición de la pipa ya espejada
               en este mismo frame. */}
           <Refill />
+          <Rescue playerBody={playerBody} vehicleBody={vehicleBody} />
           {/* Después del Player y la Pipa en el árbol: sus useFrame corren
               primero, así la cámara ya ve la posición de este frame. */}
           <ThirdPersonCamera

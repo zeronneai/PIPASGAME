@@ -301,6 +301,8 @@ type GameState = {
    *  gratis, rechazar sería una tómbola de litros hasta que salga la buena. */
   rejectOffer: () => void
   clearNotice: (id: number) => void
+  /** Aviso suelto desde un sistema (rescate, etc.). */
+  showNotice: (text: string) => void
   /** Llegaste con la pipa a un local con pedido: abre el minijuego, o
    *  resuelve sin abrirlo (exigente que cancela, tanque que no alcanza). */
   startDelivery: (clientId: string) => void
@@ -504,6 +506,7 @@ export const useGameStore = create<GameState>((set, get) => {
     // Solo si sigue siendo el mismo aviso: uno nuevo trae su propio timer.
     if (get().notice?.id === id) set({ notice: null })
   },
+  showNotice: (text) => set({ notice: { id: ++noticeSeq, text } }),
   startDelivery: (clientId) => {
     const s = get()
     if (s.delivery) return

@@ -8,6 +8,7 @@ import { Color, Matrix4, Quaternion, Vector3, type InstancedMesh } from 'three'
 import {
   buildings,
   locales,
+  PERIMETER_WALLS,
   roadTiles,
   sidewalks,
   topes,
@@ -163,6 +164,8 @@ function WorldColliders() {
       ...topes,
       waterParts.base,
       waterParts.valve,
+      // Invisibles: colliders sin malla. El borde del mundo es una pared.
+      ...PERIMETER_WALLS,
     ],
     [],
   )
