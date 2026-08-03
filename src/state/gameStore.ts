@@ -6,9 +6,16 @@ import { balance } from '../game/balance'
 import {
   CLIENTES,
   COLONIAS,
+  getCliente,
   newClientHistory,
+  withDecline,
   type ClientHistory,
+  type PerfilCliente,
 } from '../game/systems/clients'
+import {
+  evaluarOferta,
+  type MotivoRechazo,
+} from '../game/systems/acceptance'
 import { clampLiters, settleRefill, type Pedido } from '../game/systems/economy'
 import { applyRep, newReputation } from '../game/systems/reputation'
 import type { SaveData } from '../game/systems/persistence'
@@ -117,6 +124,37 @@ type RefillState = {
   cost: number
 }
 
+/**
+ * Oferta sobre la mesa (pantalla del Paso 3). Trae todo lo que la pantalla
+ * enseña, ya resuelto: la UI no debe buscar clientes ni calcular pagos.
+ */
+export type OfferState = {
+  clientId: string
+  name: string
+  perfil: PerfilCliente
+  colonia: string
+  litros: number
+  windowMinutes: number
+  /** Mejor caso: a tiempo y con propina. */
+  estimate: number
+}
+
+/** Aviso pasajero (rechazos, enfriamiento). El id reinicia el timer del toast
+ *  cuando llega un mensaje nuevo mientras el anterior sigue en pantalla. */
+export type Notice = { id: number; text: string }
+
+/** Lo que el cliente contesta cuando no hay trato, en su voz. */
+const VOZ_RECHAZO: Record<MotivoRechazo, string> = {
+  FUERA_DE_HORARIO: '«A esta hora ya no, joven»',
+  YA_SURTIDO: '«Todavía tengo agua, gracias»',
+  HISTORIAL: '«La última vez me quedaste mal…»',
+  REPUTACION: '«No te conozco. ¿Eres nuevo por aquí?»',
+  SUERTE: '«Hoy no, gracias»',
+}
+
+/** Correlativo de avisos; ver Notice. */
+let noticeSeq = 0
+
 const economyInicial = (): EconomyState => ({
   money: balance.dineroInicial,
   liters: balance.tank.capacity * 0.5,
@@ -134,6 +172,15 @@ type GameState = {
   mode: GameMode
   economy: EconomyState
   refill: RefillState
+  /**
+   * Reloj de la jornada en segundos reales. Se MUTA cada frame (DayClock.tsx)
+   * y se lee con getState(), como player/vehicle. La hora del día se deriva
+   * con horaDelDia(). No persiste: recargar arranca la mañana de nuevo (la
+   * jornada completa es del Paso 8).
+   */
+  clock: { daySeconds: number }
+  offer: OfferState | null
+  notice: Notice | null
   /**
    * Estado que cambia cada frame: se MUTA sobre estos objetos estables y se
    * lee con getState() (regla de la sección 5 del doc). El modo y la acción de
@@ -161,6 +208,15 @@ type GameState = {
   /** Liquida la sesión: litros al tanque, costo a la cartera. La llaman el
    *  botón de cortar, el tick al topar, y el sistema si la pipa se aleja. */
   stopRefill: () => void
+  /** «Ofrecer servicio» (Paso 3): evalúa la aceptación ponderada y deja una
+   *  oferta sobre la mesa o un aviso con el porqué del no. */
+  offerService: (clientId: string) => void
+  /** El jugador acepta la oferta: entra a la cola de pedidos con su reloj. */
+  acceptOffer: () => void
+  /** El jugador la rechaza. También enfría: si preguntar de nuevo fuera
+   *  gratis, rechazar sería una tómbola de litros hasta que salga la buena. */
+  rejectOffer: () => void
+  clearNotice: (id: number) => void
   addReputation: (colonia: string, delta: number) => void
   setClientHistory: (clientId: string, history: ClientHistory) => void
   setOrders: (orders: Pedido[]) => void
@@ -173,6 +229,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   mode: 'ON_FOOT',
   economy: economyInicial(),
   refill: { active: false, litersLoaded: 0, cost: 0 },
+  clock: { daySeconds: 0 },
+  offer: null,
+  notice: null,
   player: {
     pos: { x: 0, y: 1, z: 0 },
     stamina: 1,
@@ -242,6 +301,90 @@ export const useGameStore = create<GameState>((set, get) => ({
       refill: { active: false, litersLoaded: 0, cost: 0 },
       economy: { ...s.economy, liters: settled.liters, money: settled.money },
     }))
+  },
+  offerService: (clientId) => {
+    const s = get()
+    const cliente = getCliente(clientId)
+    if (!cliente || s.offer) return
+
+    const { economy, clock } = s
+    const history = economy.clientHistory[clientId] ?? newClientHistory()
+    const resultado = evaluarOferta({
+      cliente,
+      rep: economy.reputation[cliente.colonia] ?? newReputation(),
+      history,
+      day: economy.day,
+      daySeconds: clock.daySeconds,
+      tienePedidoActivo: economy.orders.some((o) => o.clientId === clientId),
+    })
+
+    if (resultado.kind === 'OFERTA') {
+      const { litros, windowMinutes, estimate } = resultado.oferta
+      set({
+        offer: {
+          clientId,
+          name: cliente.name,
+          perfil: cliente.perfil,
+          colonia: cliente.colonia,
+          litros,
+          windowMinutes,
+          estimate,
+        },
+      })
+      return
+    }
+
+    if (resultado.kind === 'RECHAZO') {
+      // Solo el «no» del CLIENTE arranca enfriamiento nuevo; las guardas de
+      // NO_DISPONIBLE no lo reinician, o insistir alargaría el castigo.
+      s.setClientHistory(
+        clientId,
+        withDecline(history, economy.day, clock.daySeconds),
+      )
+      set({
+        notice: { id: ++noticeSeq, text: `${cliente.name}: ${VOZ_RECHAZO[resultado.motivo]}` },
+      })
+      return
+    }
+
+    const text =
+      resultado.motivo === 'YA_PIDIO'
+        ? `${cliente.name} ya te encargó un pedido — entrégalo`
+        : `${cliente.name} acaba de decirte que no — vuelve en ${Math.ceil(resultado.cooldownMin)} min`
+    set({ notice: { id: ++noticeSeq, text } })
+  },
+  acceptOffer: () => {
+    const { offer, economy, clock } = get()
+    if (!offer) return
+    const pedido: Pedido = {
+      // Único aunque el mismo cliente pida dos veces el mismo día: el reloj
+      // de la jornada nunca marca dos veces lo mismo.
+      id: `${offer.clientId}-d${economy.day}-${Math.round(clock.daySeconds * 10)}`,
+      clientId: offer.clientId,
+      colonia: offer.colonia,
+      perfil: offer.perfil,
+      liters: offer.litros,
+      acceptedAt: clock.daySeconds,
+      windowMinutes: offer.windowMinutes,
+    }
+    set((s) => ({
+      offer: null,
+      economy: { ...s.economy, orders: [...s.economy.orders, pedido] },
+    }))
+  },
+  rejectOffer: () => {
+    const { offer, economy, clock } = get()
+    if (!offer) return
+    const history = economy.clientHistory[offer.clientId] ?? newClientHistory()
+    get().setClientHistory(
+      offer.clientId,
+      withDecline(history, economy.day, clock.daySeconds),
+    )
+    set({ offer: null })
+  },
+  clearNotice: (id) => {
+    // Solo si sigue siendo el mismo aviso: uno nuevo trae su propio timer.
+    if (get().notice?.id === id) set({ notice: null })
   },
   addReputation: (colonia, delta) =>
     set((s) => ({

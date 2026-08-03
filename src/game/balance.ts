@@ -101,6 +101,38 @@ export const balance = {
   jornada: {
     /** Duración del día de juego en minutos reales (sección 2.9: 10 a 15). */
     minutosReales: 12,
+    /** El día de juego corre de las 7 am a las 7 pm: los minutos reales se
+     *  reparten linealmente entre estas dos horas. */
+    startHour: 7,
+    endHour: 19,
+  },
+  /*
+   * El sistema de aceptación (sección 2.4). Probabilidad ponderada, nada de
+   * azar puro: una base que sale de la reputación (el factor de mayor peso)
+   * multiplicada por hora, historial y si ya tiene agua. Los multiplicadores
+   * neutros valen 1; castigar es bajar de 1.
+   */
+  aceptacion: {
+    /** Probabilidad base con reputación 0 y con reputación 100. */
+    repChanceMin: 0.08,
+    repChanceMax: 0.85,
+    /** Multiplicador fuera del horario del negocio. */
+    offHoursFactor: 0.2,
+    /** Multiplicador según historial: de «siempre me quedas mal» (todo muy
+     *  tarde o cancelado) a «nunca me has fallado» (todo a tiempo). */
+    historyMin: 0.25,
+    historyMax: 1.4,
+    /** «Si le surtiste ayer, no necesita hoy» — y hoy, menos todavía. */
+    servedTodayFactor: 0.05,
+    servedYesterdayFactor: 0.45,
+    /** Enfriamiento tras un «no», en minutos reales del reloj de la jornada. */
+    cooldownMinutes: 2.5,
+    /** La probabilidad final nunca sale de este rango: siempre hay una
+     *  esperanza y nunca una garantía. */
+    chanceMin: 0.03,
+    chanceMax: 0.95,
+    /** Los pedidos se piden en litros «redondos». */
+    litersStep: 100,
   },
   /** Con cuánto dinero empieza una partida nueva. Alcanza para ~medio tanque:
    *  la primera decisión del juego ya es cuánta agua cargar. */

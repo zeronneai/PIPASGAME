@@ -5,6 +5,7 @@ import { Player } from './player/Player'
 import { Pipa } from './vehicle/Pipa'
 import { ThirdPersonCamera } from './camera/ThirdPersonCamera'
 import { ColoniaGreybox } from './world/ColoniaGreybox'
+import { DayClock } from './systems/DayClock'
 import { Interaction } from './systems/Interaction'
 import { Refill } from './systems/Refill'
 import { RenderStats } from './systems/RenderStats'
@@ -24,6 +25,7 @@ export function Scene() {
       <directionalLight position={[10, 15, 5]} intensity={2.2} />
       <ambientLight intensity={0.35} />
       <Suspense fallback={null}>
+        <DayClock />
         <Physics timeStep={PHYSICS_STEP}>
           <ColoniaGreybox />
           <Player bodyRef={playerBody} />

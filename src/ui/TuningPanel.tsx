@@ -257,6 +257,84 @@ export default function TuningPanel() {
     CERRADA,
   )
 
+  useControls(
+    'aceptación',
+    {
+      'prob con rep 0': {
+        value: balance.aceptacion.repChanceMin,
+        min: 0,
+        max: 0.5,
+        step: 0.01,
+        onChange: (n: number) => void (balance.aceptacion.repChanceMin = n),
+      },
+      'prob con rep 100': {
+        value: balance.aceptacion.repChanceMax,
+        min: 0.3,
+        max: 1,
+        step: 0.01,
+        onChange: (n: number) => void (balance.aceptacion.repChanceMax = n),
+      },
+      'fuera de horario ×': {
+        value: balance.aceptacion.offHoursFactor,
+        min: 0,
+        max: 1,
+        step: 0.05,
+        onChange: (n: number) => void (balance.aceptacion.offHoursFactor = n),
+      },
+      'historial malo ×': {
+        value: balance.aceptacion.historyMin,
+        min: 0,
+        max: 1,
+        step: 0.05,
+        onChange: (n: number) => void (balance.aceptacion.historyMin = n),
+      },
+      'historial bueno ×': {
+        value: balance.aceptacion.historyMax,
+        min: 1,
+        max: 2,
+        step: 0.05,
+        onChange: (n: number) => void (balance.aceptacion.historyMax = n),
+      },
+      'surtido hoy ×': {
+        value: balance.aceptacion.servedTodayFactor,
+        min: 0,
+        max: 1,
+        step: 0.05,
+        onChange: (n: number) => void (balance.aceptacion.servedTodayFactor = n),
+      },
+      'surtido ayer ×': {
+        value: balance.aceptacion.servedYesterdayFactor,
+        min: 0,
+        max: 1,
+        step: 0.05,
+        onChange: (n: number) =>
+          void (balance.aceptacion.servedYesterdayFactor = n),
+      },
+      'enfriamiento (min)': {
+        value: balance.aceptacion.cooldownMinutes,
+        min: 0,
+        max: 10,
+        step: 0.5,
+        onChange: (n: number) => void (balance.aceptacion.cooldownMinutes = n),
+      },
+      'día empieza (h)': {
+        value: balance.jornada.startHour,
+        min: 5,
+        max: 10,
+        step: 0.5,
+        onChange: (n: number) => void (balance.jornada.startHour = n),
+      },
+      'día termina (h)': {
+        value: balance.jornada.endHour,
+        min: 15,
+        max: 22,
+        step: 0.5,
+        onChange: (n: number) => void (balance.jornada.endHour = n),
+      },
+    },
+    CERRADA,
+  )
+
   useControls('economía · paciente', perfilSchema('paciente'), CERRADA)
   useControls('economía · normal', perfilSchema('normal'), CERRADA)
   useControls('economía · exigente', perfilSchema('exigente'), CERRADA)

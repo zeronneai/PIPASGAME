@@ -33,16 +33,23 @@ export type Cliente = {
   name: string
   perfil: PerfilCliente
   colonia: string
+  /**
+   * Horario del negocio en horas del día (abre inclusivo, cierra exclusivo).
+   * Fuera de él la aceptación cae en picada (sección 2.4: «a las 7 am una
+   * fonda sí te compra, a las 4 pm ya no»). Es dato del cliente, como el
+   * perfil: se aprende jugando, no cambia.
+   */
+  horario: { abre: number; cierra: number }
 }
 
 /** Los 6 locales del greybox, con perfil y colonia asignados (Paso 1). */
 export const CLIENTES: Record<string, Cliente> = {
-  'local-1': { id: 'local-1', name: 'Doña Chela', perfil: 'paciente', colonia: 'centro' },
-  'local-2': { id: 'local-2', name: 'Fonda La Morena', perfil: 'normal', colonia: 'centro' },
-  'local-3': { id: 'local-3', name: 'Tortillería El Comal', perfil: 'normal', colonia: 'centro' },
-  'local-4': { id: 'local-4', name: 'La Obra', perfil: 'exigente', colonia: 'centro' },
-  'local-5': { id: 'local-5', name: 'Purificadora Cristal', perfil: 'exigente', colonia: 'centro' },
-  'local-6': { id: 'local-6', name: 'Don Rómulo', perfil: 'paciente', colonia: 'centro' },
+  'local-1': { id: 'local-1', name: 'Doña Chela', perfil: 'paciente', colonia: 'centro', horario: { abre: 8, cierra: 19 } },
+  'local-2': { id: 'local-2', name: 'Fonda La Morena', perfil: 'normal', colonia: 'centro', horario: { abre: 7, cierra: 13 } },
+  'local-3': { id: 'local-3', name: 'Tortillería El Comal', perfil: 'normal', colonia: 'centro', horario: { abre: 7, cierra: 14 } },
+  'local-4': { id: 'local-4', name: 'La Obra', perfil: 'exigente', colonia: 'centro', horario: { abre: 8, cierra: 17 } },
+  'local-5': { id: 'local-5', name: 'Purificadora Cristal', perfil: 'exigente', colonia: 'centro', horario: { abre: 9, cierra: 18 } },
+  'local-6': { id: 'local-6', name: 'Don Rómulo', perfil: 'paciente', colonia: 'centro', horario: { abre: 10, cierra: 19 } },
 }
 
 export function getCliente(id: string): Cliente | null {
@@ -66,6 +73,12 @@ export type ClientHistory = {
   lastServedDay: number | null
   /** Día del último rechazo, para el enfriamiento del Paso 3. null = nunca. */
   lastDeclinedDay: number | null
+  /**
+   * Momento del rechazo en segundos del reloj de la jornada: el enfriamiento
+   * es «un rato», no el día entero. Puede faltar en guardados viejos, así que
+   * quien lo lea debe tratar undefined como null.
+   */
+  lastDeclinedSeconds: number | null
 }
 
 export function newClientHistory(): ClientHistory {
@@ -78,6 +91,7 @@ export function newClientHistory(): ClientHistory {
     derrames: 0,
     lastServedDay: null,
     lastDeclinedDay: null,
+    lastDeclinedSeconds: null,
   }
 }
 
@@ -97,15 +111,29 @@ export function withDelivery(
   }
 }
 
-export function withCancellation(h: ClientHistory, day: number): ClientHistory {
-  return { ...h, cancelados: h.cancelados + 1, lastServedDay: h.lastServedDay ?? null, lastDeclinedDay: day }
+/** Un pedido cancelado también enfría: acabas de quedarle mal. */
+export function withCancellation(
+  h: ClientHistory,
+  day: number,
+  daySeconds: number,
+): ClientHistory {
+  return {
+    ...h,
+    cancelados: h.cancelados + 1,
+    lastDeclinedDay: day,
+    lastDeclinedSeconds: daySeconds,
+  }
 }
 
 export function withSpill(h: ClientHistory): ClientHistory {
   return { ...h, derrames: h.derrames + 1 }
 }
 
-/** Te dijo que no: arranca el enfriamiento del Paso 3. */
-export function withDecline(h: ClientHistory, day: number): ClientHistory {
-  return { ...h, lastDeclinedDay: day }
+/** Te dijo que no (o tú a él): arranca el enfriamiento del Paso 3. */
+export function withDecline(
+  h: ClientHistory,
+  day: number,
+  daySeconds: number,
+): ClientHistory {
+  return { ...h, lastDeclinedDay: day, lastDeclinedSeconds: daySeconds }
 }

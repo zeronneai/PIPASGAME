@@ -1,10 +1,13 @@
 import { lazy, Suspense, useState } from 'react'
 import { useGameStore } from './state/gameStore'
 import { CameraDragArea } from './ui/CameraDragArea'
+import { ClockChip } from './ui/ClockChip'
 import { ContextButton } from './ui/ContextButton'
 import { DebugOverlay } from './ui/DebugOverlay'
 import { DriveControls } from './ui/DriveControls'
 import { HUD } from './ui/HUD'
+import { NoticeToast } from './ui/NoticeToast'
+import { OfferPanel } from './ui/OfferPanel'
 import { OrientationGate } from './ui/OrientationGate'
 import { RefillMeter } from './ui/RefillMeter'
 import { TapToStart } from './ui/TapToStart'
@@ -34,10 +37,14 @@ export default function App() {
         <>
           {/* Lo que se lee va en el HUD; lo que se toca, aparte */}
           <HUD />
+          <ClockChip />
           {mode === 'ON_FOOT' ? <VirtualJoystick /> : <DriveControls />}
           <CameraDragArea />
           <ContextButton />
           <RefillMeter />
+          <NoticeToast />
+          {/* Encima de todo lo jugable: aceptar un pedido es LA decisión. */}
+          <OfferPanel />
           <DebugOverlay />
           <TuningDrawer />
         </>

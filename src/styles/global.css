@@ -333,6 +333,186 @@ canvas {
   border-radius: 8px;
 }
 
+/* ---- Reloj de la jornada ----
+   Arriba al centro, fuera del paso de los medidores (izquierda) y del cajón
+   de tuning (derecha). Solo se lee, nunca se toca. */
+
+.clock-chip {
+  position: fixed;
+  top: calc(10px + var(--safe-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  padding: 4px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-bg) 70%, transparent);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+/* ---- Aviso pasajero ----
+   Un renglón arriba del centro: se ve sin tapar a la pipa ni al botón de
+   contexto, y desaparece solo. */
+
+.notice-toast {
+  position: fixed;
+  left: 50%;
+  top: calc(18% + var(--safe-top));
+  transform: translateX(-50%);
+  z-index: 15;
+  max-width: min(420px, 86vw);
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  box-shadow: 0 4px 16px var(--color-shadow);
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  text-align: center;
+  pointer-events: none;
+  animation: notice-in 0.18s ease-out;
+}
+
+@keyframes notice-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* ---- Pantalla del pedido ----
+   Modal de verdad: el fondo oscurece y BLOQUEA los controles, porque decidir
+   si aceptas es el momento central del juego, no un popup de paso. */
+
+.offer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--color-bg) 55%, transparent);
+  touch-action: none;
+}
+
+.offer-card {
+  width: min(340px, 88vw);
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: var(--color-bg);
+  box-shadow: 0 8px 32px var(--color-shadow);
+  text-align: center;
+}
+
+.offer-cliente {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.offer-colonia {
+  margin-top: 2px;
+  font-size: 0.8rem;
+  opacity: 0.65;
+}
+
+/*
+ * El chip del perfil: color + nombre + trade-off escrito. La tabla de la
+ * sección 2.3 en una línea, ANTES de aceptar. Verde = perdona, ámbar =
+ * término medio, rojo = paga bien pero te puede quemar.
+ */
+.perfil-chip {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 4px 14px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.perfil-paciente {
+  color: var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 18%, transparent);
+}
+
+.perfil-normal {
+  color: var(--color-warning);
+  background: color-mix(in srgb, var(--color-warning) 18%, transparent);
+}
+
+.perfil-exigente {
+  color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 18%, transparent);
+}
+
+.offer-desc {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  opacity: 0.75;
+}
+
+.offer-rows {
+  margin: 14px 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.offer-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.95rem;
+}
+
+.offer-row span {
+  opacity: 0.65;
+}
+
+.offer-row b {
+  font-variant-numeric: tabular-nums;
+}
+
+.offer-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.offer-btn {
+  flex: 1;
+  min-height: 46px;
+  border-radius: 23px;
+  border: none;
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+  touch-action: none;
+}
+
+.offer-no {
+  background: color-mix(in srgb, var(--color-text) 12%, transparent);
+}
+
+.offer-no:active {
+  background: color-mix(in srgb, var(--color-text) 24%, transparent);
+}
+
+.offer-si {
+  background: color-mix(in srgb, var(--color-accent) 75%, transparent);
+}
+
+.offer-si:active {
+  background: var(--color-accent);
+}
+
 /* ---- Botón de contexto ----
    Abajo a la derecha, pero por encima de los pedales: manejando conviven el
    freno y el botón de bajar, y no pueden pelearse el mismo pulgar. */

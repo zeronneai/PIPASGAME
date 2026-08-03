@@ -4,7 +4,6 @@ import type { RapierRigidBody } from '@react-three/rapier'
 import { Vector3 } from 'three'
 import { useGameStore } from '../../state/gameStore'
 import { PIPA_EXIT } from '../vehicle/pipaParts'
-import { getInteractable } from '../world/interactableRegistry'
 import { doorWorldPosition, useInteractionScan } from './useInteractionScan'
 
 const _exit = new Vector3()
@@ -55,10 +54,8 @@ export function Interaction({
     }
 
     if (pending.kind === 'SERVICE') {
-      // La lógica de aceptación es Fase 1. Por ahora solo se avisa.
-      const objetivo = pending.targetId ? getInteractable(pending.targetId) : null
-      objetivo?.onInteract?.()
-      console.log('[interacción] ofrecer servicio en', pending.targetId)
+      // Toda la aceptación vive en el store (Paso 3): aquí solo se dispara.
+      if (pending.targetId) store.offerService(pending.targetId)
       return
     }
 
