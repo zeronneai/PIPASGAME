@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react'
+import { useState } from 'react'
 import { Scene } from './game/Scene'
 import { useGameStore } from './state/gameStore'
 import { CameraDragArea } from './ui/CameraDragArea'
@@ -8,12 +8,8 @@ import { DriveControls } from './ui/DriveControls'
 import { OrientationGate } from './ui/OrientationGate'
 import { StaminaBar } from './ui/StaminaBar'
 import { TapToStart } from './ui/TapToStart'
+import { TuningDrawer } from './ui/TuningDrawer'
 import { VirtualJoystick } from './ui/VirtualJoystick'
-
-// lazy: leva no entra al bundle de producción
-const TuningPanel = import.meta.env.DEV
-  ? lazy(() => import('./ui/TuningPanel'))
-  : null
 
 export default function App() {
   const [started, setStarted] = useState(false)
@@ -36,11 +32,7 @@ export default function App() {
           <CameraDragArea />
           <ContextButton />
           <DebugOverlay />
-          {TuningPanel && (
-            <Suspense fallback={null}>
-              <TuningPanel />
-            </Suspense>
-          )}
+          <TuningDrawer />
         </>
       )}
       {!started && <TapToStart onStart={() => setStarted(true)} />}

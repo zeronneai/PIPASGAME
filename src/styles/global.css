@@ -193,13 +193,99 @@ canvas {
   background: color-mix(in srgb, var(--color-accent) 55%, transparent);
 }
 
+/* ---- Panel de ajustes (leva) ----
+   Arriba a la izquierda y hacia abajo por ese costado. A la derecha están el
+   acelerador, el freno y el botón de contexto, y ajustar en vivo sirve de poco
+   si para hacerlo hay que soltar la pipa. El overlay de debug va centrado
+   arriba, así que tampoco se encima. */
+
+.tuning-toggle {
+  position: fixed;
+  top: calc(10px + var(--safe-top));
+  left: calc(10px + var(--safe-left));
+  z-index: 16;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  border: 2px solid color-mix(in srgb, var(--color-text) 35%, transparent);
+  background: color-mix(in srgb, var(--color-bg) 78%, transparent);
+  color: var(--color-text);
+  font-size: 1.1rem;
+  line-height: 1;
+  touch-action: none;
+}
+
+.tuning-toggle:active {
+  background: color-mix(in srgb, var(--color-accent) 45%, transparent);
+}
+
+.tuning-drawer {
+  position: fixed;
+  top: calc(10px + var(--safe-top));
+  left: calc(10px + var(--safe-left));
+  /* Corta ANTES de la fila de abajo: ahí viven los botones del volante y la
+     barra de resistencia. Sin esto el panel los tapaba y no se podía manejar
+     mientras ajustas, que es justo para lo que sirve ajustar en vivo. */
+  bottom: calc(120px + var(--safe-bottom));
+  z-index: 15;
+  width: min(320px, 58vw);
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-bg) 93%, transparent);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 45%);
+}
+
+.tuning-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-text) 15%, transparent);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  opacity: 0.75;
+}
+
+.tuning-close {
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: none;
+  color: var(--color-text);
+  font-size: 1rem;
+  touch-action: none;
+}
+
+.tuning-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* html lleva touch-action: none para matar el zoom y el pull-to-refresh, así
+     que hay que devolver el scroll vertical AQUÍ o el panel no se puede
+     recorrer con el dedo y la mitad de los controles quedan inalcanzables. */
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tuning-cargando {
+  padding: 14px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  opacity: 0.6;
+}
+
 /* ---- Overlay de debug ---- */
 
 .debug-overlay {
   position: fixed;
   top: calc(8px + var(--safe-top));
-  left: 50%;
-  transform: translateX(-50%);
+  /* A la derecha y no centrado: centrado, su borde izquierdo se metía debajo
+     del panel de ajustes, que ocupa el costado izquierdo. */
+  right: calc(10px + var(--safe-right));
   z-index: 30;
   pointer-events: none;
   font-family: var(--font-mono);
