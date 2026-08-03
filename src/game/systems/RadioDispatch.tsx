@@ -28,9 +28,17 @@ export function RadioDispatch() {
   /** null = primer frame (para no confundir «cargué desbloqueado» con
    *  «acabo de desbloquear»). */
   const wasUnlocked = useRef<boolean | null>(null)
+  const dia = useRef(-1)
 
   useFrame(() => {
     const s = useGameStore.getState()
+    // Con el resumen en pantalla el despacho también descansa.
+    if (s.summary) return
+    // Día nuevo: el reloj volvió a cero, la agenda del día anterior no vale.
+    if (dia.current !== s.economy.day) {
+      dia.current = s.economy.day
+      nextAt.current = null
+    }
     const t = s.clock.daySeconds
     const rep = s.economy.reputation[COLONIA] ?? 0
     const unlocked = isRadioUnlocked(rep)

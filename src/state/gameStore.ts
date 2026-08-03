@@ -20,6 +20,7 @@ import {
   type MotivoRechazo,
 } from '../game/systems/acceptance'
 import {
+  centavos,
   clampLiters,
   orderClock,
   settleDelivery,
@@ -28,6 +29,12 @@ import {
   type Puntualidad,
 } from '../game/systems/economy'
 import { esLimpio } from '../game/systems/hose'
+import {
+  newDayStats,
+  resumenJornada,
+  type DayStats,
+  type ResumenJornada,
+} from '../game/systems/jornada'
 import {
   prioridadTrasAceptar,
   prioridadTrasRechazo,
@@ -189,6 +196,16 @@ const VOZ_RECHAZO: Record<MotivoRechazo, string> = {
 /** Correlativo de avisos; ver Notice. */
 let noticeSeq = 0
 
+/** La colonia que enseñan el resumen y la barra de estado (en Fase 1, la
+ *  única). La Fase 3 la volverá «la colonia donde estás parado». */
+const COLONIA_PRINCIPAL = Object.keys(COLONIAS)[0]
+
+const PUNTUALIDAD_STAT: Record<Puntualidad, keyof DayStats['entregas']> = {
+  A_TIEMPO: 'aTiempo',
+  TARDE: 'tarde',
+  MUY_TARDE: 'muyTarde',
+}
+
 /**
  * Aplica un delta de reputación a una colonia y avisa si ese cambio cruzó
  * el umbral del radio (el hito de la fase, sección 2.7) hacia arriba. Todas
@@ -244,6 +261,10 @@ type GameState = {
   delivery: DeliveryState | null
   /** Llamada del despacho en pantalla (Paso 7). La genera RadioDispatch. */
   radioCall: RadioCall | null
+  /** Acumulador del día (Paso 8). Lo consume el resumen; no persiste. */
+  stats: DayStats
+  /** Pantalla de fin de día. Mientras exista, el mundo espera. */
+  summary: ResumenJornada | null
   /**
    * Estado que cambia cada frame: se MUTA sobre estos objetos estables y se
    * lee con getState() (regla de la sección 5 del doc). El modo y la acción de
@@ -294,6 +315,12 @@ type GameState = {
   acceptRadioCall: () => void
   /** Que no (o dejarla sonar hasta perderla): baja tu prioridad. */
   rejectRadioCall: (motivo: 'RECHAZO' | 'EXPIRO') => void
+  /** Cierra la jornada (Paso 8): cancela lo pendiente con consecuencias y
+   *  arma el resumen. La dispara DayClock al agotarse los minutos del día. */
+  endDay: () => void
+  /** Del botón del resumen: día siguiente, reloj a la mañana, estadísticas
+   *  en ceros. Dinero, reputación, historial y la pipa se quedan como están. */
+  startNextDay: () => void
   addReputation: (colonia: string, delta: number) => void
   setClientHistory: (clientId: string, history: ClientHistory) => void
   setOrders: (orders: Pedido[]) => void
@@ -302,9 +329,12 @@ type GameState = {
   hydrate: (save: SaveData) => void
 }
 
-export const useGameStore = create<GameState>((set, get) => ({
+export const useGameStore = create<GameState>((set, get) => {
+  // Compartido para que la foto de reputación del día 1 sea la del arranque.
+  const eco0 = economyInicial()
+  return {
   mode: 'ON_FOOT',
-  economy: economyInicial(),
+  economy: eco0,
   refill: { active: false, litersLoaded: 0, cost: 0 },
   clock: { daySeconds: 0 },
   camera: { phi: 0 },
@@ -312,6 +342,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   notice: null,
   delivery: null,
   radioCall: null,
+  stats: newDayStats(eco0.reputation),
+  summary: null,
   player: {
     pos: { x: 0, y: 1, z: 0 },
     stamina: 1,
@@ -380,6 +412,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     set((s) => ({
       refill: { active: false, litersLoaded: 0, cost: 0 },
       economy: { ...s.economy, liters: settled.liters, money: settled.money },
+      // El gasto real es la diferencia liquidada, ya redondeada.
+      stats: {
+        ...s.stats,
+        gastoAgua: centavos(s.stats.gastoAgua + (s.economy.money - settled.money)),
+      },
     }))
   },
   offerService: (clientId) => {
@@ -499,6 +536,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             reputation: rep.reputation,
             orders: st.economy.orders.filter((o) => o.id !== pedido.id),
           },
+          stats: { ...st.stats, canceladas: st.stats.canceladas + 1 },
           notice: {
             id: ++noticeSeq,
             text: `${nombre}: «Demasiado tarde — cancelo el pedido»`,
@@ -571,6 +609,16 @@ export const useGameStore = create<GameState>((set, get) => ({
           reputation: rep.reputation,
           orders: st.economy.orders.filter((o) => o.id !== pedido.id),
           clientHistory: { ...st.economy.clientHistory, [pedido.clientId]: h },
+        },
+        stats: {
+          ...st.stats,
+          litrosVendidos: st.stats.litrosVendidos + Math.round(result.delivered),
+          ingresos: centavos(st.stats.ingresos + cobrado),
+          entregas: {
+            ...st.stats.entregas,
+            [PUNTUALIDAD_STAT[d.puntualidad]]:
+              st.stats.entregas[PUNTUALIDAD_STAT[d.puntualidad]] + 1,
+          },
         },
       }
     })
@@ -653,6 +701,63 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     })
   },
+  endDay: () => {
+    const s = get()
+    if (s.summary) return
+    // DayClock espera a que carga y entrega cierren, pero por si acaso.
+    if (s.refill.active) s.stopRefill()
+
+    set((st) => {
+      /*
+       * Los pedidos que el cierre alcanzó se cancelan CON consecuencias:
+       * aceptaste y no entregaste, y el día se sabía cuándo terminaba. Eso
+       * es lo que convierte «aceptar a las 6:50 pm» en una decisión.
+       */
+      let reputation = st.economy.reputation
+      let clientHistory = st.economy.clientHistory
+      let canceladas = st.stats.canceladas
+      for (const o of st.economy.orders) {
+        const h = clientHistory[o.clientId] ?? newClientHistory()
+        clientHistory = {
+          ...clientHistory,
+          [o.clientId]: withCancellation(h, st.economy.day, st.clock.daySeconds),
+        }
+        reputation = aplicarRep(
+          { ...st.economy, reputation },
+          o.colonia,
+          eventRepDelta('CANCELACION'),
+        ).reputation
+        canceladas++
+      }
+
+      const stats = { ...st.stats, canceladas }
+      return {
+        summary: resumenJornada({
+          stats,
+          day: st.economy.day,
+          repFinal: reputation,
+          colonia: COLONIA_PRINCIPAL,
+        }),
+        stats,
+        economy: { ...st.economy, reputation, clientHistory, orders: [] },
+        // El día se llevó lo que estaba a medias, sin castigo extra.
+        offer: null,
+        radioCall: null,
+        contextAction: null,
+      }
+    })
+  },
+  startNextDay: () => {
+    const s = get()
+    if (!s.summary) return
+    // El reloj es estado por-frame: se muta, como lo escribe DayClock.
+    s.clock.daySeconds = 0
+    set((st) => ({
+      summary: null,
+      stats: newDayStats(st.economy.reputation),
+      economy: { ...st.economy, day: st.economy.day + 1 },
+    }))
+  },
   addReputation: (colonia, delta) =>
     set((s) => {
       const rep = aplicarRep(s.economy, colonia, delta)
@@ -703,6 +808,10 @@ export const useGameStore = create<GameState>((set, get) => ({
         orders: [],
         radioPrioridad: save.radioPrioridad ?? 1,
       },
+      // La foto del día es la reputación con la que se despierta.
+      stats: newDayStats({ ...base.reputation, ...save.reputation }),
+      summary: null,
     })
   },
-}))
+  }
+})

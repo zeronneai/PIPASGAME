@@ -916,6 +916,68 @@ canvas {
   }
 }
 
+/* ---- Resumen de la jornada ----
+   Reusa la tarjeta del pedido; todo con las variables del tema. La neta es
+   EL número del día y se lleva el peso visual. */
+
+.summary-card {
+  width: min(360px, 90vw);
+}
+
+.summary-titulo {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.summary-rows {
+  margin: 12px 0 0;
+}
+
+.summary-neta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-success) 12%, transparent);
+}
+
+.summary-neta span {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.summary-neta b {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-success);
+}
+
+.summary-neta.perdida {
+  background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+}
+
+.summary-neta.perdida b {
+  color: var(--color-danger);
+}
+
+.summary-bien {
+  color: var(--color-success);
+}
+
+.summary-mal,
+.summary-mal b {
+  color: var(--color-danger);
+}
+
+.summary-boton {
+  margin-top: 16px;
+}
+
 /* ---- Botón de contexto ----
    Abajo a la derecha, pero por encima de los pedales: manejando conviven el
    freno y el botón de bajar, y no pueden pelearse el mismo pulgar. */
