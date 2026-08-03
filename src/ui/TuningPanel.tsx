@@ -169,6 +169,30 @@ export default function TuningPanel() {
     },
   })
 
+  useControls('interacción', {
+    boardRadius: {
+      value: tuning.interaction.boardRadius,
+      min: 1,
+      max: 10,
+      step: 0.25,
+      onChange: (n: number) => void (tuning.interaction.boardRadius = n),
+    },
+    exitSpeed: {
+      value: tuning.interaction.exitSpeed,
+      min: 0.05,
+      max: 3,
+      step: 0.05,
+      onChange: (n: number) => void (tuning.interaction.exitSpeed = n),
+    },
+    modeTransition: {
+      value: tuning.camera.modeTransition,
+      min: 0.1,
+      max: 2,
+      step: 0.05,
+      onChange: (n: number) => void (tuning.camera.modeTransition = n),
+    },
+  })
+
   const v = tuning.vehicle
   useControls('pipa · manejo', {
     // El desplegable se arma solo desde el registro: cuando entren el

@@ -2,9 +2,9 @@ import { lazy, Suspense, useState } from 'react'
 import { Scene } from './game/Scene'
 import { useGameStore } from './state/gameStore'
 import { CameraDragArea } from './ui/CameraDragArea'
+import { ContextButton } from './ui/ContextButton'
 import { DebugOverlay } from './ui/DebugOverlay'
 import { DriveControls } from './ui/DriveControls'
-import { ModeToggle } from './ui/ModeToggle'
 import { OrientationGate } from './ui/OrientationGate'
 import { StaminaBar } from './ui/StaminaBar'
 import { TapToStart } from './ui/TapToStart'
@@ -34,7 +34,7 @@ export default function App() {
             <DriveControls />
           )}
           <CameraDragArea />
-          <ModeToggle />
+          <ContextButton />
           <DebugOverlay />
           {TuningPanel && (
             <Suspense fallback={null}>

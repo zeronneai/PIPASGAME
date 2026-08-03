@@ -167,24 +167,30 @@ canvas {
   margin-bottom: 28px;
 }
 
-/* ---- Interruptor de modo (andamio del Paso 8) ---- */
+/* ---- Botón de contexto ----
+   Abajo a la derecha, pero por encima de los pedales: manejando conviven el
+   freno y el botón de bajar, y no pueden pelearse el mismo pulgar. */
 
-.mode-toggle {
+.context-button {
   position: fixed;
-  top: calc(12px + var(--safe-top));
-  right: calc(12px + var(--safe-right));
-  z-index: 6;
-  min-width: 88px;
-  min-height: 44px;
-  padding: 0 16px;
-  border-radius: 22px;
-  border: 2px solid color-mix(in srgb, var(--color-accent) 60%, transparent);
-  background: color-mix(in srgb, var(--color-bg) 75%, transparent);
-  color: var(--color-accent);
+  right: calc(20px + var(--safe-right));
+  bottom: calc(140px + var(--safe-bottom));
+  z-index: 7;
+  min-width: 108px;
+  min-height: 52px;
+  padding: 0 20px;
+  border-radius: 26px;
+  border: 2px solid color-mix(in srgb, var(--color-accent) 70%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 22%, transparent);
+  color: var(--color-text);
   font-family: var(--font-ui);
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   font-weight: 600;
   touch-action: none;
+}
+
+.context-button:active {
+  background: color-mix(in srgb, var(--color-accent) 55%, transparent);
 }
 
 /* ---- Overlay de debug ---- */

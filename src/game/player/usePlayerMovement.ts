@@ -21,6 +21,7 @@ export function usePlayerMovement(
   const velocity = useRef(new Vector3())
   const verticalVel = useRef(0)
   const grounded = useRef(true)
+  const wasDriving = useRef(false)
 
   useEffect(() => {
     const controller = world.createCharacterController(0.05)
@@ -44,7 +45,21 @@ export function usePlayerMovement(
     const dt = Math.min(delta, 1 / 30)
     const t = tuning.player
     const { move } = useInputStore.getState()
-    const player = useGameStore.getState().player
+    const { player, mode } = useGameStore.getState()
+
+    // Manejando el cuerpo está deshabilitado: moverlo aquí sería mover un
+    // cuerpo fuera de la simulación.
+    if (mode === 'DRIVING') {
+      wasDriving.current = true
+      return
+    }
+    if (wasDriving.current) {
+      // Al bajarse arranca quieto, o heredaría la velocidad que traía al subir.
+      wasDriving.current = false
+      velocity.current.set(0, 0, 0)
+      verticalVel.current = 0
+      player.speed = 0
+    }
 
     // Dirección relativa a la cámara (solo el yaw, aplanado al piso)
     _forward.set(0, 0, -1).applyQuaternion(state.camera.quaternion)

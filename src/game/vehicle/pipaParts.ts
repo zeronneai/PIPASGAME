@@ -14,6 +14,23 @@
  */
 export const PIPA_SPAWN: [number, number, number] = [0, 1.25, 16]
 
+/**
+ * Puerta del conductor, en coordenadas locales de la pipa.
+ *
+ * El frente mira a +Z, así que el lado izquierdo (el del conductor en México)
+ * es +X. Aquí se centra la zona de detección para subir.
+ */
+export const PIPA_DOOR = { x: 1.45, y: 0.1, z: 2.5 }
+
+/**
+ * Dónde reaparece el personaje al bajarse: junto a la puerta pero ya fuera
+ * del cuerpo de la pipa, o saldría dentro de su propio collider.
+ *
+ * La Y es respecto al centro del chasis, que en reposo queda ~1.03 m sobre el
+ * piso; el personaje necesita su centro a 0.9 m, de ahí la diferencia.
+ */
+export const PIPA_EXIT = { x: 2.6, y: -0.13, z: 2.5 }
+
 /** Un color por parte. En la Fase 2 esto se vuelve el punto de personalización. */
 export const PIPA_MATERIALS = {
   bastidor: '#3f4149',

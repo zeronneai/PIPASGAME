@@ -2,6 +2,7 @@ import { useRef, type RefObject } from 'react'
 import type { Group } from 'three'
 import { CapsuleCollider, RigidBody, type RapierRigidBody } from '@react-three/rapier'
 import { usePlayerMovement } from './usePlayerMovement'
+import { useGameStore } from '../../state/gameStore'
 
 // Cápsula de 1.8 m de alto: cilindro de 1.1 (halfHeight 0.55) + tapas de 0.35
 export function Player({
@@ -11,6 +12,8 @@ export function Player({
   bodyRef: RefObject<RapierRigidBody | null>
 }) {
   const visualRef = useRef<Group>(null)
+  // El modo cambia poco: se puede suscribir sin costo por frame.
+  const driving = useGameStore((s) => s.mode === 'DRIVING')
 
   usePlayerMovement(bodyRef, visualRef)
 
@@ -22,7 +25,9 @@ export function Player({
       position={[0, 1, 0]}
     >
       <CapsuleCollider args={[0.55, 0.35]} />
-      <group ref={visualRef}>
+      {/* Manejando se esconde. El cuerpo además se saca de la simulación en
+          Interaction.tsx, para que no estorbe a la propia pipa. */}
+      <group ref={visualRef} visible={!driving}>
         <mesh>
           <capsuleGeometry args={[0.35, 1.1, 6, 12]} />
           <meshStandardMaterial color="#c8c8c8" />

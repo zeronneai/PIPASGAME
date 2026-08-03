@@ -40,7 +40,11 @@ export const tuning = {
     returnLerp: 4, // qué tan rápido se aleja al despejarse
     fovFoot: 70,
     fovDrive: 78,
-    fovLerp: 6,
+    /**
+     * Segundos que tarda la cámara en pasar del personaje a la pipa. Manda
+     * sobre todo el cambio a la vez: pivote, distancia, altura y FOV.
+     */
+    modeTransition: 0.5,
     // Manejando la cámara se abre y se levanta: la pipa es larga y hay que
     // ver a dónde va, no la caja del tanque.
     driveDistance: 11,
@@ -49,6 +53,17 @@ export const tuning = {
     driveRecenter: 1.6,
     /** Segundos sin tocar la pantalla antes de empezar a recentrar. */
     driveRecenterDelay: 1,
+  },
+  interaction: {
+    /** Radio de la zona de detección en la puerta de la pipa, en metros. */
+    boardRadius: 3.5,
+    /** Por debajo de esta velocidad (m/s) se puede bajar. */
+    exitSpeed: 0.4,
+    /**
+     * Cada cuánto corre el escaneo de proximidad, en segundos. No cada frame:
+     * la sección del Paso 9 pide throttle y esto ya lo deja listo.
+     */
+    scanInterval: 0.1,
   },
   vehicle: {
     mass: 12000, // kg, cargada (sección 6: unas 12 toneladas)

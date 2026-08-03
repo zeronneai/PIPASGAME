@@ -1,4 +1,4 @@
-import { useRef, type RefObject } from 'react'
+import { useCallback, useRef, type RefObject } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useRapier, type RapierRigidBody } from '@react-three/rapier'
 import type { Ray } from '@dimforge/rapier3d-compat'
@@ -21,6 +21,10 @@ const _quat = new Quaternion()
 function angleDiff(target: number, current: number) {
   return (((target - current + Math.PI) % TAU) + TAU) % TAU - Math.PI
 }
+
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t
+/** Arranca y termina suave; una rampa lineal se nota como un tirón. */
+const suavizar = (t: number) => t * t * (3 - 2 * t)
 
 /**
  * Cámara en tercera persona (Paso 4), ahora con dos objetivos (Paso 6).
@@ -49,8 +53,24 @@ export function ThirdPersonCamera({
   const distance = useRef(tuning.camera.distance)
   const placed = useRef(false)
   const idleTime = useRef(0)
+  /** 0 = a pie, 1 = manejando. Cruza de un extremo al otro en modeTransition. */
+  const modeBlend = useRef(0)
   // En un ref, no en useMemo: se reusa cada frame mutándole origen y dirección
   const rayRef = useRef<Ray | null>(null)
+
+  /*
+   * Durante la transición la cámara vuela entre el personaje y la pipa, y los
+   * dos están a un par de metros: sin excluir a los dos, el raycast choca con
+   * la pipa a media transición y la cámara pega un jalón. castRay solo acepta
+   * un cuerpo excluido, así que se filtran ambos con un predicado.
+   */
+  const noSonElObjetivo = useCallback(
+    (collider: { parent: () => RapierRigidBody | null }) => {
+      const parent = collider.parent()
+      return parent !== playerBody.current && parent !== vehicleBody.current
+    },
+    [playerBody, vehicleBody],
+  )
 
   useFrame((state, delta) => {
     const cam = state.camera as PerspectiveCamera
@@ -58,6 +78,15 @@ export function ThirdPersonCamera({
     const c = tuning.camera
     const driving = useGameStore.getState().mode === 'DRIVING'
     const target = driving ? vehicleBody.current : playerBody.current
+
+    // Transición de medio segundo: un solo factor manda sobre el pivote, la
+    // distancia, la altura y el FOV, así los cuatro llegan juntos.
+    const paso = dt / Math.max(0.01, c.modeTransition)
+    const destino = driving ? 1 : 0
+    modeBlend.current +=
+      Math.sign(destino - modeBlend.current) *
+      Math.min(paso, Math.abs(destino - modeBlend.current))
+    const e = suavizar(modeBlend.current)
 
     // Orbitar con el arrastre acumulado desde el frame anterior.
     // Arrastrar a la derecha gira la vista a la derecha; hacia abajo mira
@@ -85,15 +114,16 @@ export function ThirdPersonCamera({
         angleDiff(behind, yaw.current) * (1 - Math.exp(-c.driveRecenter * dt))
     }
 
-    // Pivote: la cabeza del jugador o el cuerpo de la pipa
-    const height = driving ? c.driveHeight : c.height
-    if (target) {
-      const p = target.translation()
-      _wanted.set(p.x, p.y + height, p.z)
-    } else {
-      const { pos } = useGameStore.getState().player
-      _wanted.set(pos.x, pos.y + height, pos.z)
-    }
+    // Pivote: se mezcla del personaje a la pipa según la transición, leyendo
+    // del store para que funcione aunque el cuerpo del personaje esté
+    // deshabilitado mientras manejas.
+    const height = lerp(c.height, c.driveHeight, e)
+    const { player, vehicle } = useGameStore.getState()
+    _wanted.set(
+      lerp(player.pos.x, vehicle.pos.x, e),
+      lerp(player.pos.y, vehicle.pos.y, e) + height,
+      lerp(player.pos.z, vehicle.pos.z, e),
+    )
     if (placed.current) {
       pivot.current.lerp(_wanted, 1 - Math.exp(-c.followLerp * dt))
     } else {
@@ -110,7 +140,7 @@ export function ThirdPersonCamera({
     )
 
     // Colisión: ¿hay algo entre el objetivo y donde quiere estar la cámara?
-    const maxDistance = driving ? c.driveDistance : c.distance
+    const maxDistance = lerp(c.distance, c.driveDistance, e)
     let wanted = maxDistance
     const ray = (rayRef.current ??= new rapier.Ray(
       { x: 0, y: 0, z: 0 },
@@ -125,7 +155,8 @@ export function ThirdPersonCamera({
       undefined,
       undefined,
       undefined,
-      target ?? undefined,
+      undefined,
+      noSonElObjetivo,
     )
     if (hit) {
       wanted = Math.max(c.minDistance, hit.timeOfImpact - c.collisionRadius)
@@ -141,10 +172,10 @@ export function ThirdPersonCamera({
     cam.position.copy(pivot.current).addScaledVector(_dir, distance.current)
     cam.lookAt(pivot.current)
 
-    // FOV: 70 a pie, 78 manejando
-    const targetFov = driving ? c.fovDrive : c.fovFoot
+    // FOV: 70 a pie, 78 manejando, con la misma rampa que todo lo demás
+    const targetFov = lerp(c.fovFoot, c.fovDrive, e)
     if (Math.abs(cam.fov - targetFov) > 0.01) {
-      cam.fov += (targetFov - cam.fov) * (1 - Math.exp(-c.fovLerp * dt))
+      cam.fov = targetFov
       cam.updateProjectionMatrix()
     }
   })

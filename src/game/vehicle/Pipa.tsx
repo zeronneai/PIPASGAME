@@ -3,9 +3,10 @@ import { useFrame } from '@react-three/fiber'
 import { CuboidCollider, RigidBody, type RapierRigidBody } from '@react-three/rapier'
 import type { Group } from 'three'
 import { tuning } from '../tuning'
-import { PIPA_BODY, PIPA_SPAWN } from './pipaParts'
+import { PIPA_BODY } from './pipaParts'
 import { PipaModel } from './PipaModel'
 import { useVehicleController, WHEEL_COUNT } from './useVehicleController'
+import { useGameStore } from '../../state/gameStore'
 
 export function Pipa({
   bodyRef,
@@ -38,12 +39,18 @@ export function Pipa({
   const t = tuning.vehicle
   const B = PIPA_BODY
 
+  // Nace donde diga el store, no donde diga una constante: si este componente
+  // se remontara, la pipa reaparece donde la dejaste y no en su punto de
+  // partida. Se lee una sola vez, al montar; después el store es el espejo.
+  const { pos, rot } = useGameStore.getState().vehicle
+
   return (
     <RigidBody
       ref={bodyRef}
       type="dynamic"
       colliders={false}
-      position={PIPA_SPAWN}
+      position={[pos.x, pos.y, pos.z]}
+      quaternion={[rot.x, rot.y, rot.z, rot.w]}
       linearDamping={t.linearDamping}
       angularDamping={t.angularDamping}
       // Si se duerme, el controlador deja de moverla y parece un bug.
