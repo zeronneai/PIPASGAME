@@ -1,5 +1,8 @@
-import { Leva, useControls } from 'leva'
+import { button, Leva, useControls } from 'leva'
 import { tuning } from '../game/tuning'
+import { balance } from '../game/balance'
+import type { PerfilCliente } from '../game/systems/clients'
+import { clearSave } from '../game/systems/persistence'
 import { useGameStore } from '../state/gameStore'
 import { STEERING_SOURCES, type SteeringId } from '../game/vehicle/steering'
 
@@ -40,6 +43,94 @@ const TEMA_TACTIL = {
 /** Las carpetas de detalle arrancan cerradas para que quepan en la pantalla. */
 const CERRADA = { collapsed: true }
 
+/*
+ * Los números de cada perfil de cliente son la misma plantilla tres veces,
+ * así que la carpeta se genera. Escriben directo en balance, igual que el
+ * resto del panel escribe en tuning: el juego calcula con el valor vivo.
+ */
+function perfilSchema(id: PerfilCliente) {
+  const p = balance.perfiles[id]
+  return {
+    'precio por litro': {
+      value: p.sellPricePerLiter,
+      min: 0.01,
+      max: 0.5,
+      step: 0.005,
+      onChange: (n: number) => void (p.sellPricePerLiter = n),
+    },
+    propina: {
+      value: p.tipPct,
+      min: 0,
+      max: 0.5,
+      step: 0.01,
+      onChange: (n: number) => void (p.tipPct = n),
+    },
+    'ventana (min)': {
+      value: p.windowMinutes,
+      min: 1,
+      max: 20,
+      step: 0.5,
+      onChange: (n: number) => void (p.windowMinutes = n),
+    },
+    'tolerancia (×ventana)': {
+      value: p.lateFactor,
+      min: 1,
+      max: 3,
+      step: 0.05,
+      onChange: (n: number) => void (p.lateFactor = n),
+    },
+    'pago tarde (×)': {
+      value: p.latePayFactor,
+      min: 0,
+      max: 1,
+      step: 0.05,
+      onChange: (n: number) => void (p.latePayFactor = n),
+    },
+    'pago muy tarde (×)': {
+      value: p.veryLatePayFactor,
+      min: 0,
+      max: 1,
+      step: 0.05,
+      onChange: (n: number) => void (p.veryLatePayFactor = n),
+    },
+    'litros mín': {
+      value: p.litros.min,
+      min: 100,
+      max: 8000,
+      step: 100,
+      onChange: (n: number) => void (p.litros.min = n),
+    },
+    'litros máx': {
+      value: p.litros.max,
+      min: 100,
+      max: 10000,
+      step: 100,
+      onChange: (n: number) => void (p.litros.max = n),
+    },
+    'rep a tiempo': {
+      value: p.rep.onTime,
+      min: 0,
+      max: 10,
+      step: 0.5,
+      onChange: (n: number) => void (p.rep.onTime = n),
+    },
+    'rep tarde': {
+      value: p.rep.late,
+      min: -10,
+      max: 0,
+      step: 0.5,
+      onChange: (n: number) => void (p.rep.late = n),
+    },
+    'rep muy tarde': {
+      value: p.rep.veryLate,
+      min: -15,
+      max: 0,
+      step: 0.5,
+      onChange: (n: number) => void (p.rep.veryLate = n),
+    },
+  }
+}
+
 export default function TuningPanel() {
   const v = tuning.vehicle
 
@@ -48,13 +139,15 @@ export default function TuningPanel() {
    * los que se piden a mano; el resto vive en las carpetas de abajo.
    */
   useControls('esenciales', {
+    // Desde Fase 1 el tanque son litros de verdad: el deslizador pasa por
+    // setLiters, que sincroniza economy.liters con vehicle.fillLevel.
     'nivel del tanque': {
       value: useGameStore.getState().vehicle.fillLevel,
       min: 0,
       max: 1,
       step: 0.05,
       onChange: (n: number) =>
-        void (useGameStore.getState().vehicle.fillLevel = n),
+        useGameStore.getState().setLiters(n * balance.tank.capacity),
     },
     'velocidad máxima': {
       value: v.maxSpeed,
@@ -95,6 +188,78 @@ export default function TuningPanel() {
       onChange: (n: number) => void (tuning.slosh.damping = n),
     },
   })
+
+  useControls(
+    'economía',
+    {
+      'capacidad (L)': {
+        value: balance.tank.capacity,
+        min: 1000,
+        max: 40000,
+        step: 500,
+        onChange: (n: number) => void (balance.tank.capacity = n),
+      },
+      'compra por litro': {
+        value: balance.pozo.pricePerLiter,
+        min: 0.005,
+        max: 0.3,
+        step: 0.005,
+        onChange: (n: number) => void (balance.pozo.pricePerLiter = n),
+      },
+      'carga (L/s)': {
+        value: balance.pozo.litersPerSecond,
+        min: 30,
+        max: 600,
+        step: 10,
+        onChange: (n: number) => void (balance.pozo.litersPerSecond = n),
+      },
+      'radio se abre en': {
+        value: balance.reputacion.radioUnlock,
+        min: 50,
+        max: 100,
+        step: 1,
+        onChange: (n: number) => void (balance.reputacion.radioUnlock = n),
+      },
+      'jornada (min)': {
+        value: balance.jornada.minutosReales,
+        min: 5,
+        max: 30,
+        step: 1,
+        onChange: (n: number) => void (balance.jornada.minutosReales = n),
+      },
+      'rep minijuego limpio': {
+        value: balance.reputacion.minijuegoLimpio,
+        min: 0,
+        max: 5,
+        step: 0.5,
+        onChange: (n: number) => void (balance.reputacion.minijuegoLimpio = n),
+      },
+      'rep derrame': {
+        value: balance.reputacion.derrame,
+        min: -10,
+        max: 0,
+        step: 0.5,
+        onChange: (n: number) => void (balance.reputacion.derrame = n),
+      },
+      'rep cancelación': {
+        value: balance.reputacion.cancelacion,
+        min: -20,
+        max: 0,
+        step: 0.5,
+        onChange: (n: number) => void (balance.reputacion.cancelacion = n),
+      },
+      // Para probar el Paso 1 desde el teléfono: borra y arranca de cero.
+      'borrar guardado y reiniciar': button(() => {
+        clearSave()
+        location.reload()
+      }),
+    },
+    CERRADA,
+  )
+
+  useControls('economía · paciente', perfilSchema('paciente'), CERRADA)
+  useControls('economía · normal', perfilSchema('normal'), CERRADA)
+  useControls('economía · exigente', perfilSchema('exigente'), CERRADA)
 
   useControls(
     'pipa · segunda',

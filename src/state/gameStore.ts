@@ -2,6 +2,16 @@ import { create } from 'zustand'
 import { resetInput } from './inputStore'
 import type { SteeringId } from '../game/vehicle/steering'
 import { PIPA_SPAWN } from '../game/vehicle/pipaParts'
+import { balance } from '../game/balance'
+import {
+  CLIENTES,
+  COLONIAS,
+  newClientHistory,
+  type ClientHistory,
+} from '../game/systems/clients'
+import { clampLiters, type Pedido } from '../game/systems/economy'
+import { applyRep, newReputation } from '../game/systems/reputation'
+import type { SaveData } from '../game/systems/persistence'
 
 export type GameMode = 'ON_FOOT' | 'DRIVING'
 
@@ -44,10 +54,10 @@ type VehicleState = {
   /** Cuántas de las 4 ruedas tocan el piso. Si baja de 4, algo pasó. */
   wheelsOnGround: number
   /**
-   * Nivel del tanque, 0 a 1. Es estado de juego, no un ajuste: el Paso 9 lo
-   * va a llenar en la toma de agua y el Paso 10 lo dibuja en el HUD. Por
-   * ahora se mueve con el deslizador de leva para poder probar todos los
-   * niveles sin llenar el tanque.
+   * Nivel del tanque, 0 a 1, DERIVADO de economy.liters (sección 2.1 de
+   * Fase 1: fillLevel = litrosActuales / capacidad). No se escribe directo:
+   * se pasa por setLiters(), que mantiene los dos en sincronía. La física y
+   * el chapoteo lo siguen leyendo igual que en Fase 0.
    */
   fillLevel: number
   /** Dónde está el agua dentro del tanque, en metros. Solo para debug y HUD. */
@@ -68,8 +78,42 @@ type VehicleState = {
   rot: { x: number; y: number; z: number; w: number }
 }
 
+/*
+ * Estado económico (Paso 1 de Fase 1). A diferencia de player/vehicle, esto
+ * NO cambia cada frame: cambia por eventos (entregar, cargar, cobrar), así
+ * que va con set() inmutable y los componentes sí pueden suscribirse.
+ */
+type EconomyState = {
+  /** Pesos en la cartera. */
+  money: number
+  /** Litros en el tanque. La fuente de verdad; fillLevel se deriva de aquí. */
+  liters: number
+  /** Día de juego, arranca en 1. La jornada (Paso 8) lo avanza. */
+  day: number
+  /** Reputación 0..100 POR COLONIA (sección 2.7). */
+  reputation: Record<string, number>
+  /** Historial por cliente, persiste entre jornadas. */
+  clientHistory: Record<string, ClientHistory>
+  /** Pedidos aceptados y pendientes de entregar. El reloj corre en Paso 4. */
+  orders: Pedido[]
+}
+
+const economyInicial = (): EconomyState => ({
+  money: balance.dineroInicial,
+  liters: balance.tank.capacity * 0.5,
+  day: 1,
+  reputation: Object.fromEntries(
+    Object.keys(COLONIAS).map((id) => [id, newReputation()]),
+  ),
+  clientHistory: Object.fromEntries(
+    Object.keys(CLIENTES).map((id) => [id, newClientHistory()]),
+  ),
+  orders: [],
+})
+
 type GameState = {
   mode: GameMode
+  economy: EconomyState
   /**
    * Estado que cambia cada frame: se MUTA sobre estos objetos estables y se
    * lee con getState() (regla de la sección 5 del doc). El modo y la acción de
@@ -88,10 +132,21 @@ type GameState = {
   setContextAction: (action: ContextAction | null) => void
   requestContextAction: () => void
   consumePendingAction: () => ContextAction | null
+  /** Suma (o resta, con delta negativo) dinero. Validar ANTES de llamar. */
+  addMoney: (delta: number) => void
+  /** Fija los litros del tanque y sincroniza vehicle.fillLevel. */
+  setLiters: (liters: number) => void
+  addReputation: (colonia: string, delta: number) => void
+  setClientHistory: (clientId: string, history: ClientHistory) => void
+  setOrders: (orders: Pedido[]) => void
+  advanceDay: () => void
+  /** Aplica una partida guardada. La llama initPersistence antes del render. */
+  hydrate: (save: SaveData) => void
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
   mode: 'ON_FOOT',
+  economy: economyInicial(),
   player: {
     pos: { x: 0, y: 1, z: 0 },
     stamina: 1,
@@ -135,5 +190,62 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { pendingAction } = get()
     if (pendingAction) set({ pendingAction: null })
     return pendingAction
+  },
+  addMoney: (delta) =>
+    set((s) => ({ economy: { ...s.economy, money: s.economy.money + delta } })),
+  setLiters: (liters) => {
+    const l = clampLiters(liters)
+    // fillLevel se MUTA, no se reemplaza: es la regla de vehicle (estado por
+    // frame, objeto estable). La física y el chapoteo lo leen tal cual.
+    get().vehicle.fillLevel = l / balance.tank.capacity
+    set((s) => ({ economy: { ...s.economy, liters: l } }))
+  },
+  addReputation: (colonia, delta) =>
+    set((s) => ({
+      economy: {
+        ...s.economy,
+        reputation: {
+          ...s.economy.reputation,
+          [colonia]: applyRep(s.economy.reputation[colonia] ?? newReputation(), delta),
+        },
+      },
+    })),
+  setClientHistory: (clientId, history) =>
+    set((s) => ({
+      economy: {
+        ...s.economy,
+        clientHistory: { ...s.economy.clientHistory, [clientId]: history },
+      },
+    })),
+  setOrders: (orders) => set((s) => ({ economy: { ...s.economy, orders } })),
+  advanceDay: () =>
+    set((s) => ({ economy: { ...s.economy, day: s.economy.day + 1 } })),
+  hydrate: (save) => {
+    const { vehicle } = get()
+    // La pipa se queda donde la dejaste, también entre sesiones: el
+    // componente lee esta posición del store al montar.
+    vehicle.pos.x = save.vehiclePos.x
+    vehicle.pos.y = save.vehiclePos.y
+    vehicle.pos.z = save.vehiclePos.z
+    vehicle.rot.x = save.vehicleRot.x
+    vehicle.rot.y = save.vehicleRot.y
+    vehicle.rot.z = save.vehicleRot.z
+    vehicle.rot.w = save.vehicleRot.w
+    const liters = clampLiters(save.liters)
+    vehicle.fillLevel = liters / balance.tank.capacity
+    // Se mezcla sobre lo inicial: si una versión nueva agrega clientes o
+    // colonias, un guardado viejo no los deja fuera.
+    const base = economyInicial()
+    set({
+      economy: {
+        ...base,
+        money: save.money,
+        liters,
+        day: save.day,
+        reputation: { ...base.reputation, ...save.reputation },
+        clientHistory: { ...base.clientHistory, ...save.clientHistory },
+        orders: [],
+      },
+    })
   },
 }))
