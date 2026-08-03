@@ -2,11 +2,11 @@ import { useEffect, useRef } from 'react'
 import { useGameStore } from '../state/gameStore'
 
 /**
- * Temperatura del motor. Mismo patrón que StaminaBar: rAF + getState() y
- * escribir estilos directo, cero re-renders.
+ * Temperatura del motor. Mismo patrón que las demás barras: rAF +
+ * getState() y escribir estilos directo, cero re-renders.
  *
- * Va justo encima del botón de la segunda para que la causa y el efecto estén
- * pegados: subes la barra con ese botón.
+ * Es la última del bloque a propósito: queda pegada al botón de la segunda,
+ * que es lo que la sube.
  */
 export function TempGauge() {
   const fillRef = useRef<HTMLDivElement>(null)
@@ -33,8 +33,8 @@ export function TempGauge() {
   }, [])
 
   return (
-    <div ref={wrapRef} className="temp-gauge">
-      <div ref={fillRef} className="temp-gauge-fill" />
+    <div ref={wrapRef} className="hud-bar temp-gauge">
+      <div ref={fillRef} className="hud-bar-fill" />
     </div>
   )
 }

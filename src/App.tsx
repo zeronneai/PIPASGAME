@@ -5,8 +5,8 @@ import { CameraDragArea } from './ui/CameraDragArea'
 import { ContextButton } from './ui/ContextButton'
 import { DebugOverlay } from './ui/DebugOverlay'
 import { DriveControls } from './ui/DriveControls'
+import { HUD } from './ui/HUD'
 import { OrientationGate } from './ui/OrientationGate'
-import { StaminaBar } from './ui/StaminaBar'
 import { TapToStart } from './ui/TapToStart'
 import { TuningDrawer } from './ui/TuningDrawer'
 import { VirtualJoystick } from './ui/VirtualJoystick'
@@ -21,14 +21,9 @@ export default function App() {
       <Scene />
       {started && (
         <>
-          {mode === 'ON_FOOT' ? (
-            <>
-              <VirtualJoystick />
-              <StaminaBar />
-            </>
-          ) : (
-            <DriveControls />
-          )}
+          {/* Lo que se lee va en el HUD; lo que se toca, aparte */}
+          <HUD />
+          {mode === 'ON_FOOT' ? <VirtualJoystick /> : <DriveControls />}
           <CameraDragArea />
           <ContextButton />
           <DebugOverlay />

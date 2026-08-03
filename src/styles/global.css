@@ -188,17 +188,56 @@ canvas {
   background: color-mix(in srgb, var(--color-accent-2) 50%, transparent);
 }
 
-.temp-gauge {
+/* ---- HUD de manejo (Paso 10) ----
+   Velocímetro, tanque y temperatura en un solo bloque, encima del botón de la
+   segunda. Van juntos porque son los tres indicadores del vehículo, y de este
+   lado porque el centro de la pantalla no se tapa nunca. */
+
+.hud-drive {
   position: fixed;
-  left: calc(228px + var(--safe-left));
+  /* Pegado al borde izquierdo y no junto a la segunda: a media altura, un
+     bloque más al centro se metía en la franja por donde miras la calle. */
+  left: calc(20px + var(--safe-left));
   bottom: calc(118px + var(--safe-bottom));
-  width: 88px;
+  width: 120px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.speedometer {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 2px 6px var(--color-shadow);
+}
+
+.speedometer-unit {
+  font-size: 0.7rem;
+  font-weight: 400;
+  opacity: 0.65;
+}
+
+.hud-bar {
+  width: 100%;
   height: 10px;
   border-radius: 5px;
   background: color-mix(in srgb, var(--color-text) 15%, transparent);
   overflow: hidden;
-  z-index: 6;
-  pointer-events: none;
+}
+
+.hud-bar-fill {
+  width: 100%;
+  height: 100%;
+  transform-origin: left;
+  transform: scaleX(0);
+  background: var(--color-accent);
 }
 
 /* Mientras la segunda entra de verdad, el marco se enciende: es la única
@@ -207,19 +246,15 @@ canvas {
   box-shadow: 0 0 0 2px var(--color-accent-2);
 }
 
-.temp-gauge-fill {
-  width: 100%;
-  height: 100%;
-  transform-origin: left;
-  transform: scaleX(0);
+.temp-gauge .hud-bar-fill {
   background: var(--color-accent-2);
 }
 
-.temp-gauge-fill.caliente {
+.temp-gauge .hud-bar-fill.caliente {
   background: var(--color-warning);
 }
 
-.temp-gauge-fill.fundido {
+.temp-gauge .hud-bar-fill.fundido {
   background: var(--color-danger);
   animation: fundido 0.5s steps(2, end) infinite;
 }
@@ -290,10 +325,10 @@ canvas {
   top: calc(10px + var(--safe-top));
   left: calc(10px + var(--safe-left));
   /* Corta ANTES de la fila de abajo: ahí viven los botones del volante, el de
-     la segunda con su barra de temperatura, y la barra de resistencia. Sin
-     esto el panel los tapaba y no se podía manejar mientras ajustas, que es
-     justo para lo que sirve ajustar en vivo. */
-  bottom: calc(160px + var(--safe-bottom));
+     la segunda, el bloque de velocímetro/tanque/temperatura y la barra de
+     resistencia. Sin esto el panel los tapaba y no se podía manejar ni leer
+     el HUD mientras ajustas, que es justo para lo que sirve ajustar en vivo. */
+  bottom: calc(200px + var(--safe-bottom));
   z-index: 15;
   width: min(320px, 58vw);
   display: flex;
@@ -301,7 +336,7 @@ canvas {
   border-radius: 12px;
   overflow: hidden;
   background: color-mix(in srgb, var(--color-bg) 93%, transparent);
-  box-shadow: 0 8px 28px rgb(0 0 0 / 45%);
+  box-shadow: 0 8px 28px var(--color-shadow);
 }
 
 .tuning-drawer-header {

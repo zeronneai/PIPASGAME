@@ -17,6 +17,9 @@
   --color-warning: #ffb74d;
   --color-danger: #ff5252;
 
+  /* Sombra: aquí y no en duro en cada regla */
+  --color-shadow: rgb(0 0 0 / 45%);
+
   /* Tipografía */
   --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-display: var(--font-ui); /* títulos; cambiar aquí cuando haya fuente propia */
