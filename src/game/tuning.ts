@@ -62,6 +62,13 @@ export const tuning = {
     /** Por debajo de esta velocidad (m/s) se puede bajar. */
     exitSpeed: 0.4,
     /**
+     * Radio para cargar agua, medido de la pipa a la toma, en metros. Más
+     * grande que el de los locales porque la toma está metida en la manzana
+     * y la pipa se queda en la calle: parado en la esquina más cercana hay
+     * ~9 m hasta la válvula.
+     */
+    pozoRadius: 12,
+    /**
      * Cada cuánto corre el escaneo de proximidad, en segundos. No cada frame:
      * la sección del Paso 9 pide throttle y esto ya lo deja listo.
      */

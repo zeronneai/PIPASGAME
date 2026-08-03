@@ -47,6 +47,13 @@ export function Interaction({
     const pending = store.consumePendingAction()
     if (!pending) return
 
+    if (pending.kind === 'REFILL') {
+      // Solo abre la sesión; el tick corre en Refill.tsx y cortar puede
+      // venir del medidor en el DOM, que habla directo con el store.
+      store.startRefill()
+      return
+    }
+
     if (pending.kind === 'SERVICE') {
       // La lógica de aceptación es Fase 1. Por ahora solo se avisa.
       const objetivo = pending.targetId ? getInteractable(pending.targetId) : null

@@ -9,7 +9,7 @@ import {
   newClientHistory,
   type ClientHistory,
 } from '../game/systems/clients'
-import { clampLiters, type Pedido } from '../game/systems/economy'
+import { clampLiters, settleRefill, type Pedido } from '../game/systems/economy'
 import { applyRep, newReputation } from '../game/systems/reputation'
 import type { SaveData } from '../game/systems/persistence'
 
@@ -22,7 +22,7 @@ export type GameMode = 'ON_FOOT' | 'DRIVING'
  * debe saber que existen los locales, ni traducir ids a etiquetas.
  */
 export type ContextAction = {
-  kind: 'BOARD' | 'EXIT' | 'SERVICE'
+  kind: 'BOARD' | 'EXIT' | 'SERVICE' | 'REFILL'
   label: string
   /** Id del Interactable, cuando la acción viene de uno. */
   targetId?: string
@@ -98,6 +98,25 @@ type EconomyState = {
   orders: Pedido[]
 }
 
+/*
+ * Sesión de carga en el pozo (Paso 2). Mientras dura, los litros y el costo
+ * se acumulan AQUÍ y no en economy: se liquidan de un golpe al cortar, así el
+ * autoguardado (cada 5 s) nunca captura dinero y litros a medias. Lo que sí
+ * se actualiza en vivo es vehicle.fillLevel, para que la masa y el chapoteo
+ * respondan mientras cae el agua.
+ *
+ * `active` va con set() (monta y desmonta el medidor); litersLoaded y cost se
+ * MUTAN cada tick, como el resto del estado por-frame, y el medidor los lee
+ * con getState() dentro de un rAF.
+ */
+type RefillState = {
+  active: boolean
+  /** Litros cargados en esta sesión, aún sin sumar a economy.liters. */
+  litersLoaded: number
+  /** Costo acumulado en crudo; se redondea a centavos al liquidar. */
+  cost: number
+}
+
 const economyInicial = (): EconomyState => ({
   money: balance.dineroInicial,
   liters: balance.tank.capacity * 0.5,
@@ -114,6 +133,7 @@ const economyInicial = (): EconomyState => ({
 type GameState = {
   mode: GameMode
   economy: EconomyState
+  refill: RefillState
   /**
    * Estado que cambia cada frame: se MUTA sobre estos objetos estables y se
    * lee con getState() (regla de la sección 5 del doc). El modo y la acción de
@@ -136,6 +156,11 @@ type GameState = {
   addMoney: (delta: number) => void
   /** Fija los litros del tanque y sincroniza vehicle.fillLevel. */
   setLiters: (liters: number) => void
+  /** Abre una sesión de carga en el pozo. El tick corre en Refill.tsx. */
+  startRefill: () => void
+  /** Liquida la sesión: litros al tanque, costo a la cartera. La llaman el
+   *  botón de cortar, el tick al topar, y el sistema si la pipa se aleja. */
+  stopRefill: () => void
   addReputation: (colonia: string, delta: number) => void
   setClientHistory: (clientId: string, history: ClientHistory) => void
   setOrders: (orders: Pedido[]) => void
@@ -147,6 +172,7 @@ type GameState = {
 export const useGameStore = create<GameState>((set, get) => ({
   mode: 'ON_FOOT',
   economy: economyInicial(),
+  refill: { active: false, litersLoaded: 0, cost: 0 },
   player: {
     pos: { x: 0, y: 1, z: 0 },
     stamina: 1,
@@ -199,6 +225,23 @@ export const useGameStore = create<GameState>((set, get) => ({
     // frame, objeto estable). La física y el chapoteo lo leen tal cual.
     get().vehicle.fillLevel = l / balance.tank.capacity
     set((s) => ({ economy: { ...s.economy, liters: l } }))
+  },
+  startRefill: () => {
+    // Objeto NUEVO por sesión: los ticks mutan sus campos, y si se reusara el
+    // anterior el medidor arrancaría enseñando los litros de la carga pasada.
+    if (!get().refill.active)
+      set({ refill: { active: true, litersLoaded: 0, cost: 0 } })
+  },
+  stopRefill: () => {
+    const { refill, economy, vehicle } = get()
+    if (!refill.active) return
+    const settled = settleRefill(economy, refill)
+    // Misma sincronía que setLiters: fillLevel se muta, economy va con set().
+    vehicle.fillLevel = settled.liters / balance.tank.capacity
+    set((s) => ({
+      refill: { active: false, litersLoaded: 0, cost: 0 },
+      economy: { ...s.economy, liters: settled.liters, money: settled.money },
+    }))
   },
   addReputation: (colonia, delta) =>
     set((s) => ({

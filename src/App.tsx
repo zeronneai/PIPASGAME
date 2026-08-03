@@ -6,6 +6,7 @@ import { DebugOverlay } from './ui/DebugOverlay'
 import { DriveControls } from './ui/DriveControls'
 import { HUD } from './ui/HUD'
 import { OrientationGate } from './ui/OrientationGate'
+import { RefillMeter } from './ui/RefillMeter'
 import { TapToStart } from './ui/TapToStart'
 import { TuningDrawer } from './ui/TuningDrawer'
 import { VirtualJoystick } from './ui/VirtualJoystick'
@@ -36,6 +37,7 @@ export default function App() {
           {mode === 'ON_FOOT' ? <VirtualJoystick /> : <DriveControls />}
           <CameraDragArea />
           <ContextButton />
+          <RefillMeter />
           <DebugOverlay />
           <TuningDrawer />
         </>

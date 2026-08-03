@@ -6,6 +6,7 @@ import { Pipa } from './vehicle/Pipa'
 import { ThirdPersonCamera } from './camera/ThirdPersonCamera'
 import { ColoniaGreybox } from './world/ColoniaGreybox'
 import { Interaction } from './systems/Interaction'
+import { Refill } from './systems/Refill'
 import { RenderStats } from './systems/RenderStats'
 import { PHYSICS_STEP, tuning } from './tuning'
 
@@ -30,6 +31,9 @@ export function Scene() {
           {/* Antes de la cámara: espeja el transform de la pipa al store, que
               es de donde la cámara lo lee. */}
           <Interaction playerBody={playerBody} vehicleBody={vehicleBody} />
+          {/* Después de Interaction: usa la posición de la pipa ya espejada
+              en este mismo frame. */}
+          <Refill />
           {/* Después del Player y la Pipa en el árbol: sus useFrame corren
               primero, así la cámara ya ve la posición de este frame. */}
           <ThirdPersonCamera

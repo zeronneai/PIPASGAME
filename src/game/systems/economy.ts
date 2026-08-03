@@ -45,6 +45,67 @@ export function refillSeconds(liters: number, b: Balance = balance): number {
   return Math.max(0, liters) / b.pozo.litersPerSecond
 }
 
+/** Por qué se detuvo sola la carga. Cortarla a mano no pasa por aquí. */
+export type RefillStop = 'TANQUE_LLENO' | 'SIN_DINERO'
+
+/**
+ * Un tick de carga en el pozo (sección 2.2): cuántos litros entran en `dt`
+ * segundos y cuánto cuestan. Los litros los limita lo que quepa en el tanque
+ * Y lo que alcance el dinero: el pozo no fía.
+ *
+ * `cost` sale SIN redondear a propósito: a 60 ticks por segundo, redondear
+ * cada tick acumula error. Se redondea una sola vez, al liquidar la sesión
+ * en settleRefill.
+ */
+export function refillTick(
+  liters: number,
+  money: number,
+  dt: number,
+  b: Balance = balance,
+): { added: number; cost: number; stop: RefillStop | null } {
+  const wanted = Math.max(0, dt) * b.pozo.litersPerSecond
+  const headroom = Math.max(0, b.tank.capacity - liters)
+  const affordable =
+    b.pozo.pricePerLiter > 0
+      ? Math.max(0, money) / b.pozo.pricePerLiter
+      : Infinity
+  const added = Math.min(wanted, headroom, affordable)
+  // Lleno gana sobre quebrado: si ambos topan a la vez, la razón que se
+  // muestra es la del tanque, que es la que el jugador puede ver en la barra.
+  const stop =
+    added >= headroom
+      ? 'TANQUE_LLENO'
+      : added >= affordable
+        ? 'SIN_DINERO'
+        : null
+  return { added, cost: added * b.pozo.pricePerLiter, stop }
+}
+
+/** Si vale la pena ofrecer «Cargar agua»: cabe algo y alcanza para ≥1 litro. */
+export function canStartRefill(
+  liters: number,
+  money: number,
+  b: Balance = balance,
+): boolean {
+  return liters < b.tank.capacity && money >= b.pozo.pricePerLiter
+}
+
+/**
+ * Liquida una sesión de carga: litros al tanque, costo a la cartera. Es el
+ * ÚNICO punto donde el dinero de la carga se redondea a centavos; durante los
+ * ticks el costo se acumula en crudo.
+ */
+export function settleRefill(
+  wallet: { liters: number; money: number },
+  session: { litersLoaded: number; cost: number },
+  b: Balance = balance,
+): { liters: number; money: number } {
+  return {
+    liters: clampLiters(wallet.liters + session.litersLoaded, b),
+    money: centavos(wallet.money - session.cost),
+  }
+}
+
 /**
  * Clasifica una entrega según el reloj del pedido (sección 2.5):
  * dentro de la ventana → a tiempo; hasta `lateFactor` ventanas → tarde;

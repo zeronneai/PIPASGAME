@@ -24,7 +24,7 @@ export function DebugOverlay() {
       if (dt > 0) fps += (1000 / dt - fps) * 0.1
 
       const { move, look, pointers, drive } = useInputStore.getState()
-      const { player, vehicle, mode } = useGameStore.getState()
+      const { player, vehicle, mode, economy, refill } = useGameStore.getState()
       if (ref.current) {
         const estado = player.exhausted
           ? 'exhausto'
@@ -34,8 +34,14 @@ export function DebugOverlay() {
         const kTris = (renderStats.triangles / 1000).toFixed(1)
         const kmh = vehicle.speed * 3.6
         const volante = (vehicle.steer * (180 / Math.PI)).toFixed(0)
+        // Cartera y litros EFECTIVOS: durante una carga lo acumulado en la
+        // sesión aún no se liquida en economy, pero aquí se muestra ya
+        // descontado para que el número coincida con el del medidor.
+        const cartera = economy.money - refill.cost
+        const enTanque = economy.liters + refill.litersLoaded
         ref.current.textContent =
           `${fps.toFixed(0)} fps   ${renderStats.calls} draw calls   ${kTris}k tris\n` +
+          `cartera $${cartera.toFixed(2)}   tanque ${Math.round(enTanque)} L   día ${economy.day}\n` +
           `cámara Δ  x ${look.x.toFixed(0)}  y ${look.y.toFixed(0)}  ptr ${pointers.look ?? '—'}\n` +
           (mode === 'DRIVING'
             ? `pipa  ${kmh.toFixed(0)} km/h  volante ${volante}°  ruedas ${vehicle.wheelsOnGround}/4\n` +

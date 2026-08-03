@@ -5,6 +5,8 @@ import { tuning } from '../tuning'
 import { useGameStore, type ContextAction } from '../../state/gameStore'
 import { PIPA_DOOR } from '../vehicle/pipaParts'
 import { nearestInteractable } from '../world/interactableRegistry'
+import { WATER_SOURCE } from '../world/layout'
+import { canStartRefill } from './economy'
 
 // Temporales de módulo: esto corre 10 veces por segundo, no vale la pena
 // asignar vectores nuevos cada pasada.
@@ -56,7 +58,26 @@ export function useInteractionScan() {
     } else {
       // Bajarse solo con la pipa detenida, o saldrías en movimiento.
       if (Math.abs(s.vehicle.speed) < tuning.interaction.exitSpeed) {
-        action = { kind: 'EXIT', label: 'Bajar' }
+        /*
+         * El pozo no pasa por el registro de interactuables: ese es para
+         * cosas que se alcanzan A PIE, y aquí lo que tiene que estar cerca
+         * es la PIPA, que es la que carga. Detenida junto a la toma, cargar
+         * gana sobre bajar; ya cargando (o llena, o sin dinero) el botón
+         * vuelve a «Bajar».
+         */
+        const v = s.vehicle.pos
+        const [px, py, pz] = WATER_SOURCE.pos
+        const d = Math.hypot(px - v.x, py - v.y, pz - v.z)
+        const { liters, money } = s.economy
+        if (
+          !s.refill.active &&
+          d < tuning.interaction.pozoRadius &&
+          canStartRefill(liters, money)
+        ) {
+          action = { kind: 'REFILL', label: 'Cargar agua' }
+        } else {
+          action = { kind: 'EXIT', label: 'Bajar' }
+        }
       }
     }
 

@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { balance, type Balance } from '../balance'
 import {
+  canStartRefill,
   clampLiters,
   classifyPunctuality,
   deliveryPayment,
   estimateOffer,
   refillCost,
   refillSeconds,
+  refillTick,
+  settleRefill,
 } from './economy'
 
 /*
@@ -74,6 +77,95 @@ describe('refillSeconds', () => {
     const s = refillSeconds(balance.tank.capacity)
     expect(s).toBeGreaterThan(40)
     expect(s).toBeLessThan(90)
+  })
+})
+
+describe('refillTick', () => {
+  // B: capacidad 1000, precio 0.1, 100 L/s. Dinero de sobra salvo que se diga.
+
+  it('mete litros proporcionales al tiempo y cobra el precio de compra', () => {
+    expect(refillTick(0, 999, 1, B)).toEqual({ added: 100, cost: 10, stop: null })
+    expect(refillTick(0, 999, 0.5, B)).toEqual({ added: 50, cost: 5, stop: null })
+  })
+
+  it('con dt 0 no pasa nada', () => {
+    expect(refillTick(500, 999, 0, B)).toEqual({ added: 0, cost: 0, stop: null })
+  })
+
+  it('topa en la capacidad y avisa TANQUE_LLENO', () => {
+    const t = refillTick(950, 999, 1, B)
+    expect(t.added).toBe(50)
+    expect(t.cost).toBe(5)
+    expect(t.stop).toBe('TANQUE_LLENO')
+  })
+
+  it('topa en el dinero y avisa SIN_DINERO: el pozo no fía', () => {
+    // Con $2 alcanzan 20 litros de los 100 que caben en el tick.
+    const t = refillTick(0, 2, 1, B)
+    expect(t.added).toBe(20)
+    expect(t.cost).toBe(2)
+    expect(t.stop).toBe('SIN_DINERO')
+  })
+
+  it('sin un centavo no carga nada', () => {
+    expect(refillTick(0, 0, 1, B)).toEqual({ added: 0, cost: 0, stop: 'SIN_DINERO' })
+    // El dinero negativo (polvo de floats) tampoco «debe» litros.
+    expect(refillTick(0, -0.001, 1, B).added).toBe(0)
+  })
+
+  it('si lleno y quebrado coinciden, gana TANQUE_LLENO', () => {
+    // $5 alcanzan justo los 50 litros que faltan.
+    expect(refillTick(950, 5, 1, B).stop).toBe('TANQUE_LLENO')
+  })
+
+  it('invariante con el balance real: llenar de cero por ticks cuesta lo mismo que refillCost', () => {
+    let liters = 0
+    const money = 10_000
+    let cost = 0
+    // Ticks de 16 ms hasta topar, como en el juego.
+    for (let i = 0; i < 10_000; i++) {
+      const t = refillTick(liters, money - cost, 0.016)
+      liters += t.added
+      cost += t.cost
+      if (t.stop) break
+    }
+    expect(liters).toBeCloseTo(balance.tank.capacity, 6)
+    expect(cost).toBeCloseTo(refillCost(balance.tank.capacity), 2)
+  })
+})
+
+describe('canStartRefill', () => {
+  it('con espacio y dinero para al menos un litro, sí', () => {
+    expect(canStartRefill(500, 100, B)).toBe(true)
+  })
+
+  it('con el tanque lleno, no', () => {
+    expect(canStartRefill(1000, 100, B)).toBe(false)
+  })
+
+  it('sin dinero ni para un litro, no', () => {
+    expect(canStartRefill(500, 0.05, B)).toBe(false)
+  })
+})
+
+describe('settleRefill', () => {
+  it('suma los litros y descuenta el costo redondeado a centavos', () => {
+    const s = settleRefill(
+      { liters: 200, money: 100 },
+      { litersLoaded: 300, cost: 30.0049 },
+      B,
+    )
+    expect(s.liters).toBe(500)
+    expect(s.money).toBe(70) // 100 − 30.0049 → 69.9951 → 70.00
+  })
+
+  it('nunca deja el tanque por encima de la capacidad', () => {
+    const s = settleRefill(
+      { liters: 900, money: 100 },
+      { litersLoaded: 200, cost: 20 },
+      B,
+    )
+    expect(s.liters).toBe(1000)
   })
 })
 

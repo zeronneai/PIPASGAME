@@ -515,6 +515,13 @@ export default function TuningPanel() {
         step: 0.25,
         onChange: (n: number) => void (tuning.interaction.localRadius = n),
       },
+      pozoRadius: {
+        value: tuning.interaction.pozoRadius,
+        min: 4,
+        max: 30,
+        step: 0.5,
+        onChange: (n: number) => void (tuning.interaction.pozoRadius = n),
+      },
       exitSpeed: {
         value: tuning.interaction.exitSpeed,
         min: 0.05,
