@@ -31,6 +31,15 @@ export function RadioCallCard() {
   }, [call])
 
   if (!call) return null
+
+  // Distancia a la ENTREGA desde donde estás ahora: se calcula una vez por
+  // tarjeta (la llamada dura segundos; el orden de magnitud no cambia).
+  const s = useGameStore.getState()
+  const desde = s.mode === 'DRIVING' ? s.vehicle.pos : s.player.pos
+  const dist = Math.round(
+    Math.hypot(call.delivery[0] - desde.x, call.delivery[2] - desde.z),
+  )
+
   return (
     // key: cada llamada remonta la tarjeta y reinicia la animación de entrada.
     <div className={`radio-card perfil-borde-${call.perfil}`} key={call.clientId + call.expiresAt}>
@@ -40,7 +49,7 @@ export function RadioCallCard() {
       </div>
       <div className="radio-datos">
         {call.litros.toLocaleString('es-MX')} L · {call.windowMinutes} min ·
-        ~${call.estimate.toFixed(2)}
+        ~${call.estimate.toFixed(2)} · a {dist} m
       </div>
       <div className="hud-bar radio-timer">
         <div ref={barRef} className="hud-bar-fill" />

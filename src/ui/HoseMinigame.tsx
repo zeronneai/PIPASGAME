@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { balance } from '../game/balance'
-import { getCliente } from '../game/systems/clients'
 import {
   connectHit,
   flowTick,
@@ -141,11 +140,10 @@ function Juego({ delivery }: { delivery: DeliveryState }) {
     }
   }
 
-  const cliente = getCliente(pedido.clientId)
   return (
     <div className="offer-backdrop">
       <div ref={cardRef} className="offer-card hose-card">
-        <div className="offer-cliente">{cliente?.name ?? pedido.clientId}</div>
+        <div className="offer-cliente">{pedido.clientName}</div>
         <div className="offer-colonia">
           {pedido.liters.toLocaleString('es-MX')} L ·{' '}
           <span className={`hose-puntualidad ${puntualidad.toLowerCase()}`}>

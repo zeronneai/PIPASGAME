@@ -7,8 +7,10 @@ import {
 import { Color, Matrix4, Quaternion, Vector3, type InstancedMesh } from 'three'
 import {
   buildings,
+  groundSlab,
+  kiosco,
   locales,
-  roadTiles,
+  roads,
   sidewalks,
   topes,
   waterParts,
@@ -22,20 +24,23 @@ const _m = new Matrix4()
 const _pos = new Vector3()
 const _scale = new Vector3()
 const _quat = new Quaternion()
+const _up = new Vector3(0, 1, 0)
 const _color = new Color()
 
 const COLOR = {
+  ground: '#54545a',
   road: '#6e6e73',
   sidewalk: '#8d8d93',
   tope: '#b9a44e',
+  kiosco: '#9a8a5c',
   waterBase: '#6a6a70',
   waterPipe: '#4d8fbf',
   waterValve: '#37d0a7',
 }
 
 /**
- * Un draw call por conjunto: una geometría de cubo unitario, escalada por
- * instancia. Es la razón por la que toda la colonia cabe en ~10 draw calls.
+ * Un draw call por conjunto: una geometría de cubo unitario, escalada y
+ * ROTADA por instancia (la avenida diagonal es un box con rotY).
  */
 function InstancedBoxes({
   boxes,
@@ -56,6 +61,7 @@ function InstancedBoxes({
       const b = boxes[i]
       _pos.set(b.pos[0], b.pos[1], b.pos[2])
       _scale.set(b.size[0], b.size[1], b.size[2])
+      _quat.setFromAxisAngle(_up, b.rotY ?? 0)
       mesh.setMatrixAt(i, _m.compose(_pos, _quat, _scale))
       if (instanceColors) mesh.setColorAt(i, _color.set(instanceColors[i]))
     }
@@ -80,7 +86,7 @@ export function ColoniaGreybox() {
   const buildingColors = useMemo(
     () =>
       buildings.map((b) =>
-        _color.setHSL(0, 0, 0.46 + ((b.size[1] - 5) / 17) * 0.2).getStyle(),
+        _color.setHSL(0, 0, 0.46 + ((b.size[1] - 4) / 16) * 0.2).getStyle(),
       ),
     [],
   )
@@ -92,7 +98,13 @@ export function ColoniaGreybox() {
 
   return (
     <>
-      <InstancedBoxes boxes={roadTiles} color={COLOR.road} />
+      {/* El suelo de rescate: 3 cm bajo la calle, tapa cualquier rendija. */}
+      <mesh position={groundSlab.pos}>
+        <boxGeometry args={groundSlab.size} />
+        <meshStandardMaterial color={COLOR.ground} />
+      </mesh>
+
+      <InstancedBoxes boxes={roads} color={COLOR.road} />
       <InstancedBoxes boxes={sidewalks} color={COLOR.sidewalk} />
       <InstancedBoxes
         boxes={buildings}
@@ -105,6 +117,12 @@ export function ColoniaGreybox() {
         instanceColors={localeColors}
       />
       <InstancedBoxes boxes={topes} color={COLOR.tope} />
+
+      {/* El kiosco de la plaza: el obstáculo que la vuelve glorieta. */}
+      <mesh position={kiosco.pos}>
+        <boxGeometry args={kiosco.size} />
+        <meshStandardMaterial color={COLOR.kiosco} />
+      </mesh>
 
       {/* Toma de agua: pocas piezas, no vale la pena instanciar */}
       <mesh position={waterParts.base.pos}>
@@ -130,9 +148,7 @@ export function ColoniaGreybox() {
       {/*
         Los seis locales usan Interactable. Sin radio propio: así toman el de
         tuning y se puede ajustar en vivo desde leva para los seis a la vez.
-        Se registra la PUERTA y no el centro del local: los locales miden casi
-        10 m de ancho y un radio centrado en el edificio no alcanzaría a salir
-        de él, así que el prompt no aparecería nunca.
+        Se registra la PUERTA y no el centro del local.
       */}
       {locales.map((l) => (
         <Interactable
@@ -149,18 +165,20 @@ export function ColoniaGreybox() {
 }
 
 /**
- * Todo el mundo estático cuelga de un solo RigidBody fijo: son ~400 formas
+ * Todo el mundo estático cuelga de un solo RigidBody fijo: son ~150 formas
  * primitivas, ni un trimesh. Rapier los mete al broad phase estático una vez
- * y no vuelve a tocarlos.
+ * y no vuelve a tocarlos. La diagonal es un CuboidCollider rotado.
  */
 function WorldColliders() {
   const cuboids = useMemo<Box[]>(
     () => [
-      ...roadTiles,
+      groundSlab,
+      ...roads,
       ...sidewalks,
       ...buildings,
       ...locales.map((l) => ({ pos: l.pos, size: l.size })),
       ...topes,
+      kiosco,
       waterParts.base,
       waterParts.valve,
     ],
@@ -174,6 +192,7 @@ function WorldColliders() {
           key={i}
           args={[b.size[0] / 2, b.size[1] / 2, b.size[2] / 2]}
           position={b.pos}
+          rotation={[0, b.rotY ?? 0, 0]}
         />
       ))}
       <CylinderCollider

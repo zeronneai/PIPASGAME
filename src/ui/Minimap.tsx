@@ -1,30 +1,21 @@
 import { useEffect, useRef } from 'react'
-import {
-  locales,
-  MAP_SIZE,
-  STREET_CENTERS,
-  STREET_WIDTH,
-  WATER_SOURCE,
-} from '../game/world/layout'
+import { MAP_SIZE, roads, WATER_SOURCE } from '../game/world/layout'
 import { useGameStore } from '../state/gameStore'
 import type { PerfilCliente } from '../game/systems/clients'
 
 /*
  * Minimapa en DOM sobre el canvas 3D: un <canvas> 2D que se redibuja con
- * THROTTLE (5 veces por segundo), no cada frame — a 0.5 px por metro en
+ * THROTTLE (5 veces por segundo), no cada frame — a 0.4 px por metro en
  * compacto, nada de lo que enseña se mueve tan rápido como para más.
  *
  * Muestra: tú (flecha con tu orientación; manejando, la flecha ES la pipa),
- * la pipa estacionada, el pozo y los pedidos activos con el color de su
- * perfil — el mismo lenguaje de la lista y las tarjetas.
+ * la pipa estacionada, el pozo y los PUNTOS DE ENTREGA de los pedidos
+ * activos con el color de su perfil — adónde vas, no de dónde vienes.
  *
  * Un toque lo expande a pantalla (casi) completa; otro lo regresa.
  */
 
 const REDRAW_MS = 200
-
-/** Puerta de cada local, adonde apuntan los marcadores de pedido. */
-const DOORS = new Map(locales.map((l) => [l.id, l.door]))
 
 /* Colores del tema (theme.css). En duro porque canvas no lee variables CSS
  * sin computar estilos; si el tema cambia, cambia aquí. */
@@ -65,11 +56,22 @@ function draw(el: HTMLCanvasElement) {
   ctx.fillStyle = COLOR.fondo
   ctx.fillRect(0, 0, W, W)
 
-  // Las calles dibujan la colonia entera: la retícula ya se lee sola.
+  // Las calles dibujan la colonia entera, segmento por segmento: el trazo
+  // ya no es retícula, así que se pintan tal cual (la diagonal, rotada).
   ctx.fillStyle = COLOR.calle
-  for (const c of STREET_CENTERS) {
-    ctx.fillRect(M(c - STREET_WIDTH / 2), 0, STREET_WIDTH * escala, W)
-    ctx.fillRect(0, M(c - STREET_WIDTH / 2), W, STREET_WIDTH * escala)
+  for (const r of roads) {
+    const w = r.size[0] * escala
+    const l = r.size[2] * escala
+    if (r.rotY) {
+      ctx.save()
+      ctx.translate(M(r.pos[0]), M(r.pos[2]))
+      // rotY del mundo (sobre Y, hacia -z) es giro antihorario en el mapa.
+      ctx.rotate(-r.rotY)
+      ctx.fillRect(-w / 2, -l / 2, w, l)
+      ctx.restore()
+    } else {
+      ctx.fillRect(M(r.pos[0]) - w / 2, M(r.pos[2]) - l / 2, w, l)
+    }
   }
 
   const s = useGameStore.getState()
@@ -79,13 +81,11 @@ function draw(el: HTMLCanvasElement) {
   ctx.fillStyle = COLOR.pozo
   ctx.fillRect(M(WATER_SOURCE.pos[0]) - lado / 2, M(WATER_SOURCE.pos[2]) - lado / 2, lado, lado)
 
-  // Pedidos activos: punto del color del perfil en la puerta del cliente.
+  // Pedidos activos: punto del color del perfil en el PUNTO DE ENTREGA.
   for (const o of s.economy.orders) {
-    const door = DOORS.get(o.clientId)
-    if (!door) continue
     ctx.fillStyle = COLOR.perfil[o.perfil]
     ctx.beginPath()
-    ctx.arc(M(door[0]), M(door[2]), lado * 0.55, 0, Math.PI * 2)
+    ctx.arc(M(o.delivery[0]), M(o.delivery[2]), lado * 0.55, 0, Math.PI * 2)
     ctx.fill()
   }
 

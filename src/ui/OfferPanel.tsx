@@ -44,6 +44,12 @@ export function OfferPanel() {
             <b>{offer.windowMinutes} min</b>
           </div>
           <div className="offer-row">
+            {/* La entrega ya no es aquí: este número es el que hace pensar
+                en la ruta antes de decir que sí. */}
+            <span>Entrega</span>
+            <b>a {Math.round(offer.deliveryDist)} m</b>
+          </div>
+          <div className="offer-row">
             <span>Pago a tiempo</span>
             <b>~${offer.estimate.toFixed(2)}</b>
           </div>

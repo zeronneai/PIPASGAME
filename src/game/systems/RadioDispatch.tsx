@@ -4,6 +4,7 @@ import { balance } from '../balance'
 import { useGameStore } from '../../state/gameStore'
 import { horaDelDia } from './acceptance'
 import { CLIENTES, COLONIAS } from './clients'
+import { DOMICILIOS } from '../world/layout'
 import {
   elegiblesParaRadio,
   generarLlamada,
@@ -67,8 +68,10 @@ export function RadioDispatch() {
       nextAt.current = t + intervaloLlamada(s.economy.radioPrioridad)
 
     if (!call && t >= nextAt.current) {
+      // Fijos y efímeros por igual: la casa que acaba de aparecer también
+      // tiene radio. Sus entregas van al domicilio o a su propio spot.
       const elegibles = elegiblesParaRadio({
-        clientes: Object.values(CLIENTES),
+        clientes: [...Object.values(CLIENTES), ...s.ephemeral],
         orders: s.economy.orders,
         history: s.economy.clientHistory,
         day: s.economy.day,
@@ -76,9 +79,19 @@ export function RadioDispatch() {
       })
       if (elegibles.length > 0) {
         const cliente = elegibles[Math.floor(Math.random() * elegibles.length)]
-        s.offerRadioCall(
-          generarLlamada(cliente, { tipFactor: tipRepFactor(rep), ahora: t }),
-        )
+        const delivery =
+          'pos' in cliente
+            ? (cliente as (typeof s.ephemeral)[number]).pos
+            : DOMICILIOS[cliente.id]
+        if (delivery) {
+          s.offerRadioCall(
+            generarLlamada(cliente, {
+              tipFactor: tipRepFactor(rep),
+              ahora: t,
+              delivery,
+            }),
+          )
+        }
       }
       // Se reagenda haya sonado o no: sin elegibles, el radio calla un rato.
       nextAt.current = t + intervaloLlamada(s.economy.radioPrioridad)

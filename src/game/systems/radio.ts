@@ -19,6 +19,8 @@ export type RadioCall = {
   windowMinutes: number
   /** Ya con el factor del radio: lo prometido es lo que se cobra. */
   estimate: number
+  /** Dónde se entrega (el domicilio del fijo o el spot del efímero). */
+  delivery: [number, number, number]
   /** Segundos del reloj de la jornada en que la llamada se pierde. */
   expiresAt: number
 }
@@ -72,7 +74,12 @@ export function prioridadTrasAceptar(p: number, b: Balance = balance): number {
  */
 export function generarLlamada(
   cliente: Cliente,
-  args: { tipFactor: number; ahora: number },
+  args: {
+    tipFactor: number
+    ahora: number
+    /** El punto de entrega de este cliente; quien llama lo resuelve. */
+    delivery: [number, number, number]
+  },
   b: Balance = balance,
   rng: Rng = Math.random,
 ): RadioCall {
@@ -85,6 +92,7 @@ export function generarLlamada(
     litros: oferta.litros,
     windowMinutes: oferta.windowMinutes,
     estimate: centavos(oferta.estimate * b.radio.payFactor),
+    delivery: args.delivery,
     expiresAt: args.ahora + b.radio.timeoutLlamada,
   }
 }

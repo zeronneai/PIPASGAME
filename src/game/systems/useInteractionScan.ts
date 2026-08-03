@@ -5,11 +5,8 @@ import { tuning } from '../tuning'
 import { useGameStore, type ContextAction } from '../../state/gameStore'
 import { PIPA_DOOR } from '../vehicle/pipaParts'
 import { nearestInteractable } from '../world/interactableRegistry'
-import { locales, WATER_SOURCE } from '../world/layout'
+import { WATER_SOURCE } from '../world/layout'
 import { canStartRefill } from './economy'
-
-/** Puerta de cada local: la entrega se hace llegando ahí CON LA PIPA. */
-const DOORS = new Map(locales.map((l) => [l.id, l.door]))
 
 // Temporales de módulo: esto corre 10 veces por segundo, no vale la pena
 // asignar vectores nuevos cada pasada.
@@ -64,17 +61,16 @@ export function useInteractionScan() {
         const v = s.vehicle.pos
 
         /*
-         * Entregar gana sobre todo (Paso 5): si estás detenido junto a un
-         * local que tiene pedido, a eso viniste. Se mide de la PIPA a la
-         * puerta — la entrega es con la pipa, no a pie (sección 2.6). Con
-         * varios pedidos en la misma cuadra gana el más cercano.
+         * Entregar gana sobre todo (Paso 5): si estás detenido junto al
+         * PUNTO DE ENTREGA de un pedido —el domicilio, ya no el negocio
+         * donde lo conseguiste—, a eso viniste. Se mide de la PIPA al
+         * punto (sección 2.6). Con varios cerca gana el más próximo.
          */
         let entregaId: string | null = null
         let entregaDist = tuning.interaction.deliverRadius
         for (const o of s.economy.orders) {
-          const door = DOORS.get(o.clientId)
-          if (!door) continue
-          const d = Math.hypot(door[0] - v.x, door[1] - v.y, door[2] - v.z)
+          const [dx, dy, dz] = o.delivery
+          const d = Math.hypot(dx - v.x, dy - v.y, dz - v.z)
           if (d < entregaDist) {
             entregaId = o.clientId
             entregaDist = d

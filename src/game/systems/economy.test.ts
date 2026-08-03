@@ -217,9 +217,11 @@ describe('orderClock', () => {
   const pedido: Pedido = {
     id: 'p1',
     clientId: 'local-1',
+    clientName: 'Doña Chela',
     colonia: 'centro',
     perfil: 'paciente',
     liters: 500,
+    delivery: [0, 0, 0],
     acceptedAt: 60,
     windowMinutes: 10,
   }

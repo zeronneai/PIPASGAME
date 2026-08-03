@@ -29,12 +29,14 @@ import {
   type Puntualidad,
 } from '../game/systems/economy'
 import { esLimpio } from '../game/systems/hose'
+import type { EphemeralClient } from '../game/systems/ephemeral'
 import {
   newDayStats,
   resumenJornada,
   type DayStats,
   type ResumenJornada,
 } from '../game/systems/jornada'
+import { DOMICILIOS } from '../game/world/layout'
 import {
   prioridadTrasAceptar,
   prioridadTrasRechazo,
@@ -173,6 +175,10 @@ export type OfferState = {
   windowMinutes: number
   /** Mejor caso: a tiempo y con propina. */
   estimate: number
+  /** Dónde se entrega (el domicilio del fijo o el spot del efímero). */
+  delivery: [number, number, number]
+  /** Metros en línea recta desde donde estás parado: el dato para decidir. */
+  deliveryDist: number
 }
 
 /** Aviso pasajero (rechazos, enfriamiento). El id reinicia el timer del toast
@@ -270,6 +276,9 @@ type GameState = {
   /** Minimapa a pantalla completa. Vive en el store y no en el componente
    *  porque App oculta los controles de manejo mientras está abierto. */
   minimapExpanded: boolean
+  /** Clientes efímeros activos (casas y obras). Los administra el sistema
+   *  Ephemerals; transitorios, nunca se guardan. */
+  ephemeral: EphemeralClient[]
   /** Acumulador del día (Paso 8). Lo consume el resumen; no persiste. */
   stats: DayStats
   /** Pantalla de fin de día. Mientras exista, el mundo espera. */
@@ -314,6 +323,7 @@ type GameState = {
   showNotice: (text: string) => void
   setRescueFade: (on: boolean) => void
   setMinimapExpanded: (on: boolean) => void
+  setEphemeral: (list: EphemeralClient[]) => void
   /** Llegaste con la pipa a un local con pedido: abre el minijuego, o
    *  resuelve sin abrirlo (exigente que cancela, tanque que no alcanza). */
   startDelivery: (clientId: string) => void
@@ -357,6 +367,7 @@ export const useGameStore = create<GameState>((set, get) => {
   radioCall: null,
   rescueFade: false,
   minimapExpanded: false,
+  ephemeral: [],
   stats: newDayStats(eco0.reputation),
   summary: null,
   player: {
@@ -437,8 +448,16 @@ export const useGameStore = create<GameState>((set, get) => {
   },
   offerService: (clientId) => {
     const s = get()
-    const cliente = getCliente(clientId)
+    // Fijo del directorio o efímero activo: el resto del flujo no distingue.
+    const cliente =
+      getCliente(clientId) ?? s.ephemeral.find((e) => e.id === clientId) ?? null
     if (!cliente || s.offer) return
+    // El domicilio del fijo, o el propio spot del efímero (pide para sí).
+    const delivery =
+      'pos' in cliente
+        ? (cliente as EphemeralClient).pos
+        : DOMICILIOS[clientId]
+    if (!delivery) return
 
     const { economy, clock } = s
     const history = economy.clientHistory[clientId] ?? newClientHistory()
@@ -453,6 +472,7 @@ export const useGameStore = create<GameState>((set, get) => {
 
     if (resultado.kind === 'OFERTA') {
       const { litros, windowMinutes, estimate } = resultado.oferta
+      const p = s.player.pos
       set({
         offer: {
           clientId,
@@ -462,6 +482,8 @@ export const useGameStore = create<GameState>((set, get) => {
           litros,
           windowMinutes,
           estimate,
+          delivery,
+          deliveryDist: Math.hypot(delivery[0] - p.x, delivery[2] - p.z),
         },
       })
       return
@@ -494,9 +516,11 @@ export const useGameStore = create<GameState>((set, get) => {
       // de la jornada nunca marca dos veces lo mismo.
       id: `${offer.clientId}-d${economy.day}-${Math.round(clock.daySeconds * 10)}`,
       clientId: offer.clientId,
+      clientName: offer.name,
       colonia: offer.colonia,
       perfil: offer.perfil,
       liters: offer.litros,
+      delivery: offer.delivery,
       acceptedAt: clock.daySeconds,
       windowMinutes: offer.windowMinutes,
       pagoFactor: 1,
@@ -523,13 +547,14 @@ export const useGameStore = create<GameState>((set, get) => {
   showNotice: (text) => set({ notice: { id: ++noticeSeq, text } }),
   setRescueFade: (rescueFade) => set({ rescueFade }),
   setMinimapExpanded: (minimapExpanded) => set({ minimapExpanded }),
+  setEphemeral: (ephemeral) => set({ ephemeral }),
   startDelivery: (clientId) => {
     const s = get()
     if (s.delivery) return
     const pedido = s.economy.orders.find((o) => o.clientId === clientId)
     if (!pedido) return
-    const cliente = getCliente(clientId)
-    const nombre = cliente?.name ?? clientId
+    // Del pedido, no del directorio: un efímero puede haberse ido ya.
+    const nombre = pedido.clientName
     const { economy, clock } = s
     const reloj = orderClock(pedido, clock.daySeconds)
 
@@ -609,7 +634,7 @@ export const useGameStore = create<GameState>((set, get) => {
 
     // Misma sincronía que el pozo: fillLevel se muta, economy va con set().
     s.vehicle.fillLevel = settled.liters / balance.tank.capacity
-    const nombre = getCliente(pedido.clientId)?.name ?? pedido.clientId
+    const nombre = pedido.clientName
     const cobrado = settled.pago.total + settled.bonus
     const partes = [`${nombre}: +$${cobrado.toFixed(2)}`]
     if (settled.bonus > 0) partes.push('limpio')
@@ -679,9 +704,11 @@ export const useGameStore = create<GameState>((set, get) => {
       // La r distingue el id de los pedidos a pie del mismo instante.
       id: `${radioCall.clientId}-d${economy.day}-r${Math.round(clock.daySeconds * 10)}`,
       clientId: radioCall.clientId,
+      clientName: radioCall.name,
       colonia: radioCall.colonia,
       perfil: radioCall.perfil,
       liters: radioCall.litros,
+      delivery: radioCall.delivery,
       acceptedAt: clock.daySeconds,
       windowMinutes: radioCall.windowMinutes,
       // Copiado al aceptar, como windowMinutes: leva no mueve lo pactado.

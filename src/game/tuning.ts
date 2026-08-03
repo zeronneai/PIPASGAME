@@ -23,8 +23,11 @@ export const tuning = {
     turnSpeed: 12, // rotación del modelo hacia la dirección de movimiento
     gravity: 25, // m/s²
     runThreshold: 0.95, // magnitud del joystick a partir de la cual corre
-    staminaDrain: 0.22, // resistencia gastada por segundo corriendo
-    staminaRegen: 0.3, // resistencia recuperada por segundo
+    /** La barra completa dura ~14 s corriendo (~100 m a 7 m/s): media
+     *  colonia de un tirón. Antes 0.22 (4.5 s) y correr no servía de nada. */
+    staminaDrain: 0.07,
+    /** De vacía a llena en ~3 s parado o caminando. */
+    staminaRegen: 0.35,
     staminaRecover: 0.3, // nivel mínimo para volver a correr tras agotarse
   },
   camera: {

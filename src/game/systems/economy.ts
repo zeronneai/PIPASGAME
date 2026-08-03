@@ -18,9 +18,18 @@ export type Puntualidad = 'A_TIEMPO' | 'TARDE' | 'MUY_TARDE'
 export type Pedido = {
   id: string
   clientId: string
+  /** Copiado al aceptar: un cliente efímero puede irse del mundo y su
+   *  pedido sigue sabiendo cómo se llama. */
+  clientName: string
   colonia: string
   perfil: PerfilCliente
   liters: number
+  /**
+   * DÓNDE se entrega (cambio de diseño de Fase 1): ya no es la puerta donde
+   * conseguiste el pedido, es el domicilio u obra del cliente. Copiado al
+   * aceptar, como todo lo pactado.
+   */
+  delivery: [number, number, number]
   /** Momento de aceptación en segundos del reloj de la jornada. */
   acceptedAt: number
   /** Ventana pactada en minutos reales. Se copia del perfil al aceptar para

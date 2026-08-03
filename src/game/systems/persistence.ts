@@ -14,7 +14,9 @@ import type { ClientHistory } from './clients'
  */
 
 const SAVE_KEY = 'pipero-save'
-export const SAVE_VERSION = 1
+/** v2: el trazo de la colonia cambió y las posiciones guardadas del mundo
+ *  viejo caerían dentro de edificios. Un guardado v1 arranca partida nueva. */
+export const SAVE_VERSION = 2
 
 export type SaveData = {
   version: number
@@ -44,7 +46,13 @@ export function snapshotSave(s: StoreState): SaveData {
     liters: economy.liters,
     day: economy.day,
     reputation: economy.reputation,
-    clientHistory: economy.clientHistory,
+    // Sin los efímeros: sus ids no vuelven a existir y su historial sería
+    // basura acumulándose en localStorage para siempre.
+    clientHistory: Object.fromEntries(
+      Object.entries(economy.clientHistory).filter(
+        ([id]) => !id.startsWith('efimero-'),
+      ),
+    ),
     radioPrioridad: economy.radioPrioridad,
     // Copias, no referencias: vehicle.pos se muta cada frame y un snapshot
     // que apunte al objeto vivo cambiaría después de tomado.

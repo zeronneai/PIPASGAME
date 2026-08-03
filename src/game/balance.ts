@@ -142,6 +142,18 @@ export const balance = {
     /** Bono sobre el pago por entrega limpia («hacerlo bien da un bono»). */
     cleanBonusPct: 0.12,
   },
+  /** Clientes efímeros: casas y obras que aparecen y desaparecen sobre los
+   *  spots del layout, para que el mundo no se sienta un circuito. */
+  efimeros: {
+    /** Cuántos pueden estar activos a la vez. */
+    maxActivos: 3,
+    /** Segundos reales entre intentos de aparición (se sortea en el rango). */
+    spawnMin: 20,
+    spawnMax: 45,
+    /** Minutos reales que se queda uno antes de irse. */
+    vidaMin: 2.5,
+    vidaMax: 5,
+  },
   /** Rescate por caída fuera del mapa: fundido a negro y reaparición en el
    *  borde más cercano. Sin cobro — el castigo es puro tiempo perdido (el
    *  reloj de la jornada y los de los pedidos siguen corriendo). */

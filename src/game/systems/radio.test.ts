@@ -102,18 +102,30 @@ describe('prioridad', () => {
 
 describe('generarLlamada', () => {
   const c = cliente('local-2')
+  const ENTREGA: [number, number, number] = [50, 0.15, -30]
 
   it('litros y ventana del perfil, y expira al timeout', () => {
-    const llamada = generarLlamada(c, { tipFactor: 1, ahora: 100 }, B, () => 0.5)
+    const llamada = generarLlamada(
+      c,
+      { tipFactor: 1, ahora: 100, delivery: ENTREGA },
+      B,
+      () => 0.5,
+    )
     const p = B.perfiles.normal
     expect(llamada.litros).toBeGreaterThanOrEqual(p.litros.min)
     expect(llamada.litros).toBeLessThanOrEqual(p.litros.max)
     expect(llamada.windowMinutes).toBe(p.windowMinutes)
     expect(llamada.expiresAt).toBe(110)
+    expect(llamada.delivery).toEqual(ENTREGA)
   })
 
   it('paga la oferta a pie por el factor del radio', () => {
-    const llamada = generarLlamada(c, { tipFactor: 1.2, ahora: 0 }, B, () => 0.5)
+    const llamada = generarLlamada(
+      c,
+      { tipFactor: 1.2, ahora: 0, delivery: ENTREGA },
+      B,
+      () => 0.5,
+    )
     const aPie = generarOferta(c, B, () => 0.5, 1.2)
     expect(llamada.litros).toBe(aPie.litros)
     expect(llamada.estimate).toBeCloseTo(aPie.estimate * 1.25, 2)

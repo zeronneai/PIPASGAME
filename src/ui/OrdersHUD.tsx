@@ -1,20 +1,15 @@
 import { useEffect, useRef } from 'react'
-import { getCliente } from '../game/systems/clients'
 import { orderClock } from '../game/systems/economy'
-import { locales } from '../game/world/layout'
 import { useGameStore } from '../state/gameStore'
 
 /*
  * Lista compacta de pedidos activos (Paso 4), bajo la barra de estado.
- * Cada renglón: flecha hacia el cliente, nombre, litros y SU reloj.
+ * Cada renglón: flecha hacia el PUNTO DE ENTREGA, nombre, litros y SU reloj.
  *
  * La lista (qué pedidos hay) es de React: cambia al aceptar o entregar.
  * La flecha, el conteo y el color de estado cambian cada frame, así que van
  * directo al DOM en un rAF sobre refs por pedido, como todos los medidores.
  */
-
-/** Puerta de cada local, que es hacia donde apunta la flecha. */
-const DOORS = new Map(locales.map((l) => [l.id, l.door]))
 
 const ESTADO_CLASE = {
   A_TIEMPO: '',
@@ -65,12 +60,11 @@ export function OrdersHUD() {
         const r = refs.current.get(pedido.id)
         if (!r) continue
 
-        const door = DOORS.get(pedido.clientId)
-        if (r.arrow && door) {
-          // Ángulo de la vista menos ángulo hacia el cliente: flecha hacia
+        if (r.arrow) {
+          // Ángulo de la vista menos ángulo hacia la ENTREGA: flecha hacia
           // arriba = de frente en pantalla. atan2(x, z), como camera.phi.
-          const rot =
-            phi - Math.atan2(door[0] - actorPos.x, door[2] - actorPos.z)
+          const [dx, , dz] = pedido.delivery
+          const rot = phi - Math.atan2(dx - actorPos.x, dz - actorPos.z)
           r.arrow.style.transform = `rotate(${(rot * 180) / Math.PI}deg)`
         }
 
@@ -107,9 +101,7 @@ export function OrdersHUD() {
           >
             ▲
           </span>
-          <span className="order-name">
-            {getCliente(pedido.clientId)?.name ?? pedido.clientId}
-          </span>
+          <span className="order-name">{pedido.clientName}</span>
           <span className="order-litros">
             {pedido.liters.toLocaleString('es-MX')} L
           </span>

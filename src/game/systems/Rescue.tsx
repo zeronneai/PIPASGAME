@@ -4,15 +4,12 @@ import type { RapierRigidBody } from '@react-three/rapier'
 import { Quaternion, Vector3 } from 'three'
 import { balance } from '../balance'
 import { tuning } from '../tuning'
-import { STREET_CENTERS } from '../world/layout'
+import { ANILLO } from '../world/layout'
 import { useGameStore } from '../../state/gameStore'
 
 const _fwd = new Vector3()
 const _q = new Quaternion()
 const _up = new Vector3(0, 1, 0)
-
-/** La calle del anillo perimetral: terreno firme pegado al borde. */
-const ANILLO = Math.max(...STREET_CENTERS)
 
 const clampAnillo = (n: number) => Math.min(ANILLO, Math.max(-ANILLO, n))
 

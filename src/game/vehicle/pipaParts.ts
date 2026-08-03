@@ -12,7 +12,9 @@
  * La altura deja las ruedas justo sobre el asfalto; la suspensión asienta el
  * resto en el primer segundo.
  */
-export const PIPA_SPAWN: [number, number, number] = [0, 1.25, 16]
+/** En la plaza, al oeste del kiosco: el trazo nuevo ya no tiene calle en el
+ *  viejo (0, 16). */
+export const PIPA_SPAWN: [number, number, number] = [14, 1.25, -2]
 
 /**
  * Puerta del conductor, en coordenadas locales de la pipa.

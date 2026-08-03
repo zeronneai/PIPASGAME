@@ -6,6 +6,8 @@ import { Pipa } from './vehicle/Pipa'
 import { ThirdPersonCamera } from './camera/ThirdPersonCamera'
 import { ColoniaGreybox } from './world/ColoniaGreybox'
 import { DayClock } from './systems/DayClock'
+import { DeliveryMarkers } from './systems/DeliveryMarkers'
+import { Ephemerals } from './systems/Ephemerals'
 import { Interaction } from './systems/Interaction'
 import { RadioDispatch } from './systems/RadioDispatch'
 import { Refill } from './systems/Refill'
@@ -31,6 +33,8 @@ export function Scene() {
         <RadioDispatch />
         <Physics timeStep={PHYSICS_STEP}>
           <ColoniaGreybox />
+          <Ephemerals />
+          <DeliveryMarkers />
           <Player bodyRef={playerBody} />
           <Pipa bodyRef={vehicleBody} />
           {/* Antes de la cámara: espeja el transform de la pipa al store, que
