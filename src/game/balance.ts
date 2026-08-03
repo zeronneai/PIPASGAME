@@ -92,6 +92,15 @@ export const balance = {
     max: 100,
     /** Nivel que desbloquea el radio de despacho (el hito de la fase). */
     radioUnlock: 70,
+    /**
+     * La conexión de la reputación con los PAGOS (Paso 6): la propina escala
+     * con la reputación de la colonia, de tipFactorMin (rep 0) a tipFactorMax
+     * (rep máxima). Solo la propina: el precio pactado se respeta, pero al
+     * pipero de confianza le dan más y al desconocido casi nada. Y como la
+     * propina solo existe a tiempo, la conexión premia justo lo que debe.
+     */
+    tipFactorMin: 0.5,
+    tipFactorMax: 1.5,
     /** Minijuego de la manguera sin derramar (Paso 5). */
     minijuegoLimpio: 1,
     derrame: -2,

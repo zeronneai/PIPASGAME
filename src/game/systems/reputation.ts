@@ -61,3 +61,14 @@ export function eventRepDelta(event: RepEvent, b: Balance = balance): number {
 export function isRadioUnlocked(rep: number, b: Balance = balance): boolean {
   return rep >= b.reputacion.radioUnlock
 }
+
+/**
+ * Multiplicador de la propina según la reputación de la colonia (la conexión
+ * con los pagos, Paso 6): interpola de tipFactorMin a tipFactorMax. Lo
+ * consumen deliveryPayment al cobrar y la oferta al prometer.
+ */
+export function tipRepFactor(rep: number, b: Balance = balance): number {
+  const r = b.reputacion
+  const norm = Math.min(1, Math.max(0, rep / r.max))
+  return r.tipFactorMin + (r.tipFactorMax - r.tipFactorMin) * norm
+}

@@ -366,6 +366,59 @@ canvas {
   opacity: 0.75;
 }
 
+/* Indicador de reputación (Paso 6): número + barra hacia el máximo, con la
+   marca del umbral del radio. El color dice el nivel de un vistazo. */
+
+.status-rep {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-accent);
+}
+
+.status-rep.rep-baja {
+  color: var(--color-danger);
+}
+
+.status-rep.rep-lista {
+  color: var(--color-success);
+}
+
+.status-rep-num {
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.rep-bar {
+  position: relative;
+  width: 46px;
+  height: 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--color-text) 15%, transparent);
+  overflow: hidden;
+}
+
+.rep-bar-fill {
+  width: 100%;
+  height: 100%;
+  transform-origin: left;
+  transform: scaleX(0);
+  /* Hereda el color del nivel desde .status-rep. */
+  background: currentcolor;
+}
+
+.rep-tick {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--color-text);
+  opacity: 0.8;
+}
+
 /* ---- Pedidos activos ----
    Columna compacta bajo la barra de estado, pegada a la izquierda: nunca
    toca el centro de la pantalla ni la franja baja de los controles. */

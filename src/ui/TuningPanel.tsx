@@ -220,6 +220,20 @@ export default function TuningPanel() {
         step: 1,
         onChange: (n: number) => void (balance.reputacion.radioUnlock = n),
       },
+      'propina con rep 0 ×': {
+        value: balance.reputacion.tipFactorMin,
+        min: 0,
+        max: 1,
+        step: 0.05,
+        onChange: (n: number) => void (balance.reputacion.tipFactorMin = n),
+      },
+      'propina con rep 100 ×': {
+        value: balance.reputacion.tipFactorMax,
+        min: 1,
+        max: 3,
+        step: 0.05,
+        onChange: (n: number) => void (balance.reputacion.tipFactorMax = n),
+      },
       'jornada (min)': {
         value: balance.jornada.minutosReales,
         min: 5,

@@ -253,6 +253,16 @@ describe('evaluarOferta', () => {
     const r = evaluarOferta({ ...args, history }, B, seq(0.99))
     expect(r.kind === 'RECHAZO' && r.motivo).toBe('YA_SURTIDO')
   })
+
+  it('la oferta promete más propina con mejor reputación (Paso 6)', () => {
+    // Mismo dado y mismos litros; solo cambia la reputación.
+    const alta = evaluarOferta({ ...args, rep: 100 }, B, seq(0, 0.5))
+    const baja = evaluarOferta({ ...args, rep: 0 }, B, seq(0, 0.5))
+    if (alta.kind !== 'OFERTA' || baja.kind !== 'OFERTA')
+      throw new Error('ambas debían aceptar con dado 0')
+    expect(alta.oferta.litros).toBe(baja.oferta.litros)
+    expect(alta.oferta.estimate).toBeGreaterThan(baja.oferta.estimate)
+  })
 })
 
 /** rng de secuencia fija para los tests. */

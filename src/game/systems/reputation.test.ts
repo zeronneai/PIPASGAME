@@ -6,6 +6,7 @@ import {
   eventRepDelta,
   isRadioUnlocked,
   newReputation,
+  tipRepFactor,
 } from './reputation'
 
 /* Mismo esquema que economy.test.ts: aritmética exacta contra un balance
@@ -17,6 +18,8 @@ B.reputacion = {
   min: 0,
   max: 100,
   radioUnlock: 70,
+  tipFactorMin: 0.5,
+  tipFactorMax: 1.5,
   minijuegoLimpio: 1,
   derrame: -2,
   cancelacion: -8,
@@ -92,6 +95,30 @@ describe('eventRepDelta', () => {
     expect(eventRepDelta('MINIJUEGO_LIMPIO')).toBeGreaterThan(0)
     expect(eventRepDelta('DERRAME')).toBeLessThan(0)
     expect(eventRepDelta('CANCELACION')).toBeLessThan(eventRepDelta('DERRAME'))
+  })
+})
+
+describe('tipRepFactor', () => {
+  it('interpola de tipFactorMin a tipFactorMax con la reputación', () => {
+    expect(tipRepFactor(0, B)).toBe(0.5)
+    expect(tipRepFactor(50, B)).toBe(1)
+    expect(tipRepFactor(100, B)).toBe(1.5)
+  })
+
+  it('la reputación fuera de rango no rompe el factor', () => {
+    expect(tipRepFactor(-10, B)).toBe(0.5)
+    expect(tipRepFactor(500, B)).toBe(1.5)
+  })
+
+  it('invariantes con el balance real: más reputación nunca da menos propina', () => {
+    expect(balance.reputacion.tipFactorMin).toBeLessThanOrEqual(1)
+    expect(balance.reputacion.tipFactorMax).toBeGreaterThanOrEqual(1)
+    let anterior = 0
+    for (let rep = 0; rep <= 100; rep += 10) {
+      const f = tipRepFactor(rep)
+      expect(f).toBeGreaterThanOrEqual(anterior)
+      anterior = f
+    }
   })
 })
 

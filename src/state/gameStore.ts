@@ -28,7 +28,14 @@ import {
   type Puntualidad,
 } from '../game/systems/economy'
 import { esLimpio } from '../game/systems/hose'
-import { applyRep, newReputation } from '../game/systems/reputation'
+import {
+  applyRep,
+  deliveryRepDelta,
+  eventRepDelta,
+  isRadioUnlocked,
+  newReputation,
+  tipRepFactor,
+} from '../game/systems/reputation'
 import type { SaveData } from '../game/systems/persistence'
 
 export type GameMode = 'ON_FOOT' | 'DRIVING'
@@ -173,6 +180,24 @@ const VOZ_RECHAZO: Record<MotivoRechazo, string> = {
 
 /** Correlativo de avisos; ver Notice. */
 let noticeSeq = 0
+
+/**
+ * Aplica un delta de reputación a una colonia y avisa si ese cambio cruzó
+ * el umbral del radio (el hito de la fase, sección 2.7) hacia arriba. Todas
+ * las consecuencias del Paso 6 pasan por aquí para no repetir el cruce.
+ */
+function aplicarRep(
+  economy: EconomyState,
+  colonia: string,
+  delta: number,
+): { reputation: Record<string, number>; desbloqueaRadio: boolean } {
+  const antes = economy.reputation[colonia] ?? newReputation()
+  const despues = applyRep(antes, delta)
+  return {
+    reputation: { ...economy.reputation, [colonia]: despues },
+    desbloqueaRadio: !isRadioUnlocked(antes) && isRadioUnlocked(despues),
+  }
+}
 
 const economyInicial = (): EconomyState => ({
   money: balance.dineroInicial,
@@ -441,16 +466,26 @@ export const useGameStore = create<GameState>((set, get) => ({
         clientId,
         withCancellation(h, economy.day, clock.daySeconds),
       )
-      set((st) => ({
-        economy: {
-          ...st.economy,
-          orders: st.economy.orders.filter((o) => o.id !== pedido.id),
-        },
-        notice: {
-          id: ++noticeSeq,
-          text: `${nombre}: «Demasiado tarde — cancelo el pedido»`,
-        },
-      }))
+      set((st) => {
+        // Solo el evento de cancelación, no también el veryLate del perfil:
+        // es UN pecado, no dos. El delta del evento ya es de los duros.
+        const rep = aplicarRep(
+          st.economy,
+          pedido.colonia,
+          eventRepDelta('CANCELACION'),
+        )
+        return {
+          economy: {
+            ...st.economy,
+            reputation: rep.reputation,
+            orders: st.economy.orders.filter((o) => o.id !== pedido.id),
+          },
+          notice: {
+            id: ++noticeSeq,
+            text: `${nombre}: «Demasiado tarde — cancelo el pedido»`,
+          },
+        }
+      })
       return
     }
 
@@ -472,17 +507,28 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (!d) return
     const { pedido } = d
     const clean = esLimpio(result.spilled, pedido.liters)
+    // La propina paga con la reputación que TENÍAS al entregar, no con la
+    // que deja esta entrega: primero se cobra, luego se aprende.
+    const repActual =
+      s.economy.reputation[pedido.colonia] ?? newReputation()
     const settled = settleDelivery(s.economy, {
       delivered: result.delivered,
       spilled: result.spilled,
       perfil: pedido.perfil,
       puntualidad: d.puntualidad,
       clean,
+      tipFactor: tipRepFactor(repActual),
     })
 
     let h = s.economy.clientHistory[pedido.clientId] ?? newClientHistory()
     h = withDelivery(h, d.puntualidad, s.economy.day)
     if (!clean) h = withSpill(h)
+
+    // Las consecuencias del Paso 6, todas juntas: la puntualidad según el
+    // perfil, más limpio premia, más derramar castiga.
+    let delta = deliveryRepDelta(d.puntualidad, pedido.perfil)
+    if (clean) delta += eventRepDelta('MINIJUEGO_LIMPIO')
+    if (!clean && result.spilled > 0) delta += eventRepDelta('DERRAME')
 
     // Misma sincronía que el pozo: fillLevel se muta, economy va con set().
     s.vehicle.fillLevel = settled.liters / balance.tank.capacity
@@ -492,42 +538,63 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (settled.bonus > 0) partes.push('limpio')
     if (result.spilled > 0 && !clean)
       partes.push(`${Math.round(result.spilled)} L derramados`)
-    set((st) => ({
-      delivery: null,
-      notice: { id: ++noticeSeq, text: partes.join(' · ') },
-      economy: {
-        ...st.economy,
-        money: settled.money,
-        liters: settled.liters,
-        orders: st.economy.orders.filter((o) => o.id !== pedido.id),
-        clientHistory: { ...st.economy.clientHistory, [pedido.clientId]: h },
-      },
-    }))
+    set((st) => {
+      const rep = aplicarRep(st.economy, pedido.colonia, delta)
+      if (rep.desbloqueaRadio) partes.push('¡radio de despacho desbloqueado!')
+      return {
+        delivery: null,
+        notice: { id: ++noticeSeq, text: partes.join(' · ') },
+        economy: {
+          ...st.economy,
+          money: settled.money,
+          liters: settled.liters,
+          reputation: rep.reputation,
+          orders: st.economy.orders.filter((o) => o.id !== pedido.id),
+          clientHistory: { ...st.economy.clientHistory, [pedido.clientId]: h },
+        },
+      }
+    })
   },
   abortDelivery: (spilled) => {
     const s = get()
-    if (!s.delivery) return
+    const d = s.delivery
+    if (!d) return
     const liters = clampLiters(s.economy.liters - Math.max(0, spilled))
     s.vehicle.fillLevel = liters / balance.tank.capacity
-    set((st) => ({
-      delivery: null,
-      notice: {
-        id: ++noticeSeq,
-        text: 'Entrega interrumpida — el pedido sigue activo',
-      },
-      economy: { ...st.economy, liters },
-    }))
+    set((st) => {
+      // Derramar castiga aunque sueltes la manguera: el agua ya está en la
+      // banqueta del cliente.
+      const rep =
+        spilled > 0
+          ? aplicarRep(st.economy, d.pedido.colonia, eventRepDelta('DERRAME'))
+          : null
+      return {
+        delivery: null,
+        notice: {
+          id: ++noticeSeq,
+          text: 'Entrega interrumpida — el pedido sigue activo',
+        },
+        economy: {
+          ...st.economy,
+          liters,
+          reputation: rep ? rep.reputation : st.economy.reputation,
+        },
+      }
+    })
   },
   addReputation: (colonia, delta) =>
-    set((s) => ({
-      economy: {
-        ...s.economy,
-        reputation: {
-          ...s.economy.reputation,
-          [colonia]: applyRep(s.economy.reputation[colonia] ?? newReputation(), delta),
-        },
-      },
-    })),
+    set((s) => {
+      const rep = aplicarRep(s.economy, colonia, delta)
+      return {
+        economy: { ...s.economy, reputation: rep.reputation },
+        ...(rep.desbloqueaRadio && {
+          notice: {
+            id: ++noticeSeq,
+            text: '¡Radio de despacho desbloqueado!',
+          },
+        }),
+      }
+    }),
   setClientHistory: (clientId, history) =>
     set((s) => ({
       economy: {

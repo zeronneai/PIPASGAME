@@ -1,6 +1,7 @@
 import { balance, type Balance } from '../balance'
 import type { Cliente, ClientHistory } from './clients'
 import { estimateOffer } from './economy'
+import { tipRepFactor } from './reputation'
 
 /*
  * El sistema de aceptación (sección 2.4) como funciones puras: entra el
@@ -143,6 +144,8 @@ export function generarOferta(
   cliente: Cliente,
   b: Balance = balance,
   rng: Rng = Math.random,
+  /** De tipRepFactor con la reputación actual: se promete lo que se pagaría. */
+  tipFactor: number = 1,
 ): Oferta {
   const perfil = b.perfiles[cliente.perfil]
   const paso = b.aceptacion.litersStep
@@ -153,7 +156,7 @@ export function generarOferta(
     clientId: cliente.id,
     litros,
     windowMinutes: perfil.windowMinutes,
-    estimate: estimateOffer(litros, cliente.perfil, b),
+    estimate: estimateOffer(litros, cliente.perfil, tipFactor, b),
   }
 }
 
@@ -235,6 +238,10 @@ export function evaluarOferta(
     b,
   )
   if (rng() < p)
-    return { kind: 'OFERTA', oferta: generarOferta(args.cliente, b, rng), p }
+    return {
+      kind: 'OFERTA',
+      oferta: generarOferta(args.cliente, b, rng, tipRepFactor(args.rep, b)),
+      p,
+    }
   return { kind: 'RECHAZO', motivo: motivoDominante(factores, b), p }
 }

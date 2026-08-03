@@ -350,11 +350,58 @@ describe('deliveryPayment', () => {
 
 describe('estimateOffer', () => {
   it('coincide con el pago real de una entrega a tiempo', () => {
-    const estimado = estimateOffer(100, 'paciente', B)
+    const estimado = estimateOffer(100, 'paciente', 1, B)
     const real = deliveryPayment(
       { liters: 100, perfil: 'paciente', puntualidad: 'A_TIEMPO' },
       B,
     )
     expect(estimado).toBe(real.total)
+  })
+
+  it('con el factor de reputación, promete lo que ese factor pagaría', () => {
+    const estimado = estimateOffer(100, 'paciente', 1.5, B)
+    const real = deliveryPayment(
+      { liters: 100, perfil: 'paciente', puntualidad: 'A_TIEMPO', tipFactor: 1.5 },
+      B,
+    )
+    expect(estimado).toBe(real.total)
+    expect(estimado).toBe(115) // 100 base + 10 propina × 1.5
+  })
+})
+
+describe('la reputación conecta con los pagos (Paso 6)', () => {
+  it('el factor escala SOLO la propina, nunca el precio pactado', () => {
+    const conRep = deliveryPayment(
+      { liters: 100, perfil: 'paciente', puntualidad: 'A_TIEMPO', tipFactor: 1.5 },
+      B,
+    )
+    expect(conRep.base).toBe(100)
+    expect(conRep.tip).toBe(15)
+    expect(conRep.total).toBe(115)
+  })
+
+  it('tarde no hay propina que escalar: el factor no revive lo perdido', () => {
+    const pago = deliveryPayment(
+      { liters: 100, perfil: 'paciente', puntualidad: 'TARDE', tipFactor: 2 },
+      B,
+    )
+    expect(pago.total).toBe(50)
+    expect(pago.tip).toBe(0)
+  })
+
+  it('settleDelivery pasa el factor hasta el cobro', () => {
+    const s = settleDelivery(
+      { liters: 1000, money: 0 },
+      {
+        delivered: 100,
+        spilled: 0,
+        perfil: 'paciente',
+        puntualidad: 'A_TIEMPO',
+        clean: false,
+        tipFactor: 1.5,
+      },
+      B,
+    )
+    expect(s.money).toBe(115)
   })
 })

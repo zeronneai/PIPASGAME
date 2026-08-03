@@ -175,9 +175,18 @@ export type Pago = {
   cancelled: boolean
 }
 
-/** El pago de una entrega según puntualidad y perfil (tabla de la sección 2.3). */
+/**
+ * El pago de una entrega según puntualidad y perfil (tabla de la sección
+ * 2.3). `tipFactor` es la conexión con la reputación (Paso 6): quien llama
+ * lo saca de tipRepFactor; el 1 por defecto deja la propina de tabla.
+ */
 export function deliveryPayment(
-  args: { liters: number; perfil: PerfilCliente; puntualidad: Puntualidad },
+  args: {
+    liters: number
+    perfil: PerfilCliente
+    puntualidad: Puntualidad
+    tipFactor?: number
+  },
   b: Balance = balance,
 ): Pago {
   const p = b.perfiles[args.perfil]
@@ -185,7 +194,7 @@ export function deliveryPayment(
 
   switch (args.puntualidad) {
     case 'A_TIEMPO': {
-      const tip = base * p.tipPct
+      const tip = base * p.tipPct * (args.tipFactor ?? 1)
       return { total: centavos(base + tip), base: centavos(base), tip: centavos(tip), cancelled: false }
     }
     case 'TARDE':
@@ -212,6 +221,8 @@ export function settleDelivery(
     perfil: PerfilCliente
     puntualidad: Puntualidad
     clean: boolean
+    /** De tipRepFactor con la reputación al momento de entregar (Paso 6). */
+    tipFactor?: number
   },
   b: Balance = balance,
 ): { liters: number; money: number; pago: Pago; bonus: number } {
@@ -220,6 +231,7 @@ export function settleDelivery(
       liters: entrega.delivered,
       perfil: entrega.perfil,
       puntualidad: entrega.puntualidad,
+      tipFactor: entrega.tipFactor,
     },
     b,
   )
@@ -237,13 +249,16 @@ export function settleDelivery(
 
 /**
  * El pago que se le enseña al jugador ANTES de aceptar (pantalla del Paso 3).
- * Es el mejor caso —a tiempo, con propina— porque eso es lo que está en juego.
+ * Es el mejor caso —a tiempo, con propina— porque eso es lo que está en
+ * juego. `tipFactor` con la reputación actual, para prometer lo que de
+ * verdad se pagaría hoy.
  */
 export function estimateOffer(
   liters: number,
   perfil: PerfilCliente,
+  tipFactor: number = 1,
   b: Balance = balance,
 ): number {
   const p = b.perfiles[perfil]
-  return centavos(liters * p.sellPricePerLiter * (1 + p.tipPct))
+  return centavos(liters * p.sellPricePerLiter * (1 + p.tipPct * tipFactor))
 }
