@@ -1,35 +1,40 @@
-import { Suspense } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
-import { Physics, RigidBody } from '@react-three/rapier'
-import { Vector3 } from 'three'
+import { Suspense, useRef } from 'react'
+import { Canvas } from '@react-three/fiber'
+import { Physics, RigidBody, type RapierRigidBody } from '@react-three/rapier'
 import { Player } from './player/Player'
+import { ThirdPersonCamera } from './camera/ThirdPersonCamera'
 import { tuning } from './tuning'
-import { useGameStore } from '../state/gameStore'
-
-const _camTarget = new Vector3()
 
 /**
- * Cámara provisional: sigue al jugador con un offset fijo, sin orbitar.
- * Existe solo para poder probar el movimiento; el Paso 4 la reemplaza por
- * la ThirdPersonCamera real (orbitar con arrastre, colisión con paredes).
+ * Paredes provisionales para probar la colisión de la cámara. El mundo real
+ * llega en el Paso 5 y las reemplaza.
  */
-function ProvisionalFollowCamera() {
-  useFrame((state, delta) => {
-    const { pos } = useGameStore.getState().player
-    const dt = Math.min(delta, 1 / 30)
-    const c = tuning.camera
-    _camTarget.set(pos.x, pos.y + c.offsetY, pos.z + c.offsetZ)
-    state.camera.position.lerp(_camTarget, 1 - Math.exp(-c.followLerp * dt))
-    state.camera.lookAt(pos.x, pos.y + 1, pos.z)
-  })
-  return null
+function TestWalls() {
+  return (
+    <RigidBody type="fixed" colliders="cuboid">
+      <mesh position={[6, 2, -4]}>
+        <boxGeometry args={[8, 4, 0.5]} />
+        <meshStandardMaterial color="#8e8e8e" />
+      </mesh>
+      <mesh position={[10, 2, 0]}>
+        <boxGeometry args={[0.5, 4, 8]} />
+        <meshStandardMaterial color="#9a9a9a" />
+      </mesh>
+      <mesh position={[-7, 1.5, -6]}>
+        <boxGeometry args={[3, 3, 3]} />
+        <meshStandardMaterial color="#868686" />
+      </mesh>
+    </RigidBody>
+  )
 }
 
 export function Scene() {
+  const playerBody = useRef<RapierRigidBody>(null)
+
   return (
     <Canvas
       dpr={[1, 1.5]}
-      camera={{ position: [0, 5, 8], fov: 60 }}
+      camera={{ position: [0, 5, 8], fov: tuning.camera.fovFoot }}
       gl={{ powerPreference: 'high-performance' }}
     >
       <color attach="background" args={['#5c6b7a']} />
@@ -43,10 +48,13 @@ export function Scene() {
               <meshStandardMaterial color="#7a7a7a" />
             </mesh>
           </RigidBody>
-          <Player />
+          <TestWalls />
+          <Player bodyRef={playerBody} />
+          {/* Después del Player en el árbol: su useFrame corre primero, así
+              la cámara ya ve la posición de este frame. */}
+          <ThirdPersonCamera targetBody={playerBody} />
         </Physics>
       </Suspense>
-      <ProvisionalFollowCamera />
     </Canvas>
   )
 }

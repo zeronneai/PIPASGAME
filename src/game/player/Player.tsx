@@ -1,11 +1,15 @@
-import { useRef } from 'react'
+import { useRef, type RefObject } from 'react'
 import type { Group } from 'three'
 import { CapsuleCollider, RigidBody, type RapierRigidBody } from '@react-three/rapier'
 import { usePlayerMovement } from './usePlayerMovement'
 
 // Cápsula de 1.8 m de alto: cilindro de 1.1 (halfHeight 0.55) + tapas de 0.35
-export function Player() {
-  const bodyRef = useRef<RapierRigidBody>(null)
+export function Player({
+  /** Lo recibe de fuera: la cámara necesita el mismo cuerpo para su raycast. */
+  bodyRef,
+}: {
+  bodyRef: RefObject<RapierRigidBody | null>
+}) {
   const visualRef = useRef<Group>(null)
 
   usePlayerMovement(bodyRef, visualRef)

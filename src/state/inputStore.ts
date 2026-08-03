@@ -21,7 +21,7 @@ export const useInputStore = create<InputState>(() => ({
   pointers: { move: null, look: null },
 }))
 
-/** Devuelve el delta de cámara acumulado y lo pone en cero (lo llamará la cámara en el Paso 4). */
+/** Devuelve el delta de cámara acumulado y lo pone en cero. Lo llama la ThirdPersonCamera. */
 export function consumeLook(out: Vec2): Vec2 {
   const { look } = useInputStore.getState()
   out.x = look.x

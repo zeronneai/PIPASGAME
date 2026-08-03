@@ -18,9 +18,18 @@ export const tuning = {
     staminaRecover: 0.3, // nivel mínimo para volver a correr tras agotarse
   },
   camera: {
-    // Cámara provisional; el Paso 4 la reemplaza por la ThirdPersonCamera
-    offsetY: 5,
-    offsetZ: 8,
-    followLerp: 5,
+    distance: 6, // metros detrás del jugador cuando no hay pared
+    height: 1.5, // altura del pivote sobre los pies (la cabeza)
+    followLerp: 10, // qué tan pegada sigue al jugador
+    sensitivity: 0.005, // radianes de giro por píxel de arrastre
+    startPitch: 12, // grados sobre el horizonte al empezar
+    minPitch: -12, // grados; mirando desde abajo
+    maxPitch: 62, // grados; mirando desde arriba
+    minDistance: 1.2, // qué tanto puede acercarse contra una pared
+    collisionRadius: 0.35, // colchón para no pegar el plano cercano al muro
+    returnLerp: 4, // qué tan rápido se aleja al despejarse
+    fovFoot: 70,
+    fovDrive: 78, // se usa desde el Paso 8
+    fovLerp: 6,
   },
 }
