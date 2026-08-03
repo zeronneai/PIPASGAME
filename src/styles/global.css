@@ -510,6 +510,21 @@ canvas {
   animation: fundido 0.6s steps(2, end) infinite;
 }
 
+/* ---- Fundido del rescate ----
+   Negro pleno sobre todo lo jugable (debajo del debug). No atrapa toques:
+   dura un par de segundos y caerse ya fue suficiente castigo. */
+
+.rescue-fade {
+  position: fixed;
+  inset: 0;
+  z-index: 28;
+  background: #000;
+  opacity: 0;
+  transition-property: opacity;
+  transition-timing-function: ease-in-out;
+  pointer-events: none;
+}
+
 /* ---- Minimapa ----
    Compacto arriba a la derecha, debajo del bloque de debug. Un toque lo
    expande centrado sobre un fondo que atrapa el toque de cierre. */

@@ -142,6 +142,13 @@ export const balance = {
     /** Bono sobre el pago por entrega limpia («hacerlo bien da un bono»). */
     cleanBonusPct: 0.12,
   },
+  /** Rescate por caída fuera del mapa: fundido a negro y reaparición en el
+   *  borde más cercano. Sin cobro — el castigo es puro tiempo perdido (el
+   *  reloj de la jornada y los de los pedidos siguen corriendo). */
+  rescate: {
+    /** Duración total del fundido (oscurecer + aclarar), en segundos. */
+    pausaSegundos: 2.5,
+  },
   pedidos: {
     /**
      * Fracción FINAL de la ventana en la que el reloj del pedido entra en

@@ -13,6 +13,7 @@ import { OfferPanel } from './ui/OfferPanel'
 import { OrdersHUD } from './ui/OrdersHUD'
 import { OrientationGate } from './ui/OrientationGate'
 import { RadioCallCard } from './ui/RadioCallCard'
+import { RescueFade } from './ui/RescueFade'
 import { StatusBar } from './ui/StatusBar'
 import { RefillMeter } from './ui/RefillMeter'
 import { SummaryScreen } from './ui/SummaryScreen'
@@ -58,6 +59,7 @@ export default function App() {
           <HoseMinigame />
           {/* El último de la pila jugable: cuando aparece, el día terminó. */}
           <SummaryScreen />
+          <RescueFade />
           <DebugOverlay />
           <TuningDrawer />
         </>

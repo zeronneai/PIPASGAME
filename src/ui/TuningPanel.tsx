@@ -279,6 +279,20 @@ export default function TuningPanel() {
   )
 
   useControls(
+    'mundo',
+    {
+      'rescate: fundido (s)': {
+        value: balance.rescate.pausaSegundos,
+        min: 0.5,
+        max: 8,
+        step: 0.5,
+        onChange: (n: number) => void (balance.rescate.pausaSegundos = n),
+      },
+    },
+    CERRADA,
+  )
+
+  useControls(
     'radio',
     {
       'paga mejor ×': {
