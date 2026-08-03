@@ -23,8 +23,8 @@ export function DebugOverlay() {
       last = now
       if (dt > 0) fps += (1000 / dt - fps) * 0.1
 
-      const { move, look, pointers } = useInputStore.getState()
-      const player = useGameStore.getState().player
+      const { move, look, pointers, drive } = useInputStore.getState()
+      const { player, vehicle, mode } = useGameStore.getState()
       if (ref.current) {
         const estado = player.exhausted
           ? 'exhausto'
@@ -32,11 +32,16 @@ export function DebugOverlay() {
             ? 'corriendo'
             : 'caminando'
         const kTris = (renderStats.triangles / 1000).toFixed(1)
+        const kmh = vehicle.speed * 3.6
+        const volante = (vehicle.steer * (180 / Math.PI)).toFixed(0)
         ref.current.textContent =
           `${fps.toFixed(0)} fps   ${renderStats.calls} draw calls   ${kTris}k tris\n` +
-          `joystick  x ${move.x.toFixed(2)}  y ${move.y.toFixed(2)}  ptr ${pointers.move ?? '—'}\n` +
           `cámara Δ  x ${look.x.toFixed(0)}  y ${look.y.toFixed(0)}  ptr ${pointers.look ?? '—'}\n` +
-          `jugador  ${player.speed.toFixed(1)} m/s  resist ${Math.round(player.stamina * 100)}%  ${estado}`
+          (mode === 'DRIVING'
+            ? `pipa  ${kmh.toFixed(0)} km/h  volante ${volante}°  ruedas ${vehicle.wheelsOnGround}/4\n` +
+              `mandos  acel ${drive.throttle.toFixed(0)}  freno ${drive.brake.toFixed(0)}  giro ${drive.steer.toFixed(0)}`
+            : `joystick  x ${move.x.toFixed(2)}  y ${move.y.toFixed(2)}  ptr ${pointers.move ?? '—'}\n` +
+              `jugador  ${player.speed.toFixed(1)} m/s  resist ${Math.round(player.stamina * 100)}%  ${estado}`)
       }
       raf = requestAnimationFrame(tick)
     }

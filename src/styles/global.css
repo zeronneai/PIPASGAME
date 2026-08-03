@@ -113,6 +113,80 @@ canvas {
   background: var(--color-danger);
 }
 
+/* ---- Controles de manejo ----
+   Mínimo de Apple: nada tocable menor a 44x44 px CSS. Aquí van de 88 porque
+   se usan con el pulgar y en movimiento. */
+
+.drive-button {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--color-text) 35%, transparent);
+  background: color-mix(in srgb, var(--color-text) 10%, transparent);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  font-size: 1.4rem;
+  font-weight: 600;
+  touch-action: none;
+  /* Sin transición: el retardo se siente como lag de control */
+}
+
+.drive-button:active {
+  background: color-mix(in srgb, var(--color-accent) 45%, transparent);
+}
+
+.drive-button.brake {
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+}
+
+.drive-button.brake:active {
+  background: color-mix(in srgb, var(--color-danger) 45%, transparent);
+}
+
+.steer-buttons,
+.drive-pedals {
+  position: fixed;
+  bottom: calc(20px + var(--safe-bottom));
+  z-index: 6;
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.steer-buttons {
+  left: calc(20px + var(--safe-left));
+}
+
+.drive-pedals {
+  right: calc(20px + var(--safe-right));
+}
+
+/* El acelerador va más arriba: es el que más se usa y el pulgar descansa ahí */
+.drive-pedals .throttle {
+  margin-bottom: 28px;
+}
+
+/* ---- Interruptor de modo (andamio del Paso 8) ---- */
+
+.mode-toggle {
+  position: fixed;
+  top: calc(12px + var(--safe-top));
+  right: calc(12px + var(--safe-right));
+  z-index: 6;
+  min-width: 88px;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 22px;
+  border: 2px solid color-mix(in srgb, var(--color-accent) 60%, transparent);
+  background: color-mix(in srgb, var(--color-bg) 75%, transparent);
+  color: var(--color-accent);
+  font-family: var(--font-ui);
+  font-size: 0.95rem;
+  font-weight: 600;
+  touch-action: none;
+}
+
 /* ---- Overlay de debug ---- */
 
 .debug-overlay {

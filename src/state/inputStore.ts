@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { DriveInput } from '../game/vehicle/driveModel'
 
 export type Vec2 = { x: number; y: number }
 
@@ -7,6 +8,7 @@ type InputState = {
   move: Vec2
   /** Delta de arrastre de cámara en px, acumulado hasta que alguien lo consume. */
   look: Vec2
+  drive: DriveInput
   /** pointerId dueño de cada control; null = libre. */
   pointers: { move: number | null; look: number | null }
 }
@@ -18,8 +20,24 @@ type InputState = {
 export const useInputStore = create<InputState>(() => ({
   move: { x: 0, y: 0 },
   look: { x: 0, y: 0 },
+  drive: { steer: 0, throttle: 0, brake: 0 },
   pointers: { move: null, look: null },
 }))
+
+/** Suelta todos los controles. Se llama al cambiar de modo, o el acelerador
+ *  se queda pegado si cambiaste de modo con el dedo encima del botón. */
+export function resetInput() {
+  const s = useInputStore.getState()
+  s.move.x = 0
+  s.move.y = 0
+  s.look.x = 0
+  s.look.y = 0
+  s.drive.steer = 0
+  s.drive.throttle = 0
+  s.drive.brake = 0
+  s.pointers.move = null
+  s.pointers.look = null
+}
 
 /** Devuelve el delta de cámara acumulado y lo pone en cero. Lo llama la ThirdPersonCamera. */
 export function consumeLook(out: Vec2): Vec2 {
