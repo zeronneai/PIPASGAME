@@ -29,6 +29,11 @@ import {
 } from '../game/systems/economy'
 import { esLimpio } from '../game/systems/hose'
 import {
+  prioridadTrasAceptar,
+  prioridadTrasRechazo,
+  type RadioCall,
+} from '../game/systems/radio'
+import {
   applyRep,
   deliveryRepDelta,
   eventRepDelta,
@@ -121,6 +126,9 @@ type EconomyState = {
   clientHistory: Record<string, ClientHistory>
   /** Pedidos aceptados y pendientes de entregar. El reloj corre en Paso 4. */
   orders: Pedido[]
+  /** Tu lugar en la lista del despacho, 0..1 (Paso 7). Baja al rechazar
+   *  llamadas, se recupera al aceptarlas, y persiste entre sesiones. */
+  radioPrioridad: number
 }
 
 /*
@@ -210,6 +218,7 @@ const economyInicial = (): EconomyState => ({
     Object.keys(CLIENTES).map((id) => [id, newClientHistory()]),
   ),
   orders: [],
+  radioPrioridad: 1,
 })
 
 type GameState = {
@@ -233,6 +242,8 @@ type GameState = {
   offer: OfferState | null
   notice: Notice | null
   delivery: DeliveryState | null
+  /** Llamada del despacho en pantalla (Paso 7). La genera RadioDispatch. */
+  radioCall: RadioCall | null
   /**
    * Estado que cambia cada frame: se MUTA sobre estos objetos estables y se
    * lee con getState() (regla de la sección 5 del doc). El modo y la acción de
@@ -277,6 +288,12 @@ type GameState = {
   /** Soltaste la manguera (o no conectaste): el pedido sigue activo y lo
    *  derramado sí se perdió. */
   abortDelivery: (spilled: number) => void
+  /** Suena el radio: RadioDispatch pone la llamada en pantalla. */
+  offerRadioCall: (call: RadioCall) => void
+  /** Contestar que sí: el pedido entra a la cola con el pago del radio. */
+  acceptRadioCall: () => void
+  /** Que no (o dejarla sonar hasta perderla): baja tu prioridad. */
+  rejectRadioCall: (motivo: 'RECHAZO' | 'EXPIRO') => void
   addReputation: (colonia: string, delta: number) => void
   setClientHistory: (clientId: string, history: ClientHistory) => void
   setOrders: (orders: Pedido[]) => void
@@ -294,6 +311,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   offer: null,
   notice: null,
   delivery: null,
+  radioCall: null,
   player: {
     pos: { x: 0, y: 1, z: 0 },
     stamina: 1,
@@ -428,6 +446,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       liters: offer.litros,
       acceptedAt: clock.daySeconds,
       windowMinutes: offer.windowMinutes,
+      pagoFactor: 1,
     }
     set((s) => ({
       offer: null,
@@ -518,6 +537,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       puntualidad: d.puntualidad,
       clean,
       tipFactor: tipRepFactor(repActual),
+      payFactor: pedido.pagoFactor,
     })
 
     let h = s.economy.clientHistory[pedido.clientId] ?? newClientHistory()
@@ -582,6 +602,57 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     })
   },
+  offerRadioCall: (call) => {
+    if (!get().radioCall) set({ radioCall: call })
+  },
+  acceptRadioCall: () => {
+    const { radioCall, economy, clock } = get()
+    if (!radioCall) return
+    const pedido: Pedido = {
+      // La r distingue el id de los pedidos a pie del mismo instante.
+      id: `${radioCall.clientId}-d${economy.day}-r${Math.round(clock.daySeconds * 10)}`,
+      clientId: radioCall.clientId,
+      colonia: radioCall.colonia,
+      perfil: radioCall.perfil,
+      liters: radioCall.litros,
+      acceptedAt: clock.daySeconds,
+      windowMinutes: radioCall.windowMinutes,
+      // Copiado al aceptar, como windowMinutes: leva no mueve lo pactado.
+      pagoFactor: balance.radio.payFactor,
+    }
+    set((s) => ({
+      radioCall: null,
+      economy: {
+        ...s.economy,
+        orders: [...s.economy.orders, pedido],
+        radioPrioridad: prioridadTrasAceptar(s.economy.radioPrioridad),
+      },
+    }))
+  },
+  rejectRadioCall: (motivo) => {
+    const { radioCall } = get()
+    if (!radioCall) return
+    set((s) => {
+      const prioridad = prioridadTrasRechazo(s.economy.radioPrioridad)
+      // El aviso solo al tocar fondo: la mecánica se enseña cuando duele,
+      // no en cada rechazo. El número exacto vive en el debug.
+      const tocoFondo =
+        prioridad <= balance.radio.prioridadMin &&
+        s.economy.radioPrioridad > balance.radio.prioridadMin
+      return {
+        radioCall: null,
+        economy: { ...s.economy, radioPrioridad: prioridad },
+        ...((tocoFondo || motivo === 'EXPIRO') && {
+          notice: {
+            id: ++noticeSeq,
+            text: tocoFondo
+              ? 'Despacho: «Órale. Hasta el final de la lista»'
+              : 'Se perdió la llamada del despacho',
+          },
+        }),
+      }
+    })
+  },
   addReputation: (colonia, delta) =>
     set((s) => {
       const rep = aplicarRep(s.economy, colonia, delta)
@@ -630,6 +701,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         reputation: { ...base.reputation, ...save.reputation },
         clientHistory: { ...base.clientHistory, ...save.clientHistory },
         orders: [],
+        radioPrioridad: save.radioPrioridad ?? 1,
       },
     })
   },

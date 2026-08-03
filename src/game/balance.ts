@@ -149,6 +149,29 @@ export const balance = {
      */
     warnFraction: 0.25,
   },
+  /*
+   * El radio de despacho (sección 2.8): con la reputación llegan pedidos
+   * solos. La prioridad 0..1 es tu lugar en la lista del despacho: rechazar
+   * la baja, aceptar la recupera, y baja prioridad = llamadas más espaciadas.
+   */
+  radio: {
+    /** Pagan mejor que a pie: ya no gastaste tiempo caminando. */
+    payFactor: 1.25,
+    /** Intervalo entre llamadas en segundos reales, con prioridad 1. La
+     *  prioridad divide: con 0.5 tardan el doble. */
+    intervaloMin: 25,
+    intervaloMax: 55,
+    /** La primera llamada tras el desbloqueo llega casi de inmediato: el
+     *  «se siente como recompensa» es que el radio suene YA. */
+    primeraLlamada: 5,
+    /** Segundos reales para contestar antes de que la llamada se pierda
+     *  (y perderla también baja prioridad: dejaste colgado al despacho). */
+    timeoutLlamada: 10,
+    /** Piso de la prioridad: nunca te borran del todo de la lista. */
+    prioridadMin: 0.25,
+    bajaPorRechazo: 0.15,
+    recuperaPorAceptar: 0.3,
+  },
   jornada: {
     /** Duración del día de juego en minutos reales (sección 2.9: 10 a 15). */
     minutosReales: 12,

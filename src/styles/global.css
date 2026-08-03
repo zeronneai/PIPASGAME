@@ -529,6 +529,82 @@ canvas {
   pointer-events: none;
 }
 
+/* ---- Llamada del despacho ----
+   NO es modal: llega mientras manejas y el juego sigue. Arriba al centro,
+   bajo el reloj; compacta y con botones de pulgar. El borde de color es el
+   perfil, como en la lista de pedidos y el chip de la oferta. */
+
+.radio-card {
+  position: fixed;
+  top: calc(44px + var(--safe-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 12;
+  width: min(270px, 80vw);
+  padding: 10px 14px;
+  border-radius: 12px;
+  border-left: 3px solid transparent;
+  background: color-mix(in srgb, var(--color-bg) 92%, transparent);
+  box-shadow: 0 4px 16px var(--color-shadow);
+  text-align: center;
+  animation: radio-in 0.22s ease-out;
+  touch-action: none;
+}
+
+@keyframes radio-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.radio-titulo {
+  font-family: var(--font-ui);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+.radio-cliente {
+  margin-top: 4px;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.radio-datos {
+  margin-top: 2px;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+.radio-timer {
+  margin-top: 8px;
+  height: 4px;
+}
+
+.radio-timer .hud-bar-fill {
+  background: var(--color-warning);
+}
+
+.radio-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.radio-actions .offer-btn {
+  min-height: 42px;
+  font-size: 0.9rem;
+}
+
 /* ---- Aviso pasajero ----
    Un renglón arriba del centro: se ve sin tapar a la pipa ni al botón de
    contexto, y desaparece solo. */

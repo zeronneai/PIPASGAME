@@ -7,6 +7,7 @@ import { ThirdPersonCamera } from './camera/ThirdPersonCamera'
 import { ColoniaGreybox } from './world/ColoniaGreybox'
 import { DayClock } from './systems/DayClock'
 import { Interaction } from './systems/Interaction'
+import { RadioDispatch } from './systems/RadioDispatch'
 import { Refill } from './systems/Refill'
 import { RenderStats } from './systems/RenderStats'
 import { PHYSICS_STEP, tuning } from './tuning'
@@ -26,6 +27,7 @@ export function Scene() {
       <ambientLight intensity={0.35} />
       <Suspense fallback={null}>
         <DayClock />
+        <RadioDispatch />
         <Physics timeStep={PHYSICS_STEP}>
           <ColoniaGreybox />
           <Player bodyRef={playerBody} />

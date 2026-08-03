@@ -43,7 +43,7 @@ export function DebugOverlay() {
         const enTanque = economy.liters + refill.litersLoaded
         ref.current.textContent =
           `${fps.toFixed(0)} fps   ${renderStats.calls} draw calls   ${kTris}k tris\n` +
-          `cartera $${cartera.toFixed(2)}   tanque ${Math.round(enTanque)} L   día ${economy.day} ${formatHora(horaDelDia(clock.daySeconds))}\n` +
+          `cartera $${cartera.toFixed(2)}   tanque ${Math.round(enTanque)} L   día ${economy.day} ${formatHora(horaDelDia(clock.daySeconds))}   radio p${economy.radioPrioridad.toFixed(2)}\n` +
           `cámara Δ  x ${look.x.toFixed(0)}  y ${look.y.toFixed(0)}  ptr ${pointers.look ?? '—'}\n` +
           (mode === 'DRIVING'
             ? `pipa  ${kmh.toFixed(0)} km/h  volante ${volante}°  ruedas ${vehicle.wheelsOnGround}/4\n` +

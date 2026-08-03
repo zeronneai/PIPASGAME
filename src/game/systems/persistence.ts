@@ -23,6 +23,9 @@ export type SaveData = {
   day: number
   reputation: Record<string, number>
   clientHistory: Record<string, ClientHistory>
+  /** Prioridad en el despacho (Paso 7). Opcional: guardados anteriores al
+   *  radio no la traen y se hidrata con 1. */
+  radioPrioridad?: number
   vehiclePos: { x: number; y: number; z: number }
   vehicleRot: { x: number; y: number; z: number; w: number }
 }
@@ -38,6 +41,7 @@ export function snapshotSave(s: StoreState): SaveData {
     day: economy.day,
     reputation: economy.reputation,
     clientHistory: economy.clientHistory,
+    radioPrioridad: economy.radioPrioridad,
     // Copias, no referencias: vehicle.pos se muta cada frame y un snapshot
     // que apunte al objeto vivo cambiaría después de tomado.
     vehiclePos: { x: vehicle.pos.x, y: vehicle.pos.y, z: vehicle.pos.z },

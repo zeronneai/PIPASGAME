@@ -279,6 +279,69 @@ export default function TuningPanel() {
   )
 
   useControls(
+    'radio',
+    {
+      'paga mejor ×': {
+        value: balance.radio.payFactor,
+        min: 1,
+        max: 2,
+        step: 0.05,
+        onChange: (n: number) => void (balance.radio.payFactor = n),
+      },
+      'intervalo mín (s)': {
+        value: balance.radio.intervaloMin,
+        min: 5,
+        max: 120,
+        step: 5,
+        onChange: (n: number) => void (balance.radio.intervaloMin = n),
+      },
+      'intervalo máx (s)': {
+        value: balance.radio.intervaloMax,
+        min: 10,
+        max: 240,
+        step: 5,
+        onChange: (n: number) => void (balance.radio.intervaloMax = n),
+      },
+      'primera llamada (s)': {
+        value: balance.radio.primeraLlamada,
+        min: 1,
+        max: 30,
+        step: 1,
+        onChange: (n: number) => void (balance.radio.primeraLlamada = n),
+      },
+      'timeout llamada (s)': {
+        value: balance.radio.timeoutLlamada,
+        min: 4,
+        max: 30,
+        step: 1,
+        onChange: (n: number) => void (balance.radio.timeoutLlamada = n),
+      },
+      'prioridad mínima': {
+        value: balance.radio.prioridadMin,
+        min: 0.05,
+        max: 1,
+        step: 0.05,
+        onChange: (n: number) => void (balance.radio.prioridadMin = n),
+      },
+      'baja por rechazo': {
+        value: balance.radio.bajaPorRechazo,
+        min: 0,
+        max: 0.5,
+        step: 0.05,
+        onChange: (n: number) => void (balance.radio.bajaPorRechazo = n),
+      },
+      'recupera por aceptar': {
+        value: balance.radio.recuperaPorAceptar,
+        min: 0,
+        max: 1,
+        step: 0.05,
+        onChange: (n: number) => void (balance.radio.recuperaPorAceptar = n),
+      },
+    },
+    CERRADA,
+  )
+
+  useControls(
     'entrega',
     {
       'duración máx (s)': {

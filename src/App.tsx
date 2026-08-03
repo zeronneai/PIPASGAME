@@ -11,6 +11,7 @@ import { NoticeToast } from './ui/NoticeToast'
 import { OfferPanel } from './ui/OfferPanel'
 import { OrdersHUD } from './ui/OrdersHUD'
 import { OrientationGate } from './ui/OrientationGate'
+import { RadioCallCard } from './ui/RadioCallCard'
 import { StatusBar } from './ui/StatusBar'
 import { RefillMeter } from './ui/RefillMeter'
 import { TapToStart } from './ui/TapToStart'
@@ -47,6 +48,7 @@ export default function App() {
           <CameraDragArea />
           <ContextButton />
           <RefillMeter />
+          <RadioCallCard />
           <NoticeToast />
           {/* Encima de todo lo jugable: aceptar un pedido es LA decisión. */}
           <OfferPanel />

@@ -26,6 +26,12 @@ export type Pedido = {
   /** Ventana pactada en minutos reales. Se copia del perfil al aceptar para
    *  que rebalancear en leva no mueva pedidos ya aceptados. */
   windowMinutes: number
+  /**
+   * Multiplicador del pago completo. 1 (o ausente) a pie; el del radio
+   * (sección 2.8: pagan mejor) se copia del balance al aceptar, por la
+   * misma razón que windowMinutes.
+   */
+  pagoFactor?: number
 }
 
 export function clampLiters(liters: number, b: Balance = balance): number {
@@ -33,7 +39,7 @@ export function clampLiters(liters: number, b: Balance = balance): number {
 }
 
 /** Redondeo a centavos. Todo el dinero que sale de aquí ya pasó por esto. */
-const centavos = (n: number) => Math.round(n * 100) / 100
+export const centavos = (n: number) => Math.round(n * 100) / 100
 
 /** Lo que cuesta comprar `liters` en el pozo (sección 2.2). */
 export function refillCost(liters: number, b: Balance = balance): number {
@@ -223,10 +229,12 @@ export function settleDelivery(
     clean: boolean
     /** De tipRepFactor con la reputación al momento de entregar (Paso 6). */
     tipFactor?: number
+    /** El pagoFactor del pedido (radio paga mejor, Paso 7). */
+    payFactor?: number
   },
   b: Balance = balance,
 ): { liters: number; money: number; pago: Pago; bonus: number } {
-  const pago = deliveryPayment(
+  const crudo = deliveryPayment(
     {
       liters: entrega.delivered,
       perfil: entrega.perfil,
@@ -235,6 +243,18 @@ export function settleDelivery(
     },
     b,
   )
+  // El factor escala el pago COMPLETO (base y propina): el radio paga mejor
+  // el mismo trabajo, no solo la cortesía.
+  const f = entrega.payFactor ?? 1
+  const pago: Pago =
+    f === 1
+      ? crudo
+      : {
+          total: centavos(crudo.total * f),
+          base: centavos(crudo.base * f),
+          tip: centavos(crudo.tip * f),
+          cancelled: crudo.cancelled,
+        }
   const bonus =
     entrega.clean && !pago.cancelled
       ? centavos(pago.total * b.entrega.cleanBonusPct)
