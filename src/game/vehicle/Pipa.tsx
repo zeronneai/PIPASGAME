@@ -15,6 +15,7 @@ export function Pipa({
   bodyRef: RefObject<RapierRigidBody | null>
 }) {
   const wheelsRef = useRef<Group>(null)
+  const waterRef = useRef<Group>(null)
   const controllerRef = useVehicleController(bodyRef)
 
   // Las ruedas no son cuerpos físicos: el controlador las resuelve por raycast
@@ -33,6 +34,13 @@ export function Pipa({
       if (conn) anchor.position.set(conn.x, conn.y - suspension, conn.z)
       anchor.rotation.y = controller.wheelSteering(i) ?? 0
       if (spin) spin.rotation.x = controller.wheelRotation(i) ?? 0
+    }
+
+    // Marcador del agua (solo existe en desarrollo)
+    const agua = waterRef.current
+    if (agua) {
+      const { slosh } = useGameStore.getState().vehicle
+      agua.position.set(slosh.x, PIPA_BODY.tanque.y, PIPA_BODY.tanque.z + slosh.z)
     }
   })
 
@@ -76,7 +84,11 @@ export function Pipa({
         position={[0, B.tanque.y, B.tanque.z]}
         density={0}
       />
-      <PipaModel wheelsRef={wheelsRef} wheelCount={WHEEL_COUNT} />
+      <PipaModel
+        wheelsRef={wheelsRef}
+        wheelCount={WHEEL_COUNT}
+        waterRef={waterRef}
+      />
     </RigidBody>
   )
 }

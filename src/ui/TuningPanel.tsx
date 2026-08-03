@@ -204,12 +204,19 @@ export default function TuningPanel() {
       ) as Record<string, SteeringId>,
       onChange: (id: SteeringId) => useGameStore.getState().setSteeringId(id),
     },
-    mass: {
-      value: v.mass,
-      min: 2000,
-      max: 24000,
+    tareMass: {
+      value: v.tareMass,
+      min: 1000,
+      max: 16000,
       step: 250,
-      onChange: (n: number) => void (v.mass = n),
+      onChange: (n: number) => void (v.tareMass = n),
+    },
+    waterMass: {
+      value: v.waterMass,
+      min: 0,
+      max: 16000,
+      step: 250,
+      onChange: (n: number) => void (v.waterMass = n),
     },
     comY: {
       value: v.comY,
@@ -268,6 +275,50 @@ export default function TuningPanel() {
       max: 4,
       step: 0.05,
       onChange: (n: number) => void (v.angularDamping = n),
+    },
+  })
+
+  useControls('pipa · chapoteo', {
+    // fillLevel es estado de juego, no un ajuste: escribe al store, no a
+    // tuning. Está aquí para poder probar todos los niveles sin llenar el
+    // tanque, hasta que el Paso 9 lo llene en la toma de agua.
+    fillLevel: {
+      value: useGameStore.getState().vehicle.fillLevel,
+      min: 0,
+      max: 1,
+      step: 0.05,
+      onChange: (n: number) =>
+        void (useGameStore.getState().vehicle.fillLevel = n),
+    },
+    response: {
+      value: tuning.slosh.response,
+      min: 0,
+      max: 0.3,
+      step: 0.005,
+      onChange: (n: number) => void (tuning.slosh.response = n),
+    },
+    stiffness: {
+      value: tuning.slosh.stiffness,
+      min: 0.5,
+      max: 30,
+      step: 0.5,
+      onChange: (n: number) => void (tuning.slosh.stiffness = n),
+    },
+    // Por encima de 2·√rigidez el chapoteo desaparece: el agua llega tarde
+    // pero ya no sobrepasa ni se sigue moviendo.
+    damping: {
+      value: tuning.slosh.damping,
+      min: 0,
+      max: 12,
+      step: 0.1,
+      onChange: (n: number) => void (tuning.slosh.damping = n),
+    },
+    maxOffset: {
+      value: tuning.slosh.maxOffset,
+      min: 0.1,
+      max: 2,
+      step: 0.05,
+      onChange: (n: number) => void (tuning.slosh.maxOffset = n),
     },
   })
 

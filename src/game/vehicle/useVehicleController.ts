@@ -9,6 +9,8 @@ import { PHYSICS_STEP, tuning } from '../tuning'
 import { useInputStore } from '../../state/inputStore'
 import { useGameStore } from '../../state/gameStore'
 import { computeDrive } from './driveModel'
+import { totalMass } from './sloshModel'
+import { useTankSlosh } from './useTankSlosh'
 
 /** Orden fijo de ruedas. Las de adelante giran, las de atrás empujan. */
 export const WHEEL_COUNT = 4
@@ -42,35 +44,49 @@ export function useVehicleController(
   const { world } = useRapier()
   const controllerRef = useRef<DynamicRayCastVehicleController | null>(null)
   const steerAngle = useRef(0)
-  // Últimas propiedades de masa aplicadas, para no recalcularlas cada paso ni
-  // despertar el cuerpo sin razón. El Paso 7 va a moverlas cada frame.
-  const lastMass = useRef({ mass: 0, comY: NaN })
+  const updateSlosh = useTankSlosh()
+  // Últimas propiedades aplicadas, para no recalcularlas ni despertar el
+  // cuerpo cuando nada se movió: la pipa estacionada con el agua quieta.
+  const lastMass = useRef({ mass: NaN, comY: NaN, sloshX: NaN, sloshZ: NaN })
 
   /**
-   * Masa explícita de 12 t con el centro de masa abajo, más la inercia de una
-   * caja de las dimensiones del chasis. Se calcula en vez de teclearse para
-   * que ajustar el tamaño en leva no obligue a re-tunear la inercia a mano.
+   * Masa explícita con el centro de masa abajo, más la inercia de una caja de
+   * las dimensiones del chasis. La inercia se calcula en vez de teclearse para
+   * que cambiar la masa o el tamaño en leva no obligue a re-tunearla a mano.
+   *
+   * El offset del chapoteo entra aquí: mover el centro de masa es lo que hace
+   * que el agua se sienta, porque cambia el par que la gravedad y las curvas
+   * ejercen sobre el chasis.
    */
-  const applyMassProperties = useCallback((body: RapierRigidBody) => {
-    const t = tuning.vehicle
-    if (lastMass.current.mass === t.mass && lastMass.current.comY === t.comY) {
-      return
-    }
-    const { width: a, height: b, length: c } = t.chassis
-    const k = t.mass / 12
-    body.setAdditionalMassProperties(
-      t.mass,
-      { x: 0, y: t.comY, z: 0 },
-      {
-        x: k * (b * b + c * c),
-        y: k * (a * a + c * c),
-        z: k * (a * a + b * b),
-      },
-      { x: 0, y: 0, z: 0, w: 1 },
-      true,
-    )
-    lastMass.current = { mass: t.mass, comY: t.comY }
-  }, [])
+  const applyMassProperties = useCallback(
+    (body: RapierRigidBody, mass: number, sloshX: number, sloshZ: number) => {
+      const t = tuning.vehicle
+      const last = lastMass.current
+      if (
+        last.mass === mass &&
+        last.comY === t.comY &&
+        last.sloshX === sloshX &&
+        last.sloshZ === sloshZ
+      ) {
+        return
+      }
+      const { width: a, height: b, length: c } = t.chassis
+      const k = mass / 12
+      body.setAdditionalMassProperties(
+        mass,
+        { x: sloshX, y: t.comY, z: sloshZ },
+        {
+          x: k * (b * b + c * c),
+          y: k * (a * a + c * c),
+          z: k * (a * a + b * b),
+        },
+        { x: 0, y: 0, z: 0, w: 1 },
+        true,
+      )
+      lastMass.current = { mass, comY: t.comY, sloshX, sloshZ }
+    },
+    [],
+  )
 
   /*
    * Creación perezosa, no en un useEffect de montaje: el ref del cuerpo lo
@@ -101,7 +117,8 @@ export function useVehicleController(
       )
     }
 
-    applyMassProperties(body)
+    const fill = useGameStore.getState().vehicle.fillLevel
+    applyMassProperties(body, totalMass(fill), 0, 0)
     controllerRef.current = controller
     return controller
   }, [world, bodyRef, applyMassProperties])
@@ -111,7 +128,7 @@ export function useVehicleController(
     return () => {
       if (created.current) world.removeVehicleController(created.current)
       created.current = null
-      lastMass.current = { mass: 0, comY: NaN }
+      lastMass.current = { mass: NaN, comY: NaN, sloshX: NaN, sloshZ: NaN }
     }
   }, [world])
 
@@ -125,7 +142,10 @@ export function useVehicleController(
     const driving = useGameStore.getState().mode === 'DRIVING'
     const { drive } = useInputStore.getState()
 
-    applyMassProperties(body)
+    // El agua primero: su offset entra en las propiedades de masa de este
+    // mismo paso, así el chapoteo afecta a la física y no solo al HUD.
+    const slosh = updateSlosh(controller, body, PHYSICS_STEP)
+    applyMassProperties(body, totalMass(veh.fillLevel), slosh.x, slosh.z)
 
     const speed = controller.currentVehicleSpeed()
     veh.speed = speed

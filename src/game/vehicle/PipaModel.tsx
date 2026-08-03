@@ -44,10 +44,13 @@ function Wheel() {
 export function PipaModel({
   wheelsRef,
   wheelCount,
+  waterRef,
 }: {
   /** Grupo «ruedas»; Pipa.tsx anima sus hijos cada frame. */
   wheelsRef: RefObject<Group | null>
   wheelCount: number
+  /** Marcador del agua, solo en desarrollo. */
+  waterRef: RefObject<Group | null>
 }) {
   const B = PIPA_BODY
   return (
@@ -132,6 +135,21 @@ export function PipaModel({
           <meshStandardMaterial color={PIPA_MATERIALS.defensa} />
         </mesh>
       </group>
+
+      {/*
+        Dónde está el agua, solo en desarrollo. El tanque es opaco, así que
+        sin esto el chapoteo solo se puede sentir y no ver; con el marcador se
+        entiende de un vistazo por qué media pipa es la más difícil. No entra
+        al bundle de producción.
+      */}
+      {import.meta.env.DEV && (
+        <group ref={waterRef} position={[0, B.tanque.y, B.tanque.z]}>
+          <mesh name="debug-agua">
+            <sphereGeometry args={[0.3, 10, 8]} />
+            <meshStandardMaterial color="#2f9ee0" wireframe />
+          </mesh>
+        </group>
+      )}
 
       {/* El orden de los hijos ES el orden de ruedas del controlador:
           0 delantera izq, 1 delantera der, 2 trasera izq, 3 trasera der. */}

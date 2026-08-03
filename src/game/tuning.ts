@@ -65,8 +65,42 @@ export const tuning = {
      */
     scanInterval: 0.1,
   },
+  slosh: {
+    /**
+     * Metros que se desplaza el agua por cada m/s² de aceleración, con el
+     * tanque a la mitad. Es la perilla de «súbele hasta que se note».
+     */
+    response: 0.075,
+    /**
+     * Qué tan rápido regresa el agua al centro. Bajo = responde tarde, que es
+     * justo lo que pide el documento.
+     */
+    stiffness: 6,
+    /**
+     * Tiene que quedarse POR DEBAJO de 2·√rigidez (con rigidez 6, debajo de
+     * 4.9) o el sistema deja de sobrepasar y el chapoteo desaparece: el agua
+     * llegaría tarde pero ya no se seguiría moviendo.
+     */
+    damping: 1.2,
+    /**
+     * Tope del desplazamiento, en metros. Es una RED DE SEGURIDAD, no una
+     * perilla de tuning: si se alcanza en una maniobra normal, el agua satura
+     * y los niveles 0.25, 0.5 y 0.75 empiezan a sentirse iguales, que es
+     * justo lo contrario de la regla de diseño. Medido en el banco: con 0.8
+     * se topaba y el gradiente hacia 0.5 caía de 1.35× a 1.16×.
+     */
+    maxOffset: 1,
+  },
   vehicle: {
-    mass: 12000, // kg, cargada (sección 6: unas 12 toneladas)
+    /*
+     * La masa varía con el nivel del tanque: tara más agua. Llena da las 12 t
+     * de la sección 6, vacía la mitad, así que vacía acelera y frena mejor.
+     * Ojo: los números de frenado medidos en el Paso 6 eran con 12 t fijas.
+     */
+    /** Masa en vacío, kg. */
+    tareMass: 6000,
+    /** Masa del agua con el tanque lleno, kg. */
+    waterMass: 6000,
     /** Caja principal del chasis, en metros. */
     chassis: { width: 2.4, height: 1.6, length: 7.5 },
     /**

@@ -27,6 +27,15 @@ type VehicleState = {
   steer: number
   /** Cuántas de las 4 ruedas tocan el piso. Si baja de 4, algo pasó. */
   wheelsOnGround: number
+  /**
+   * Nivel del tanque, 0 a 1. Es estado de juego, no un ajuste: el Paso 9 lo
+   * va a llenar en la toma de agua y el Paso 10 lo dibuja en el HUD. Por
+   * ahora se mueve con el deslizador de leva para poder probar todos los
+   * niveles sin llenar el tanque.
+   */
+  fillLevel: number
+  /** Dónde está el agua dentro del tanque, en metros. Solo para debug y HUD. */
+  slosh: { x: number; z: number }
   /*
    * Posición y rotación de la pipa. Viven AQUÍ y no en el componente, como
    * pide la sección 6: la pipa se queda exactamente donde la dejaste, y si el
@@ -72,6 +81,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     speed: 0,
     steer: 0,
     wheelsOnGround: 0,
+    fillLevel: 0.5,
+    slosh: { x: 0, z: 0 },
     pos: { x: PIPA_SPAWN[0], y: PIPA_SPAWN[1], z: PIPA_SPAWN[2] },
     rot: { x: 0, y: 0, z: 0, w: 1 },
   },
