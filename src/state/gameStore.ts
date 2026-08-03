@@ -267,6 +267,9 @@ type GameState = {
   /** true = la pantalla fundida a negro (rescate por caída). El overlay del
    *  DOM anima la opacidad contra este flag; el ritmo lo lleva Rescue.tsx. */
   rescueFade: boolean
+  /** Minimapa a pantalla completa. Vive en el store y no en el componente
+   *  porque App oculta los controles de manejo mientras está abierto. */
+  minimapExpanded: boolean
   /** Acumulador del día (Paso 8). Lo consume el resumen; no persiste. */
   stats: DayStats
   /** Pantalla de fin de día. Mientras exista, el mundo espera. */
@@ -310,6 +313,7 @@ type GameState = {
   /** Aviso suelto desde un sistema (rescate, etc.). */
   showNotice: (text: string) => void
   setRescueFade: (on: boolean) => void
+  setMinimapExpanded: (on: boolean) => void
   /** Llegaste con la pipa a un local con pedido: abre el minijuego, o
    *  resuelve sin abrirlo (exigente que cancela, tanque que no alcanza). */
   startDelivery: (clientId: string) => void
@@ -352,6 +356,7 @@ export const useGameStore = create<GameState>((set, get) => {
   delivery: null,
   radioCall: null,
   rescueFade: false,
+  minimapExpanded: false,
   stats: newDayStats(eco0.reputation),
   summary: null,
   player: {
@@ -517,6 +522,7 @@ export const useGameStore = create<GameState>((set, get) => {
   },
   showNotice: (text) => set({ notice: { id: ++noticeSeq, text } }),
   setRescueFade: (rescueFade) => set({ rescueFade }),
+  setMinimapExpanded: (minimapExpanded) => set({ minimapExpanded }),
   startDelivery: (clientId) => {
     const s = get()
     if (s.delivery) return

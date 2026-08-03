@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import {
   locales,
   MAP_SIZE,
@@ -121,7 +121,9 @@ function draw(el: HTMLCanvasElement) {
 }
 
 export function Minimap() {
-  const [expanded, setExpanded] = useState(false)
+  // En el store y no en useState: App oculta los controles de manejo
+  // mientras el mapa está expandido.
+  const expanded = useGameStore((s) => s.minimapExpanded)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -135,6 +137,9 @@ export function Minimap() {
     return () => clearInterval(id)
   }, [expanded])
 
+  const setExpanded = (on: boolean) =>
+    useGameStore.getState().setMinimapExpanded(on)
+
   return (
     <>
       {expanded && (
@@ -145,7 +150,7 @@ export function Minimap() {
       )}
       <div
         className={`minimap${expanded ? ' expanded' : ''}`}
-        onPointerDown={() => setExpanded((e) => !e)}
+        onPointerDown={() => setExpanded(!expanded)}
       >
         <canvas ref={canvasRef} className="minimap-canvas" />
       </div>

@@ -526,16 +526,19 @@ canvas {
 }
 
 /* ---- Minimapa ----
-   Compacto arriba a la derecha, debajo del bloque de debug. Un toque lo
-   expande centrado sobre un fondo que atrapa el toque de cierre. */
+   En LA esquina superior derecha, chico: es un radar de reojo, el detalle
+   lo da el modo expandido. El bloque de debug vive debajo de él; la franja
+   derecha baja (contexto + pedales, de ~180px del tope hacia abajo en el
+   teléfono más chico) queda libre. Un toque lo expande centrado sobre un
+   fondo que atrapa el toque de cierre. */
 
 .minimap {
   position: fixed;
-  top: calc(116px + var(--safe-top));
+  top: calc(10px + var(--safe-top));
   right: calc(10px + var(--safe-right));
   z-index: 6;
-  width: 108px;
-  height: 108px;
+  width: 72px;
+  height: 72px;
   border-radius: 10px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--color-text) 25%, transparent);
@@ -1153,17 +1156,20 @@ canvas {
 
 .debug-overlay {
   position: fixed;
-  top: calc(8px + var(--safe-top));
-  /* A la derecha y no centrado: centrado, su borde izquierdo se metía debajo
-     del panel de ajustes, que ocupa el costado izquierdo. */
+  /* Debajo del minimapa (que ahora es dueño de la esquina), y compactado
+     para terminar ANTES de la franja del botón de contexto y los pedales
+     (~180px del tope en el teléfono más chico). A la derecha y no
+     centrado: centrado se metía debajo del panel de ajustes. */
+  top: calc(88px + var(--safe-top));
   right: calc(10px + var(--safe-right));
   z-index: 30;
   pointer-events: none;
   font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 1.6;
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: right;
   background: color-mix(in srgb, var(--color-bg) 70%, transparent);
-  padding: 6px 10px;
+  padding: 4px 8px;
   border-radius: 8px;
 }
 

@@ -34,6 +34,7 @@ export default function App() {
   const [started, setStarted] = useState(false)
   // El modo cambia poco, así que sí puede re-renderizar el HUD.
   const mode = useGameStore((s) => s.mode)
+  const minimapExpanded = useGameStore((s) => s.minimapExpanded)
 
   return (
     <>
@@ -48,7 +49,13 @@ export default function App() {
           <ClockChip />
           <OrdersHUD />
           <Minimap />
-          {mode === 'ON_FOOT' ? <VirtualJoystick /> : <DriveControls />}
+          {/* Con el mapa a pantalla completa, los controles de manejo se
+              esconden: nadie maneja mirando el mapa. */}
+          {mode === 'ON_FOOT' ? (
+            <VirtualJoystick />
+          ) : (
+            !minimapExpanded && <DriveControls />
+          )}
           <CameraDragArea />
           <ContextButton />
           <RefillMeter />
