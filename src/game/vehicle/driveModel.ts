@@ -51,7 +51,13 @@ export function computeDrive(
   const speedRatio = Math.min(1, Math.abs(speed) / t.maxSpeed)
   const maxSteer =
     t.steer.maxDeg * DEG * (1 - (1 - t.steer.speedFalloff) * speedRatio)
-  const target = steerIn * maxSteer
+  /*
+   * El signo se invierte aquí y no es un parche: el frente de la pipa mira a
+   * +Z, así que su lado derecho es -X. Un ángulo de volante positivo sobre el
+   * eje Y apunta las ruedas hacia +X, o sea hacia la IZQUIERDA de la pipa.
+   * Sin esta inversión el botón derecho gira a la izquierda.
+   */
+  const target = -steerIn * maxSteer
   // Velocidad angular constante, no lerp: un volante se gira, no se
   // interpola, y con lerp los últimos grados nunca llegan.
   const rate = (steerIn === 0 ? t.steer.returnSpeed : t.steer.speed) * dt
