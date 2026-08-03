@@ -167,6 +167,72 @@ canvas {
   margin-bottom: 28px;
 }
 
+/* ---- La segunda y su temperatura ----
+   A la derecha de los botones del volante (que ocupan de 20 a 212 px). Va de
+   este lado porque la segunda exige el volante centrado: mientras la usas, el
+   pulgar que dirige está ocioso, y el derecho sigue en el acelerador. */
+
+.segunda-wrap {
+  position: fixed;
+  left: calc(228px + var(--safe-left));
+  bottom: calc(20px + var(--safe-bottom));
+  z-index: 6;
+}
+
+.drive-button.segunda {
+  font-size: 1.5rem;
+  border-color: color-mix(in srgb, var(--color-accent-2) 60%, transparent);
+}
+
+.drive-button.segunda:active {
+  background: color-mix(in srgb, var(--color-accent-2) 50%, transparent);
+}
+
+.temp-gauge {
+  position: fixed;
+  left: calc(228px + var(--safe-left));
+  bottom: calc(118px + var(--safe-bottom));
+  width: 88px;
+  height: 10px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--color-text) 15%, transparent);
+  overflow: hidden;
+  z-index: 6;
+  pointer-events: none;
+}
+
+/* Mientras la segunda entra de verdad, el marco se enciende: es la única
+   señal de que las tres condiciones se están cumpliendo. */
+.temp-gauge.activa {
+  box-shadow: 0 0 0 2px var(--color-accent-2);
+}
+
+.temp-gauge-fill {
+  width: 100%;
+  height: 100%;
+  transform-origin: left;
+  transform: scaleX(0);
+  background: var(--color-accent-2);
+}
+
+.temp-gauge-fill.caliente {
+  background: var(--color-warning);
+}
+
+.temp-gauge-fill.fundido {
+  background: var(--color-danger);
+  animation: fundido 0.5s steps(2, end) infinite;
+}
+
+@keyframes fundido {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.35;
+  }
+}
+
 /* ---- Botón de contexto ----
    Abajo a la derecha, pero por encima de los pedales: manejando conviven el
    freno y el botón de bajar, y no pueden pelearse el mismo pulgar. */
@@ -223,10 +289,11 @@ canvas {
   position: fixed;
   top: calc(10px + var(--safe-top));
   left: calc(10px + var(--safe-left));
-  /* Corta ANTES de la fila de abajo: ahí viven los botones del volante y la
-     barra de resistencia. Sin esto el panel los tapaba y no se podía manejar
-     mientras ajustas, que es justo para lo que sirve ajustar en vivo. */
-  bottom: calc(120px + var(--safe-bottom));
+  /* Corta ANTES de la fila de abajo: ahí viven los botones del volante, el de
+     la segunda con su barra de temperatura, y la barra de resistencia. Sin
+     esto el panel los tapaba y no se podía manejar mientras ajustas, que es
+     justo para lo que sirve ajustar en vivo. */
+  bottom: calc(160px + var(--safe-bottom));
   z-index: 15;
   width: min(320px, 58vw);
   display: flex;

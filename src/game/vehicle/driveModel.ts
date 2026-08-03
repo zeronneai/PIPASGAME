@@ -19,6 +19,25 @@ export type DriveInput = {
   throttle: number
   /** Freno, [0, 1]. */
   brake: number
+  /** La segunda: se MANTIENE apretada, no es un toque. [0, 1]. */
+  boost: number
+}
+
+/**
+ * Estado del motor entre pasos. Se MUTA, igual que SloshState: es lo que
+ * permite que computeDrive siga siendo una función pura medible por el banco.
+ */
+export type EngineState = {
+  /** Temperatura, 0 a 1. */
+  temp: number
+  /** true al tocar el tope; se limpia al bajar de resumeTemp. */
+  overheated: boolean
+  /** Si la segunda está entrando de verdad este paso (para el HUD). */
+  boostActive: boolean
+}
+
+export function createEngineState(): EngineState {
+  return { temp: 0, overheated: false, boostActive: false }
 }
 
 export type DriveCommand = {
@@ -39,6 +58,8 @@ export function computeDrive(
   /** Ángulo del volante del paso anterior, en radianes. */
   prevSteer: number,
   dt: number,
+  /** Estado del motor; se muta con la temperatura de este paso. */
+  engine: EngineState,
 ): DriveCommand {
   const t = tuning.vehicle
   const steerIn = clamp(input.steer, -1, 1)
@@ -68,21 +89,54 @@ export function computeDrive(
     maxSteer,
   )
 
+  // --- La segunda ---
+  /*
+   * Tres puertas, todas a la vez. Se mira el ángulo YA suavizado y no la
+   * intención cruda, para que no entre en el instante en que sueltas el
+   * volante saliendo de una curva, con las ruedas todavía torcidas.
+   *
+   * Se corta EN SECO al girar, no se desvanece: ahí está la tensión de la
+   * mecánica, o eliges velocidad o eliges dar vuelta.
+   */
+  const b = t.boost
+  const enRecta = Math.abs(steer) <= b.maxSteerDeg * DEG
+  const boostActivo =
+    input.boost > 0 && !engine.overheated && speed >= b.minSpeed && enRecta
+
+  engine.temp = clamp(
+    engine.temp + (boostActivo ? b.heatRate : -b.coolRate) * dt,
+    0,
+    1,
+  )
+  if (engine.temp >= 1) engine.overheated = true
+  else if (engine.overheated && engine.temp <= b.resumeTemp) {
+    engine.overheated = false
+  }
+  engine.boostActive = boostActivo
+
+  // Multiplica newtons, no impulsos: empuja todo el tiempo que la traigas
+  // apretada en vez de dar un golpe y soltarte.
+  const fuerzaMotor =
+    t.engineForce *
+    (boostActivo ? b.forceMultiplier : 1) *
+    (engine.overheated ? b.overheatPower : 1)
+  const velocidadTope = t.maxSpeed + (boostActivo ? b.maxSpeedBonus : 0)
+
   // --- Motor y freno ---
-  let engine = 0
+  let motor = 0
   let brake = 0
   if (brakeIn > 0) {
     if (speed > 0.5) {
       brake = brakeIn * t.brakeForce
     } else if (speed > -t.reverseSpeed) {
       // Parado y con el freno apretado: reversa. Evita un botón más.
-      engine = -brakeIn * t.engineForce
+      motor = -brakeIn * fuerzaMotor
     }
   } else if (throttleIn > 0) {
     if (speed < -0.5) {
       brake = throttleIn * t.brakeForce // primero detener la reversa
-    } else if (speed < t.maxSpeed) {
-      engine = throttleIn * t.engineForce
+    } else if (speed < velocidadTope) {
+      motor = throttleIn * fuerzaMotor
     }
   } else {
     brake = t.engineBrake // un camión no rueda libre
@@ -90,7 +144,7 @@ export function computeDrive(
 
   return {
     steer,
-    engine,
+    engine: motor,
     brakeFront: brake * t.brakeFrontBias,
     brakeRear: brake * (1 - t.brakeFrontBias),
   }

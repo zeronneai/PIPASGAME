@@ -8,7 +8,7 @@ import type { DynamicRayCastVehicleController } from '@dimforge/rapier3d-compat'
 import { PHYSICS_STEP, tuning } from '../tuning'
 import { useInputStore } from '../../state/inputStore'
 import { useGameStore } from '../../state/gameStore'
-import { computeDrive } from './driveModel'
+import { computeDrive, createEngineState } from './driveModel'
 import { totalMass } from './sloshModel'
 import { useTankSlosh } from './useTankSlosh'
 
@@ -17,7 +17,7 @@ export const WHEEL_COUNT = 4
 const isFront = (i: number) => i < 2
 
 /** Sin control: la pipa estacionada mientras vas a pie. */
-const PARKED = { steer: 0, throttle: 0, brake: 0 }
+const PARKED = { steer: 0, throttle: 0, brake: 0, boost: 0 }
 
 /** Posición de anclaje de cada rueda respecto al centro del chasis. */
 export function wheelAnchors() {
@@ -44,6 +44,7 @@ export function useVehicleController(
   const { world } = useRapier()
   const controllerRef = useRef<DynamicRayCastVehicleController | null>(null)
   const steerAngle = useRef(0)
+  const engineState = useRef(createEngineState())
   const updateSlosh = useTankSlosh()
   // Últimas propiedades aplicadas, para no recalcularlas ni despertar el
   // cuerpo cuando nada se movió: la pipa estacionada con el agua quieta.
@@ -157,9 +158,13 @@ export function useVehicleController(
       driving ? drive : PARKED,
       steerAngle.current,
       PHYSICS_STEP,
+      engineState.current,
     )
     steerAngle.current = cmd.steer
     veh.steer = cmd.steer
+    veh.engineTemp = engineState.current.temp
+    veh.overheated = engineState.current.overheated
+    veh.boostActive = engineState.current.boostActive
 
     let onGround = 0
     for (let i = 0; i < WHEEL_COUNT; i++) {

@@ -97,6 +97,69 @@ export default function TuningPanel() {
   })
 
   useControls(
+    'pipa · segunda',
+    {
+      minSpeed: {
+        value: v.boost.minSpeed,
+        min: 0,
+        max: 16,
+        step: 0.5,
+        onChange: (n: number) => void (v.boost.minSpeed = n),
+      },
+      maxSteerDeg: {
+        value: v.boost.maxSteerDeg,
+        min: 0,
+        max: 25,
+        step: 0.5,
+        onChange: (n: number) => void (v.boost.maxSteerDeg = n),
+      },
+      forceMultiplier: {
+        value: v.boost.forceMultiplier,
+        min: 1,
+        max: 4,
+        step: 0.05,
+        onChange: (n: number) => void (v.boost.forceMultiplier = n),
+      },
+      maxSpeedBonus: {
+        value: v.boost.maxSpeedBonus,
+        min: 0,
+        max: 20,
+        step: 0.5,
+        onChange: (n: number) => void (v.boost.maxSpeedBonus = n),
+      },
+      heatRate: {
+        value: v.boost.heatRate,
+        min: 0.02,
+        max: 1.5,
+        step: 0.01,
+        onChange: (n: number) => void (v.boost.heatRate = n),
+      },
+      coolRate: {
+        value: v.boost.coolRate,
+        min: 0.02,
+        max: 1.5,
+        step: 0.01,
+        onChange: (n: number) => void (v.boost.coolRate = n),
+      },
+      resumeTemp: {
+        value: v.boost.resumeTemp,
+        min: 0,
+        max: 0.95,
+        step: 0.05,
+        onChange: (n: number) => void (v.boost.resumeTemp = n),
+      },
+      overheatPower: {
+        value: v.boost.overheatPower,
+        min: 0.05,
+        max: 1,
+        step: 0.05,
+        onChange: (n: number) => void (v.boost.overheatPower = n),
+      },
+    },
+    CERRADA,
+  )
+
+  useControls(
     'pipa · chapoteo',
     {
       // Red de seguridad, no perilla: si se alcanza en una maniobra normal,

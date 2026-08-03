@@ -20,7 +20,7 @@ type InputState = {
 export const useInputStore = create<InputState>(() => ({
   move: { x: 0, y: 0 },
   look: { x: 0, y: 0 },
-  drive: { steer: 0, throttle: 0, brake: 0 },
+  drive: { steer: 0, throttle: 0, brake: 0, boost: 0 },
   pointers: { move: null, look: null },
 }))
 
@@ -35,6 +35,7 @@ export function resetInput() {
   s.drive.steer = 0
   s.drive.throttle = 0
   s.drive.brake = 0
+  s.drive.boost = 0
   s.pointers.move = null
   s.pointers.look = null
 }

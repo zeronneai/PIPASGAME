@@ -40,7 +40,8 @@ export function DebugOverlay() {
           (mode === 'DRIVING'
             ? `pipa  ${kmh.toFixed(0)} km/h  volante ${volante}°  ruedas ${vehicle.wheelsOnGround}/4\n` +
               `tanque  ${Math.round(vehicle.fillLevel * 100)}%  agua  lat ${vehicle.slosh.x.toFixed(2)}  long ${vehicle.slosh.z.toFixed(2)}\n` +
-              `mandos  acel ${drive.throttle.toFixed(0)}  freno ${drive.brake.toFixed(0)}  giro ${drive.steer.toFixed(0)}`
+              `motor  ${Math.round(vehicle.engineTemp * 100)}°  ${vehicle.overheated ? 'FUNDIDO' : vehicle.boostActive ? 'segunda' : 'normal'}\n` +
+              `mandos  acel ${drive.throttle.toFixed(0)}  freno ${drive.brake.toFixed(0)}  giro ${drive.steer.toFixed(0)}  2ª ${drive.boost.toFixed(0)}`
             : `joystick  x ${move.x.toFixed(2)}  y ${move.y.toFixed(2)}  ptr ${pointers.move ?? '—'}\n` +
               `jugador  ${player.speed.toFixed(1)} m/s  resist ${Math.round(player.stamina * 100)}%  ${estado}`)
       }

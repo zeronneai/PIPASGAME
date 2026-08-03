@@ -2,6 +2,8 @@ import { useGameStore } from '../state/gameStore'
 import { useInputStore } from '../state/inputStore'
 import { getSteeringSource } from '../game/vehicle/steering'
 import { HoldButton } from './HoldButton'
+import { SegundaButton } from './SegundaButton'
+import { TempGauge } from './TempGauge'
 
 /**
  * HUD de manejo: acelerador y freno a la derecha, y la fuente de volante
@@ -25,6 +27,8 @@ export function DriveControls() {
   return (
     <>
       {Control && <Control />}
+      <SegundaButton />
+      <TempGauge />
       <div className="drive-pedals">
         {/* El freno también da reversa cuando ya estás parado: un botón menos */}
         <HoldButton

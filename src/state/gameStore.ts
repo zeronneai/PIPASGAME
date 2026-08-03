@@ -36,6 +36,12 @@ type VehicleState = {
   fillLevel: number
   /** Dónde está el agua dentro del tanque, en metros. Solo para debug y HUD. */
   slosh: { x: number; z: number }
+  /** Temperatura del motor, 0 a 1. La sube «meterle segunda». */
+  engineTemp: number
+  /** Motor fundido: sin potencia y sin segunda hasta que enfríe. */
+  overheated: boolean
+  /** Si la segunda está entrando de verdad ahora mismo. */
+  boostActive: boolean
   /*
    * Posición y rotación de la pipa. Viven AQUÍ y no en el componente, como
    * pide la sección 6: la pipa se queda exactamente donde la dejaste, y si el
@@ -83,6 +89,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     wheelsOnGround: 0,
     fillLevel: 0.5,
     slosh: { x: 0, z: 0 },
+    engineTemp: 0,
+    overheated: false,
+    boostActive: false,
     pos: { x: PIPA_SPAWN[0], y: PIPA_SPAWN[1], z: PIPA_SPAWN[2] },
     rot: { x: 0, y: 0, z: 0, w: 1 },
   },

@@ -147,6 +147,40 @@ export const tuning = {
     engineBrake: 80,
     maxSpeed: 16, // m/s ≈ 58 km/h
     reverseSpeed: 6,
+    /*
+     * «Meterle segunda»: aceleración extra SOSTENIDA, no un nitro.
+     * Multiplica newtons (engineForce), así que empuja durante todo el tiempo
+     * que la traes apretada en vez de dar un golpe y soltarte.
+     */
+    boost: {
+      /** Por debajo de esta velocidad no entra: no sirve para arrancar. */
+      minSpeed: 6, // m/s
+      /** Tope del volante, en grados, para considerar que vas en recta. */
+      maxSteerDeg: 5,
+      /** Cuánto multiplica la fuerza del motor mientras está activa. */
+      forceMultiplier: 1.8,
+      /** Cuánto sube la velocidad máxima mientras está activa, en m/s. */
+      maxSpeedBonus: 4,
+      /*
+       * El ritmo térmico se mide contra los tiempos del camión, no en el
+       * vacío: tarda ~12 s en llegar a su punta y ~4 s en frenar. Con 0.28
+       * (3.6 s de segunda) la mecánica era un parpadeo, nunca se alcanzaba
+       * el bono de velocidad y para cuando frenabas ya ibas sin potencia,
+       * así que frenar con segunda sacudía MENOS el agua, al revés de lo
+       * que se buscaba.
+       */
+      /** Temperatura ganada por segundo con la segunda metida. */
+      heatRate: 0.11, // ~9 s continuos para fundirlo
+      /** Temperatura perdida por segundo el resto del tiempo. */
+      coolRate: 0.12, // ~5.4 s de castigo desde el tope
+      /**
+       * Al fundirse hay que bajar hasta aquí para volver a usarla. Esta curva
+       * es el ÚNICO mecanismo del castigo: no hay temporizador aparte.
+       */
+      resumeTemp: 0.35,
+      /** Fuerza del motor mientras está sobrecalentado, como fracción. */
+      overheatPower: 0.45,
+    },
     frictionSlip: 2.6,
     sideFrictionStiffness: 1,
     linearDamping: 0.05,
