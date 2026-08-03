@@ -5,8 +5,24 @@ import { PIPA_SPAWN } from '../game/vehicle/pipaParts'
 
 export type GameMode = 'ON_FOOT' | 'DRIVING'
 
-/** Acción disponible ahora mismo en el botón de contexto. */
-export type ContextAction = 'BOARD' | 'EXIT'
+/**
+ * Acción disponible ahora mismo en el botón de contexto.
+ *
+ * Lleva su propio texto porque cada Interactable trae el suyo: el botón no
+ * debe saber que existen los locales, ni traducir ids a etiquetas.
+ */
+export type ContextAction = {
+  kind: 'BOARD' | 'EXIT' | 'SERVICE'
+  label: string
+  /** Id del Interactable, cuando la acción viene de uno. */
+  targetId?: string
+}
+
+/** Dos acciones son «la misma» si apuntan a lo mismo; el texto no cuenta. */
+export function sameAction(a: ContextAction | null, b: ContextAction | null) {
+  if (a === null || b === null) return a === b
+  return a.kind === b.kind && a.targetId === b.targetId
+}
 
 type PlayerState = {
   /** Posición del cuerpo (la cámara y el debug la leen de aquí). */
@@ -109,7 +125,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   // El escaneo corre 10 veces por segundo; sin esta guarda cada pasada
   // dispararía un re-render del HUD aunque nada haya cambiado.
   setContextAction: (contextAction) => {
-    if (get().contextAction !== contextAction) set({ contextAction })
+    if (!sameAction(get().contextAction, contextAction)) set({ contextAction })
   },
   requestContextAction: () => {
     const { contextAction } = get()

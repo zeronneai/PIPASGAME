@@ -57,6 +57,8 @@ export const tuning = {
   interaction: {
     /** Radio de la zona de detección en la puerta de la pipa, en metros. */
     boardRadius: 3.5,
+    /** Radio de detección de los locales, en metros. */
+    localRadius: 4,
     /** Por debajo de esta velocidad (m/s) se puede bajar. */
     exitSpeed: 0.4,
     /**

@@ -2,8 +2,9 @@ import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Quaternion, Vector3 } from 'three'
 import { tuning } from '../tuning'
-import { useGameStore } from '../../state/gameStore'
+import { useGameStore, type ContextAction } from '../../state/gameStore'
 import { PIPA_DOOR } from '../vehicle/pipaParts'
+import { nearestInteractable } from '../world/interactableRegistry'
 
 // Temporales de módulo: esto corre 10 veces por segundo, no vale la pena
 // asignar vectores nuevos cada pasada.
@@ -23,8 +24,7 @@ export function doorWorldPosition(out: Vector3, local = PIPA_DOOR) {
  * Escaneo de proximidad para el botón de contexto.
  *
  * Corre con throttle (cada 100 ms, no cada frame): la distancia a una puerta
- * no cambia lo suficiente en 16 ms como para justificar el costo, y el Paso 9
- * va a colgar aquí mismo los seis locales.
+ * no cambia lo suficiente en 16 ms como para justificar el costo.
  *
  * Solo decide QUÉ acción está disponible; ejecutarla es de Interaction.tsx.
  */
@@ -37,17 +37,26 @@ export function useInteractionScan() {
     acc.current = 0
 
     const s = useGameStore.getState()
-    let action: 'BOARD' | 'EXIT' | null = null
+    let action: ContextAction | null = null
 
     if (s.mode === 'ON_FOOT') {
-      doorWorldPosition(_door)
       const p = s.player.pos
+      // La pipa gana sobre un local si ambos están en rango: subirse es lo
+      // específico y los locales están en la banqueta, no en la calle.
+      doorWorldPosition(_door)
       const d = Math.hypot(_door.x - p.x, _door.y - p.y, _door.z - p.z)
-      if (d < tuning.interaction.boardRadius) action = 'BOARD'
+      if (d < tuning.interaction.boardRadius) {
+        action = { kind: 'BOARD', label: 'Subir' }
+      } else {
+        const cerca = nearestInteractable(p.x, p.y, p.z)
+        if (cerca) {
+          action = { kind: 'SERVICE', label: cerca.label, targetId: cerca.id }
+        }
+      }
     } else {
       // Bajarse solo con la pipa detenida, o saldrías en movimiento.
       if (Math.abs(s.vehicle.speed) < tuning.interaction.exitSpeed) {
-        action = 'EXIT'
+        action = { kind: 'EXIT', label: 'Bajar' }
       }
     }
 

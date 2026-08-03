@@ -26,7 +26,20 @@ export type Box = {
   size: [number, number, number]
 }
 
-export type Local = Box & { id: string; name: string; color: string }
+export type Local = Box & {
+  id: string
+  name: string
+  color: string
+  /**
+   * Punto de la puerta, sobre la banqueta y frente a la calle.
+   *
+   * La detección se mide contra ESTO y no contra el centro del local: los
+   * locales miden casi 10 m de ancho, así que un radio centrado en el
+   * edificio no alcanza a salir de él y el prompt no aparecería nunca, porque
+   * dentro del edificio no se puede caminar.
+   */
+  door: [number, number, number]
+}
 
 /** PRNG determinista (mulberry32): misma semilla, misma colonia. */
 function mulberry32(seed: number) {
@@ -158,12 +171,23 @@ for (const bx of BLOCK_CENTERS) {
       const local = localByKey.get(`${blockIndex},${lot}`)
       if (local) {
         const h = 4
+        // Hacia dónde da la fachada: el lote está en la orilla de la manzana,
+        // así que su dirección de salida es su posición en la cuadrícula 3x3.
+        const dx = (lot % 3) - 1
+        const dz = Math.floor(lot / 3) - 1
+        const largo = Math.hypot(dx, dz) || 1
+        const salida = FOOTPRINT / 2 + 1.5 // fuera del edificio, sobre la banqueta
         locales.push({
           id: `local-${locales.length + 1}`,
           name: `Local ${locales.length + 1}`,
           color: local.color,
           pos: [cx, SIDEWALK_HEIGHT + h / 2, cz],
           size: [FOOTPRINT, h, FOOTPRINT],
+          door: [
+            cx + (dx / largo) * salida,
+            SIDEWALK_HEIGHT,
+            cz + (dz / largo) * salida,
+          ],
         })
       } else {
         buildings.push({

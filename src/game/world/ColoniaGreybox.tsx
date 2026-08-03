@@ -14,6 +14,7 @@ import {
   waterParts,
   type Box,
 } from './layout'
+import { Interactable } from './Interactable'
 
 // Temporales de módulo: solo se usan en el llenado inicial, pero no hay razón
 // para asignar 400 objetos.
@@ -125,6 +126,22 @@ export function ColoniaGreybox() {
         <boxGeometry args={waterParts.valve.size} />
         <meshStandardMaterial color={COLOR.waterValve} />
       </mesh>
+
+      {/*
+        Los seis locales usan Interactable. Sin radio propio: así toman el de
+        tuning y se puede ajustar en vivo desde leva para los seis a la vez.
+        Se registra la PUERTA y no el centro del local: los locales miden casi
+        10 m de ancho y un radio centrado en el edificio no alcanzaría a salir
+        de él, así que el prompt no aparecería nunca.
+      */}
+      {locales.map((l) => (
+        <Interactable
+          key={l.id}
+          id={l.id}
+          label="Ofrecer servicio"
+          position={l.door}
+        />
+      ))}
 
       <WorldColliders />
     </>

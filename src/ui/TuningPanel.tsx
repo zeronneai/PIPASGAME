@@ -343,6 +343,13 @@ export default function TuningPanel() {
         step: 0.25,
         onChange: (n: number) => void (tuning.interaction.boardRadius = n),
       },
+      localRadius: {
+        value: tuning.interaction.localRadius,
+        min: 1,
+        max: 12,
+        step: 0.25,
+        onChange: (n: number) => void (tuning.interaction.localRadius = n),
+      },
       exitSpeed: {
         value: tuning.interaction.exitSpeed,
         min: 0.05,

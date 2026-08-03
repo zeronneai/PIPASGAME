@@ -1,14 +1,11 @@
 import { useGameStore } from '../state/gameStore'
 
-const ETIQUETA = {
-  BOARD: 'Subir',
-  EXIT: 'Bajar',
-} as const
-
 /**
  * Botón de contexto (sección 4): aparece solo cuando hay algo cerca y cambia
- * de etiqueta. Hoy solo sube y baja de la pipa; el Paso 9 le agrega los
- * locales con «Ofrecer servicio».
+ * de etiqueta — «Subir», «Bajar», «Ofrecer servicio».
+ *
+ * El texto viene con la acción, no de una tabla aquí: cada Interactable trae
+ * su propio prompt, así que agregar cosas interactuables no toca este archivo.
  *
  * Quién decide si aparece es useInteractionScan, y quién ejecuta la acción es
  * Interaction.tsx dentro del Canvas: desde el DOM no se puede tocar Rapier.
@@ -26,7 +23,7 @@ export function ContextButton() {
       // de acción que responde tarde se siente roto.
       onPointerDown={request}
     >
-      {ETIQUETA[action]}
+      {action.label}
     </button>
   )
 }

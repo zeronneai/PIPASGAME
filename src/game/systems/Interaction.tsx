@@ -4,6 +4,7 @@ import type { RapierRigidBody } from '@react-three/rapier'
 import { Vector3 } from 'three'
 import { useGameStore } from '../../state/gameStore'
 import { PIPA_EXIT } from '../vehicle/pipaParts'
+import { getInteractable } from '../world/interactableRegistry'
 import { doorWorldPosition, useInteractionScan } from './useInteractionScan'
 
 const _exit = new Vector3()
@@ -45,10 +46,19 @@ export function Interaction({
 
     const pending = store.consumePendingAction()
     if (!pending) return
+
+    if (pending.kind === 'SERVICE') {
+      // La lógica de aceptación es Fase 1. Por ahora solo se avisa.
+      const objetivo = pending.targetId ? getInteractable(pending.targetId) : null
+      objetivo?.onInteract?.()
+      console.log('[interacción] ofrecer servicio en', pending.targetId)
+      return
+    }
+
     const pb = playerBody.current
     if (!pb) return
 
-    if (pending === 'BOARD') {
+    if (pending.kind === 'BOARD') {
       // Se saca de la simulación: si solo se ocultara, la cápsula seguiría
       // ahí como obstáculo y la pipa chocaría contra su propio conductor.
       pb.setEnabled(false)
