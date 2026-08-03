@@ -179,6 +179,13 @@ type GameState = {
    * jornada completa es del Paso 8).
    */
   clock: { daySeconds: number }
+  /**
+   * Orientación horizontal de la vista, como atan2(x, z) del frente de la
+   * cámara. La escribe ThirdPersonCamera cada frame (MUTADA, como vehicle);
+   * las flechas de pedidos del HUD giran contra ella para que «arriba»
+   * siempre sea «hacia donde miras».
+   */
+  camera: { phi: number }
   offer: OfferState | null
   notice: Notice | null
   /**
@@ -230,6 +237,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   economy: economyInicial(),
   refill: { active: false, litersLoaded: 0, cost: 0 },
   clock: { daySeconds: 0 },
+  camera: { phi: 0 },
   offer: null,
   notice: null,
   player: {

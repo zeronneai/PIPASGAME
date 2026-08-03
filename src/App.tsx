@@ -8,7 +8,9 @@ import { DriveControls } from './ui/DriveControls'
 import { HUD } from './ui/HUD'
 import { NoticeToast } from './ui/NoticeToast'
 import { OfferPanel } from './ui/OfferPanel'
+import { OrdersHUD } from './ui/OrdersHUD'
 import { OrientationGate } from './ui/OrientationGate'
+import { StatusBar } from './ui/StatusBar'
 import { RefillMeter } from './ui/RefillMeter'
 import { TapToStart } from './ui/TapToStart'
 import { TuningDrawer } from './ui/TuningDrawer'
@@ -37,7 +39,9 @@ export default function App() {
         <>
           {/* Lo que se lee va en el HUD; lo que se toca, aparte */}
           <HUD />
+          <StatusBar />
           <ClockChip />
+          <OrdersHUD />
           {mode === 'ON_FOOT' ? <VirtualJoystick /> : <DriveControls />}
           <CameraDragArea />
           <ContextButton />

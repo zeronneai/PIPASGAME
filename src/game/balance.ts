@@ -98,6 +98,13 @@ export const balance = {
     /** Cancelar un pedido aceptado, venga de donde venga. */
     cancelacion: -8,
   },
+  pedidos: {
+    /**
+     * Fracción FINAL de la ventana en la que el reloj del pedido entra en
+     * alerta (0.25 = el último cuarto). Es el «apúrate» antes del castigo.
+     */
+    warnFraction: 0.25,
+  },
   jornada: {
     /** Duración del día de juego en minutos reales (sección 2.9: 10 a 15). */
     minutosReales: 12,

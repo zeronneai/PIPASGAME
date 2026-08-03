@@ -333,6 +333,130 @@ canvas {
   border-radius: 8px;
 }
 
+/* ---- Barra superior de estado ----
+   Arriba a la izquierda: dinero, día y reputación. El centro es del reloj
+   (y de la calle), la derecha del debug. Solo lectura, nunca estorba. */
+
+.status-bar {
+  position: fixed;
+  top: calc(10px + var(--safe-top));
+  left: calc(12px + var(--safe-left));
+  z-index: 6;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-bg) 70%, transparent);
+  pointer-events: none;
+}
+
+.status-money {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent-2);
+}
+
+.status-dia {
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
+/* ---- Pedidos activos ----
+   Columna compacta bajo la barra de estado, pegada a la izquierda: nunca
+   toca el centro de la pantalla ni la franja baja de los controles. */
+
+.orders-hud {
+  position: fixed;
+  top: calc(48px + var(--safe-top));
+  left: calc(12px + var(--safe-left));
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  pointer-events: none;
+}
+
+.order-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 208px;
+  padding: 5px 9px;
+  border-radius: 9px;
+  /* El borde izquierdo es el PERFIL (quién perdona y quién no); el color del
+     reloj es el ESTADO. Dos datos, dos lugares. */
+  border-left: 3px solid transparent;
+  background: color-mix(in srgb, var(--color-bg) 72%, transparent);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.perfil-borde-paciente {
+  border-left-color: var(--color-success);
+}
+
+.perfil-borde-normal {
+  border-left-color: var(--color-warning);
+}
+
+.perfil-borde-exigente {
+  border-left-color: var(--color-danger);
+}
+
+.order-arrow {
+  display: inline-block;
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--color-accent);
+  /* Gira alrededor de su centro, no de la línea base del texto. */
+  line-height: 1;
+}
+
+.order-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.order-litros {
+  flex-shrink: 0;
+  opacity: 0.65;
+  font-variant-numeric: tabular-nums;
+}
+
+.order-clock {
+  flex-shrink: 0;
+  min-width: 40px;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Estados del reloj: alerta = todavía llegas, apúrate; tarde = ya cuesta
+   dinero; muy tarde = ya cuesta reputación (y al exigente, el pedido). */
+.order-row.alerta .order-clock,
+.order-row.tarde .order-clock {
+  color: var(--color-warning);
+}
+
+.order-row.tarde .order-clock {
+  font-weight: 700;
+}
+
+.order-row.muytarde .order-clock {
+  color: var(--color-danger);
+  font-weight: 700;
+  animation: fundido 0.6s steps(2, end) infinite;
+}
+
 /* ---- Reloj de la jornada ----
    Arriba al centro, fuera del paso de los medidores (izquierda) y del cajón
    de tuning (derecha). Solo se lee, nunca se toca. */

@@ -6,10 +6,12 @@ import {
   classifyPunctuality,
   deliveryPayment,
   estimateOffer,
+  orderClock,
   refillCost,
   refillSeconds,
   refillTick,
   settleRefill,
+  type Pedido,
 } from './economy'
 
 /*
@@ -166,6 +168,60 @@ describe('settleRefill', () => {
       B,
     )
     expect(s.liters).toBe(1000)
+  })
+})
+
+describe('orderClock', () => {
+  // Paciente en B: ventana 10 min, lateFactor 2 (muy tarde después de 20).
+  const pedido: Pedido = {
+    id: 'p1',
+    clientId: 'local-1',
+    colonia: 'centro',
+    perfil: 'paciente',
+    liters: 500,
+    acceptedAt: 60,
+    windowMinutes: 10,
+  }
+  B.pedidos.warnFraction = 0.25
+
+  it('deriva transcurrido y restante del momento de aceptación', () => {
+    expect(orderClock(pedido, 60, B)).toMatchObject({
+      elapsedMinutes: 0,
+      remainingMinutes: 10,
+      puntualidad: 'A_TIEMPO',
+      warning: false,
+    })
+    const c = orderClock(pedido, 60 + 300, B)
+    expect(c.elapsedMinutes).toBe(5)
+    expect(c.remainingMinutes).toBe(5)
+  })
+
+  it('avisa en el último tramo de la ventana, aún a tiempo', () => {
+    // warnFraction 0.25 sobre 10 min → alerta con ≤2.5 min restantes.
+    expect(orderClock(pedido, 60 + 7.4 * 60, B).warning).toBe(false)
+    const c = orderClock(pedido, 60 + 8 * 60, B)
+    expect(c.warning).toBe(true)
+    expect(c.puntualidad).toBe('A_TIEMPO')
+  })
+
+  it('cruza a tarde y muy tarde con la tolerancia del perfil', () => {
+    const tarde = orderClock(pedido, 60 + 11 * 60, B)
+    expect(tarde.puntualidad).toBe('TARDE')
+    expect(tarde.remainingMinutes).toBeCloseTo(-1, 10)
+    // Tarde ya no es «alerta»: la alerta es para quien todavía puede llegar.
+    expect(tarde.warning).toBe(false)
+    expect(orderClock(pedido, 60 + 21 * 60, B).puntualidad).toBe('MUY_TARDE')
+  })
+
+  it('un reloj que marque antes de la aceptación cuenta como cero', () => {
+    expect(orderClock(pedido, 0, B).elapsedMinutes).toBe(0)
+  })
+
+  it('cada pedido corre su propio reloj: el mismo instante, dos estados', () => {
+    const nuevo: Pedido = { ...pedido, id: 'p2', acceptedAt: 60 + 10 * 60 }
+    const t = 60 + 11 * 60
+    expect(orderClock(pedido, t, B).puntualidad).toBe('TARDE')
+    expect(orderClock(nuevo, t, B).puntualidad).toBe('A_TIEMPO')
   })
 })
 

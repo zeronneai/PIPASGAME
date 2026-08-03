@@ -138,6 +138,10 @@ export function ThirdPersonCamera({
       Math.sin(pitch.current),
       cosPitch * Math.cos(yaw.current),
     )
+    // Espejo de la orientación al store: el frente de la cámara es -_dir
+    // (mira del punto de la cámara hacia el pivote). Las flechas de pedidos
+    // del HUD (Paso 4) giran contra este ángulo.
+    useGameStore.getState().camera.phi = Math.atan2(-_dir.x, -_dir.z)
 
     // Colisión: ¿hay algo entre el objetivo y donde quiere estar la cámara?
     const maxDistance = lerp(c.distance, c.driveDistance, e)

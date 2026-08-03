@@ -227,6 +227,13 @@ export default function TuningPanel() {
         step: 1,
         onChange: (n: number) => void (balance.jornada.minutosReales = n),
       },
+      'alerta de ventana ×': {
+        value: balance.pedidos.warnFraction,
+        min: 0,
+        max: 0.6,
+        step: 0.05,
+        onChange: (n: number) => void (balance.pedidos.warnFraction = n),
+      },
       'rep minijuego limpio': {
         value: balance.reputacion.minijuegoLimpio,
         min: 0,

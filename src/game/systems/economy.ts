@@ -124,6 +124,45 @@ export function classifyPunctuality(
   return 'MUY_TARDE'
 }
 
+/** El reloj de UN pedido (sección 2.5): cada uno corre por su cuenta. */
+export type OrderClock = {
+  elapsedMinutes: number
+  /** Minutos hasta el fin de la ventana; negativo = ya se pasó. */
+  remainingMinutes: number
+  puntualidad: Puntualidad
+  /** true en el último tramo de la ventana (pedidos.warnFraction): aún vas
+   *  a tiempo, pero ya es momento de apurarse. */
+  warning: boolean
+}
+
+/**
+ * Estado del reloj de un pedido en este instante. Deriva, no acumula: el
+ * único estado real es acceptedAt, así que no hay relojes que se desincronicen
+ * por muchos pedidos que corran en paralelo.
+ */
+export function orderClock(
+  pedido: Pedido,
+  daySeconds: number,
+  b: Balance = balance,
+): OrderClock {
+  const elapsed = Math.max(0, daySeconds - pedido.acceptedAt) / 60
+  const remaining = pedido.windowMinutes - elapsed
+  const puntualidad = classifyPunctuality(
+    elapsed,
+    pedido.windowMinutes,
+    pedido.perfil,
+    b,
+  )
+  return {
+    elapsedMinutes: elapsed,
+    remainingMinutes: remaining,
+    puntualidad,
+    warning:
+      puntualidad === 'A_TIEMPO' &&
+      remaining <= pedido.windowMinutes * b.pedidos.warnFraction,
+  }
+}
+
 export type Pago = {
   /** Lo que entra a la cartera. 0 si el pedido se canceló. */
   total: number
