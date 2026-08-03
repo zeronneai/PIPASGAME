@@ -127,6 +127,8 @@ export function usePlayerMovement(
       let diff = target - visual.rotation.y
       diff = ((((diff + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)) - Math.PI
       visual.rotation.y += diff * (1 - Math.exp(-t.turnSpeed * dt))
+      // Espejo al store: lo persiste el guardado y lo lee el minimapa.
+      player.yaw = visual.rotation.y
     }
   })
 }

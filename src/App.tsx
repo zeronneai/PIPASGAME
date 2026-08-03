@@ -7,6 +7,7 @@ import { DebugOverlay } from './ui/DebugOverlay'
 import { DriveControls } from './ui/DriveControls'
 import { HoseMinigame } from './ui/HoseMinigame'
 import { HUD } from './ui/HUD'
+import { Minimap } from './ui/Minimap'
 import { NoticeToast } from './ui/NoticeToast'
 import { OfferPanel } from './ui/OfferPanel'
 import { OrdersHUD } from './ui/OrdersHUD'
@@ -45,6 +46,7 @@ export default function App() {
           <StatusBar />
           <ClockChip />
           <OrdersHUD />
+          <Minimap />
           {mode === 'ON_FOOT' ? <VirtualJoystick /> : <DriveControls />}
           <CameraDragArea />
           <ContextButton />

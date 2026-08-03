@@ -510,6 +510,50 @@ canvas {
   animation: fundido 0.6s steps(2, end) infinite;
 }
 
+/* ---- Minimapa ----
+   Compacto arriba a la derecha, debajo del bloque de debug. Un toque lo
+   expande centrado sobre un fondo que atrapa el toque de cierre. */
+
+.minimap {
+  position: fixed;
+  top: calc(116px + var(--safe-top));
+  right: calc(10px + var(--safe-right));
+  z-index: 6;
+  width: 108px;
+  height: 108px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--color-text) 25%, transparent);
+  box-shadow: 0 2px 10px var(--color-shadow);
+  opacity: 0.9;
+  touch-action: none;
+}
+
+.minimap.expanded {
+  top: 50%;
+  left: 50%;
+  right: auto;
+  transform: translate(-50%, -50%);
+  width: min(80vw, 78vh);
+  height: min(80vw, 78vh);
+  z-index: 26;
+  opacity: 1;
+}
+
+.minimap-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.minimap-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  background: color-mix(in srgb, var(--color-bg) 55%, transparent);
+  touch-action: none;
+}
+
 /* ---- Reloj de la jornada ----
    Arriba al centro, fuera del paso de los medidores (izquierda) y del cajón
    de tuning (derecha). Solo se lee, nunca se toca. */

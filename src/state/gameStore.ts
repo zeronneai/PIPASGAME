@@ -74,6 +74,9 @@ export function sameAction(a: ContextAction | null, b: ContextAction | null) {
 type PlayerState = {
   /** Posición del cuerpo (la cámara y el debug la leen de aquí). */
   pos: { x: number; y: number; z: number }
+  /** Rumbo del personaje en radianes (atan2(x, z), como el visual). Lo
+   *  escribe usePlayerMovement; lo persisten el guardado y lee el minimapa. */
+  yaw: number
   /** Resistencia 0..1. */
   stamina: number
   running: boolean
@@ -348,6 +351,7 @@ export const useGameStore = create<GameState>((set, get) => {
   summary: null,
   player: {
     pos: { x: 0, y: 1, z: 0 },
+    yaw: 0,
     stamina: 1,
     running: false,
     exhausted: false,
@@ -785,7 +789,15 @@ export const useGameStore = create<GameState>((set, get) => {
   advanceDay: () =>
     set((s) => ({ economy: { ...s.economy, day: s.economy.day + 1 } })),
   hydrate: (save) => {
-    const { vehicle } = get()
+    const { vehicle, player } = get()
+    // El jugador también se queda donde estaba (guardados viejos no lo
+    // traen: esos despiertan en el centro, como antes).
+    if (save.playerPos) {
+      player.pos.x = save.playerPos.x
+      player.pos.y = save.playerPos.y
+      player.pos.z = save.playerPos.z
+    }
+    player.yaw = save.playerYaw ?? 0
     // La pipa se queda donde la dejaste, también entre sesiones: el
     // componente lee esta posición del store al montar.
     vehicle.pos.x = save.vehiclePos.x

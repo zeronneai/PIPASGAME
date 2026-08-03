@@ -28,12 +28,16 @@ export type SaveData = {
   radioPrioridad?: number
   vehiclePos: { x: number; y: number; z: number }
   vehicleRot: { x: number; y: number; z: number; w: number }
+  /** Posición y rumbo del jugador. Opcionales por los guardados viejos,
+   *  que despiertan en el centro como siempre lo hicieron. */
+  playerPos?: { x: number; y: number; z: number }
+  playerYaw?: number
 }
 
 type StoreState = ReturnType<typeof useGameStore.getState>
 
 export function snapshotSave(s: StoreState): SaveData {
-  const { economy, vehicle } = s
+  const { economy, vehicle, player } = s
   return {
     version: SAVE_VERSION,
     money: economy.money,
@@ -51,6 +55,8 @@ export function snapshotSave(s: StoreState): SaveData {
       z: vehicle.rot.z,
       w: vehicle.rot.w,
     },
+    playerPos: { x: player.pos.x, y: player.pos.y, z: player.pos.z },
+    playerYaw: player.yaw,
   }
 }
 
