@@ -7,6 +7,7 @@ import {
 } from '../game/world/layout'
 import { useGameStore } from '../state/gameStore'
 import type { PerfilCliente } from '../game/systems/clients'
+import { COLORES } from '../game/systems/estilo'
 
 /*
  * Minimapa en DOM sobre el canvas 3D: un <canvas> 2D que se redibuja con
@@ -82,6 +83,14 @@ function draw(el: HTMLCanvasElement) {
   const s = useGameStore.getState()
   const lado = Math.max(4, W * 0.03) // tamaño base de los marcadores
 
+  /*
+   * La pipa se pinta del color de SU cabina (Paso 5): la personalización se
+   * ve también en el mapa. Una cabina oscura desaparecería sobre el fondo,
+   * así que los marcadores de la pipa llevan contorno claro siempre.
+   */
+  const estilo = s.garage.pipas[s.garage.equipada]?.estilo
+  const pipaHex = estilo ? COLORES[estilo.pintura.cabina].hex : COLOR.pipa
+
   // El pozo: cuadrito verde agua.
   ctx.fillStyle = COLOR.pozo
   ctx.fillRect(M(WATER_SOURCE.pos[0]) - lado / 2, M(WATER_SOURCE.pos[2]) - lado / 2, lado, lado)
@@ -122,8 +131,11 @@ function draw(el: HTMLCanvasElement) {
     ctx.save()
     ctx.translate(M(s.vehicle.pos.x), M(s.vehicle.pos.z))
     ctx.rotate(Math.PI - vehicleYaw(s.vehicle.rot))
-    ctx.fillStyle = COLOR.pipa
+    ctx.fillStyle = pipaHex
+    ctx.strokeStyle = COLOR.jugador
+    ctx.lineWidth = 1
     ctx.fillRect(-lado * 0.4, -lado * 0.7, lado * 0.8, lado * 1.4)
+    ctx.strokeRect(-lado * 0.4, -lado * 0.7, lado * 0.8, lado * 1.4)
     ctx.restore()
   }
 
@@ -134,7 +146,7 @@ function draw(el: HTMLCanvasElement) {
   ctx.translate(M(pos.x), M(pos.z))
   // π − yaw: yaw 0 mira a +z del mundo, que en el mapa es hacia abajo.
   ctx.rotate(Math.PI - yaw)
-  ctx.fillStyle = driving ? COLOR.pipa : COLOR.jugador
+  ctx.fillStyle = driving ? pipaHex : COLOR.jugador
   const f = lado * (driving ? 1.1 : 0.9)
   ctx.beginPath()
   ctx.moveTo(0, -f)
@@ -143,6 +155,11 @@ function draw(el: HTMLCanvasElement) {
   ctx.lineTo(-f * 0.7, f * 0.8)
   ctx.closePath()
   ctx.fill()
+  if (driving) {
+    ctx.strokeStyle = COLOR.jugador
+    ctx.lineWidth = 1
+    ctx.stroke()
+  }
   ctx.restore()
 }
 

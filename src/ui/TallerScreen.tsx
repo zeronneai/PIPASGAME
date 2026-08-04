@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { MODELOS } from '../game/systems/garage'
 import { capacidadPipa, useGameStore } from '../state/gameStore'
+import { TallerEstilo } from './TallerEstilo'
 import { TallerLote } from './TallerLote'
 import { TallerMejoras } from './TallerMejoras'
 
 /*
- * EL TALLER (Fase 2). Llegas manejando y se abre. Mejoras funciona desde el
- * Paso 3 y el Lote desde el Paso 4; Estilo sigue vacía hasta el Paso 5.
+ * EL TALLER (Fase 2). Llegas manejando y se abre. Las tres pestañas viven:
+ * Mejoras (Paso 3), Lote (Paso 4) y Estilo (Paso 5).
  *
  * Tres reglas de la sección 4 del documento de Fase 0, que aquí no son
  * negociables porque esta pantalla es TODA de dedo:
@@ -49,7 +50,6 @@ export function TallerScreen() {
 
   if (!abierto) return null
 
-  const activa = PESTANAS.find((p) => p.id === pestana)!
   const modelo = MODELOS[equipada]
 
   return (
@@ -92,11 +92,7 @@ export function TallerScreen() {
           ) : pestana === 'lote' ? (
             <TallerLote />
           ) : (
-            <div className="taller-vacio">
-              <div className="taller-vacio-titulo">{activa.titulo}</div>
-              <p className="taller-vacio-texto">{activa.de}</p>
-              <div className="taller-vacio-pronto">Todavía no abre</div>
-            </div>
+            <TallerEstilo />
           )}
         </section>
       </div>

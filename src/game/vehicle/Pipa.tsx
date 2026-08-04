@@ -20,7 +20,11 @@ import { statsPipa, useGameStore } from '../../state/gameStore'
  * golpe, y como el cuerpo nace donde diga el store, la pipa no se teletransporta.
  *
  * Las MEJORAS no pasan por aquí: no tocan geometría, así que entran en vivo
- * por el paso de física.
+ * por el paso de física. El ESTILO tampoco: se suscribe PipaModel, que es
+ * hijo puro. CENTINELA: PipaCuerpo no debe suscribirse a NADA — se diseñó
+ * para no re-renderizarse nunca (position/quaternion se leen una vez al
+ * montar); una suscripción aquí re-aplicaría la pose vieja y la pipa se
+ * teletransportaría al comprar un color.
  */
 export function Pipa({
   bodyRef,

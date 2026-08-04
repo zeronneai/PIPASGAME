@@ -22,6 +22,7 @@
 
 import { balance, type Balance } from '../balance'
 import { tuning } from '../tuning'
+import type { Estilo } from './estilo'
 
 /** La forma que consume la física. Se deriva del objeto de tuning a propósito:
  *  si alguien le agrega un campo, `computeStats` deja de compilar hasta que
@@ -182,10 +183,14 @@ export const MEJORAS: Record<Categoria, Mejora> = {
 export const CATEGORIAS = Object.keys(MEJORAS) as Categoria[]
 
 /** La configuración de UNA pipa. Las mejoras son por pipa, no globales: si
- *  compras la grandota, empieza sin nada (sección 4). */
+ *  compras la grandota, empieza sin nada (sección 4). El estilo también es
+ *  por pipa y también opcional: sin él, la pipa se ve de fábrica. OJO:
+ *  computeStats NUNCA lo lee — el estilo tiene cero efecto en el juego, y
+ *  estilo.test.ts lo cobra. */
 export type PipaConfig = {
   modelo: ModeloId
   mejoras: Record<Categoria, Nivel>
+  estilo?: Estilo
 }
 
 /** Una pipa recién salida del lote: el modelo pelón. */

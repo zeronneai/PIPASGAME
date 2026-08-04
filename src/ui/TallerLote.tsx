@@ -9,6 +9,7 @@ import {
   type PipaConfig,
 } from '../game/systems/garage'
 import { useGameStore } from '../state/gameStore'
+import { pesos } from './formato'
 
 /*
  * La pestaña del Lote (Fase 2, Paso 4): comprar otro modelo y elegir con cuál
@@ -21,9 +22,6 @@ import { useGameStore } from '../state/gameStore'
  */
 
 const ORDEN: ModeloId[] = ['heredada', 'mediana', 'grandota']
-
-const pesos = (n: number) =>
-  `$${n.toLocaleString('es-MX', { maximumFractionDigits: 0 })}`
 
 /** Cuántos niveles de mejora trae puestos, sobre el total posible. */
 function nivelesPuestos(pipa: PipaConfig) {

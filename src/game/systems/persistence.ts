@@ -1,5 +1,6 @@
 import { useGameStore, type GarageState } from '../../state/gameStore'
 import type { ClientHistory } from './clients'
+import { sanitizarRotulo, type Estilo } from './estilo'
 
 /*
  * Guardado en localStorage (sección 2.9). Se persiste exactamente lo que
@@ -77,7 +78,20 @@ export function snapshotSave(s: StoreState): SaveData {
       pipas: Object.fromEntries(
         Object.entries(s.garage.pipas).map(([id, cfg]) => [
           id,
-          { modelo: cfg.modelo, mejoras: { ...cfg.mejoras } },
+          {
+            modelo: cfg.modelo,
+            mejoras: { ...cfg.mejoras },
+            // El estilo también en copia, y solo si existe: una pipa sin
+            // pintar no gasta llave en el JSON.
+            ...(cfg.estilo && {
+              estilo: {
+                ...cfg.estilo,
+                pintura: { ...cfg.estilo.pintura },
+                cromo: { ...cfg.estilo.cromo },
+                detalles: { ...cfg.estilo.detalles },
+              },
+            }),
+          },
         ]),
       ),
     },
@@ -104,6 +118,29 @@ export function parseSave(json: string | null): SaveData | null {
     // equipar una pipa que no está en la lista deja la física sin números.
     if (data.garage && !data.garage.pipas?.[data.garage.equipada])
       delete data.garage
+    /*
+     * El estilo también es opcional, y además trae TEXTO LIBRE: un guardado
+     * editado a mano no puede meterle un libro al CanvasTexture del rótulo.
+     * Si la forma viene rota se tira SOLO el estilo (la pipa cae a fábrica),
+     * no la partida.
+     */
+    if (data.garage) {
+      for (const cfg of Object.values(data.garage.pipas)) {
+        if (cfg.estilo === undefined) continue
+        const e = cfg.estilo as Partial<Estilo> | null
+        if (
+          !e ||
+          typeof e.pintura?.cabina !== 'string' ||
+          typeof e.rotulo !== 'string' ||
+          typeof e.cromo !== 'object' ||
+          typeof e.detalles !== 'object'
+        ) {
+          delete cfg.estilo
+          continue
+        }
+        cfg.estilo = { ...cfg.estilo!, rotulo: sanitizarRotulo(e.rotulo) }
+      }
+    }
     return data as SaveData
   } catch {
     return null

@@ -1,25 +1,68 @@
 import type { RefObject } from 'react'
-import type { Group } from 'three'
+import type { Group, Texture } from 'three'
+import { useGameStore } from '../../state/gameStore'
+import { COLORES, ESTILO_DE_FABRICA, type Estilo } from '../systems/estilo'
 import type { VehicleStats } from '../systems/garage'
+import { Claxon, Cortina, Escapes, Espejos, Luces } from './PipaExtras'
 import { PIPA_BODY, PIPA_MATERIALS } from './pipaParts'
+import { useCromoEnvMap } from './useCromoEnvMap'
+import { usePlacaTexture } from './usePlacaTexture'
 
 /*
  * Modelo de la pipa con las partes SEPARADAS en la jerarquía desde la Fase 0.
+ * Desde el Paso 5 de la Fase 2 aquí aterriza el ESTILO: pintura por parte,
+ * placas con rótulo y calca, cromo y piezas compradas.
  *
- * En la Fase 2 se va a poder personalizar (color de cabina, rines, calcas en
- * el tanque). Si esto fuera una sola malla habría que rehacerlo entero, así
- * que cada pieza nace con su propio grupo y su propia entrada de material,
- * aunque hoy todas sean cajas grises.
+ * La suscripción al estilo vive AQUÍ y no en Pipa.tsx: este componente es
+ * hijo puro dentro del RigidBody, así que re-renderizarse por un cambio de
+ * color no toca Rapier. Dos reglas que no se negocian:
+ *   - El estilo NO pasa por el key={modelo} de Pipa.tsx (remontaría la
+ *     física por pintar la cabina).
+ *   - Ningún `args` de geometría deriva del estilo (r3f recrearía la malla).
  *
  * Convención de ejes: el frente de la pipa mira a +Z, igual que el personaje.
  */
+
+/** Cromado: claro, metálico, con el entorno encima. El swap va por IDENTIDAD
+ *  de material (key por rama): añadir envMap a un material vivo no recompila
+ *  el shader, cambiar el elemento crea uno correcto y r3f dispone el viejo. */
+function MaterialCromable({
+  cromada,
+  envMap,
+  color,
+}: {
+  cromada: boolean
+  envMap: Texture | null
+  color: string
+}) {
+  return cromada && envMap ? (
+    <meshStandardMaterial
+      key="cromo"
+      color="#f2f4f6"
+      metalness={1}
+      roughness={0.13}
+      envMap={envMap}
+      envMapIntensity={0.9}
+    />
+  ) : (
+    <meshStandardMaterial key="plano" color={color} />
+  )
+}
 
 /**
  * Cada rueda son dos grupos anidados: el de fuera lo coloca la suspensión y
  * lo gira el volante, el de dentro solo rueda sobre su eje. Sin refs propios:
  * Pipa.tsx los alcanza por los hijos del grupo «ruedas».
  */
-function Wheel({ w }: { w: VehicleStats['wheel'] }) {
+function Wheel({
+  w,
+  rinCromado,
+  envMap,
+}: {
+  w: VehicleStats['wheel']
+  rinCromado: boolean
+  envMap: Texture | null
+}) {
   return (
     <group>
       <group>
@@ -28,12 +71,16 @@ function Wheel({ w }: { w: VehicleStats['wheel'] }) {
           <cylinderGeometry args={[w.radius, w.radius, w.width, 12]} />
           <meshStandardMaterial color={PIPA_MATERIALS.llanta} />
         </mesh>
-        {/* El rin va aparte: en la Fase 2 se personaliza sin tocar la llanta */}
+        {/* El rin va aparte: se croma sin tocar la llanta (Paso 5). */}
         <mesh name="rin" rotation={[0, 0, Math.PI / 2]}>
           <cylinderGeometry
             args={[w.radius * 0.58, w.radius * 0.58, w.width * 1.05, 10]}
           />
-          <meshStandardMaterial color={PIPA_MATERIALS.rin} />
+          <MaterialCromable
+            cromada={rinCromado}
+            envMap={envMap}
+            color={PIPA_MATERIALS.rin}
+          />
         </mesh>
       </group>
     </group>
@@ -58,6 +105,30 @@ export function PipaModel({
   escala: number
 }) {
   const B = PIPA_BODY
+
+  /*
+   * El estilo de la pipa equipada. El ?? devuelve la CONSTANTE de fábrica
+   * (misma identidad siempre), así que una pipa sin pintar no re-renderiza
+   * nada de gratis; con estilo, el objeto solo cambia al comprar.
+   */
+  const estilo: Estilo = useGameStore(
+    (s) => s.garage.pipas[s.garage.equipada]?.estilo ?? ESTILO_DE_FABRICA,
+  )
+  const cabinaHex = COLORES[estilo.pintura.cabina]?.hex ?? PIPA_MATERIALS.cabina
+  const tanqueHex = COLORES[estilo.pintura.tanque]?.hex ?? PIPA_MATERIALS.tanque
+  // Siempre `=== true`: llave presente con false = comprada pero quitada.
+  const cromo = {
+    defensa: estilo.cromo.defensa === true,
+    espejos: estilo.cromo.espejos === true,
+    escapes: estilo.cromo.escapes === true,
+    rines: estilo.cromo.rines === true,
+  }
+  const hayCromo =
+    cromo.defensa || cromo.espejos || cromo.escapes || cromo.rines
+  const envMap = useCromoEnvMap(hayCromo)
+  const lateral = usePlacaTexture(estilo.rotulo, estilo.calca, tanqueHex, 512, 160)
+  const trasera = usePlacaTexture(estilo.rotulo, estilo.calca, tanqueHex, 256, 112)
+
   return (
     <group name="pipa">
       {/*
@@ -76,7 +147,7 @@ export function PipaModel({
         <group name="cabina" position={[0, B.cabina.y, B.cabina.z]}>
           <mesh>
             <boxGeometry args={B.cabina.size} />
-            <meshStandardMaterial color={PIPA_MATERIALS.cabina} />
+            <meshStandardMaterial color={cabinaHex} />
           </mesh>
           <mesh name="parabrisas" position={[0, 0.35, 1.16]}>
             <boxGeometry args={[1.9, 0.85, 0.06]} />
@@ -88,14 +159,20 @@ export function PipaModel({
               <meshStandardMaterial color={PIPA_MATERIALS.faro} />
             </mesh>
           ))}
+          {cromo.espejos && envMap && <Espejos envMap={envMap} />}
+          {estilo.detalles.claxon === true && <Claxon />}
+          {estilo.detalles.luces === true && <Luces />}
+          {estilo.detalles.cortinas === true && <Cortina />}
         </group>
+
+        {cromo.escapes && envMap && <Escapes envMap={envMap} />}
 
         <group name="tanque" position={[0, B.tanque.y, B.tanque.z]}>
           <mesh rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry
               args={[B.tanque.radius, B.tanque.radius, B.tanque.length, 16]}
             />
-            <meshStandardMaterial color={PIPA_MATERIALS.tanque} />
+            <meshStandardMaterial color={tanqueHex} />
           </mesh>
           {[-1, 1].map((s) => (
             <mesh
@@ -120,8 +197,13 @@ export function PipaModel({
             <meshStandardMaterial color={PIPA_MATERIALS.escotilla} />
           </mesh>
 
-          {/* Área de calcas: placas planas con su propia malla y su propio
-            material, listas para recibir un map en la Fase 2. */}
+          {/*
+            Área de calcas: aquí aterrizan el rótulo y el motivo, compuestos
+            en un solo CanvasTexture por placa. Sin nada puesto, color plano
+            como siempre. No hay espejado que corregir: BoxGeometry mapea sus
+            caras correctas visto desde fuera en ambas rotaciones ±π/2, así
+            que una misma textura sirve para los dos costados.
+          */}
           <group name="calcas">
             {[-1, 1].map((s) => (
               <mesh
@@ -131,12 +213,20 @@ export function PipaModel({
                 rotation={[0, s * (Math.PI / 2), 0]}
               >
                 <boxGeometry args={B.calcaLateral.size} />
-                <meshStandardMaterial color={PIPA_MATERIALS.calca} />
+                {lateral ? (
+                  <meshStandardMaterial key="map" map={lateral} color="#ffffff" />
+                ) : (
+                  <meshStandardMaterial key="plano" color={PIPA_MATERIALS.calca} />
+                )}
               </mesh>
             ))}
             <mesh name="calca-trasera" position={[0, 0, B.calcaTrasera.z]}>
               <boxGeometry args={B.calcaTrasera.size} />
-              <meshStandardMaterial color={PIPA_MATERIALS.calca} />
+              {trasera ? (
+                <meshStandardMaterial key="map" map={trasera} color="#ffffff" />
+              ) : (
+                <meshStandardMaterial key="plano" color={PIPA_MATERIALS.calca} />
+              )}
             </mesh>
           </group>
         </group>
@@ -144,11 +234,19 @@ export function PipaModel({
         <group name="defensa">
           <mesh position={[0, B.defensaFrente.y, B.defensaFrente.z]}>
             <boxGeometry args={B.defensaFrente.size} />
-            <meshStandardMaterial color={PIPA_MATERIALS.defensa} />
+            <MaterialCromable
+              cromada={cromo.defensa}
+              envMap={envMap}
+              color={PIPA_MATERIALS.defensa}
+            />
           </mesh>
           <mesh position={[0, B.defensaAtras.y, B.defensaAtras.z]}>
             <boxGeometry args={B.defensaAtras.size} />
-            <meshStandardMaterial color={PIPA_MATERIALS.defensa} />
+            <MaterialCromable
+              cromada={cromo.defensa}
+              envMap={envMap}
+              color={PIPA_MATERIALS.defensa}
+            />
           </mesh>
         </group>
       </group>
@@ -172,7 +270,7 @@ export function PipaModel({
           0 delantera izq, 1 delantera der, 2 trasera izq, 3 trasera der. */}
       <group name="ruedas" ref={wheelsRef}>
         {Array.from({ length: wheelCount }, (_, i) => (
-          <Wheel key={i} w={stats.wheel} />
+          <Wheel key={i} w={stats.wheel} rinCromado={cromo.rines} envMap={envMap} />
         ))}
       </group>
     </group>

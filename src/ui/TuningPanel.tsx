@@ -14,6 +14,7 @@ import {
   type ModeloId,
   type Nivel,
 } from '../game/systems/garage'
+import { PIEZAS, type Pieza as PiezaEstilo } from '../game/systems/estilo'
 import { STEERING_SOURCES, type SteeringId } from '../game/vehicle/steering'
 
 /**
@@ -655,6 +656,45 @@ export default function TuningPanel() {
             },
           ]),
         ),
+      ),
+    },
+    CERRADA,
+  )
+
+  // Los precios del estilo (Paso 5). Puro dinero: los efectos no existen
+  // porque el estilo por diseño no tiene ninguno.
+  useControls(
+    'garage · estilo',
+    {
+      'pintar cabina': {
+        value: balance.garage.estilo.pintura.cabina,
+        min: 0, max: 5_000, step: 50,
+        onChange: (n: number) => void (balance.garage.estilo.pintura.cabina = n),
+      },
+      'pintar tanque': {
+        value: balance.garage.estilo.pintura.tanque,
+        min: 0, max: 5_000, step: 50,
+        onChange: (n: number) => void (balance.garage.estilo.pintura.tanque = n),
+      },
+      rotular: {
+        value: balance.garage.estilo.rotulo,
+        min: 0, max: 5_000, step: 50,
+        onChange: (n: number) => void (balance.garage.estilo.rotulo = n),
+      },
+      calca: {
+        value: balance.garage.estilo.calca,
+        min: 0, max: 5_000, step: 50,
+        onChange: (n: number) => void (balance.garage.estilo.calca = n),
+      },
+      ...Object.fromEntries(
+        (Object.keys(PIEZAS) as PiezaEstilo[]).map((pieza) => [
+          PIEZAS[pieza].nombre.toLowerCase(),
+          {
+            value: balance.garage.estilo.piezas[pieza],
+            min: 0, max: 10_000, step: 50,
+            onChange: (n: number) => void (balance.garage.estilo.piezas[pieza] = n),
+          },
+        ]),
       ),
     },
     CERRADA,

@@ -4,6 +4,7 @@ import type { PerfilCliente } from './systems/clients'
  * deja los factores de las mejoras bien tipados aquí, que es donde se
  * escriben. */
 import type { Categoria, Factores } from './systems/garage'
+import type { Pieza as PiezaEstilo } from './systems/estilo'
 
 /*
  * TODOS los números de la economía viven aquí, separados de tuning.ts
@@ -104,6 +105,35 @@ const MEJORAS_GARAGE: Record<Categoria, MejoraBalance> = {
       { enfria: 1.32, calor: 0.85 },
       { enfria: 1.5, calor: 0.78 },
     ],
+  },
+}
+
+/**
+ * El estilo (Fase 2, sección 5). Todo BARATO comparado con las mejoras — la
+ * idea es que puedas verte bien desde temprano, no que sea el premio final.
+ * Hay un test que no deja que nada de aquí rebase la mejora más barata.
+ *
+ * Pintura, rótulo y calca cobran CADA aplicada (quitar es gratis); las piezas
+ * se compran una vez por pipa. El catálogo (colores, motivos, qué es cada
+ * pieza) vive en `systems/estilo.ts`.
+ */
+const ESTILO_GARAGE: {
+  pintura: { cabina: number; tanque: number }
+  rotulo: number
+  calca: number
+  piezas: Record<PiezaEstilo, number>
+} = {
+  pintura: { cabina: 350, tanque: 550 },
+  rotulo: 250,
+  calca: 400,
+  piezas: {
+    defensa: 900,
+    espejos: 700,
+    escapes: 850,
+    rines: 1_200,
+    claxon: 500,
+    luces: 650,
+    cortinas: 300,
   },
 }
 
@@ -348,6 +378,9 @@ export const balance = {
      * aplica; aquí solo viven los números, que son los que se mueven.
      */
     mejoras: MEJORAS_GARAGE,
+    /** Los precios del estilo. Cosmético puro: barato, y con test que lo
+     *  mantiene por debajo de la mejora más barata. */
+    estilo: ESTILO_GARAGE,
   },
 }
 

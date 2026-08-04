@@ -10,6 +10,7 @@ import {
   type PipaConfig,
 } from '../game/systems/garage'
 import { useGameStore } from '../state/gameStore'
+import { pesos } from './formato'
 
 /*
  * La pestaña de Mejoras (Fase 2, Paso 3).
@@ -22,9 +23,6 @@ import { useGameStore } from '../state/gameStore'
  * Por eso cada renglón enseña el antes → después de las dos cifras que
  * importan: lo que sube y lo que se paga. Con números, no con adjetivos.
  */
-
-const pesos = (n: number) =>
-  `$${n.toLocaleString('es-MX', { maximumFractionDigits: 0 })}`
 
 /** Las dos cifras que enseña cada categoría, ya con su formato. */
 const CIFRAS: Record<

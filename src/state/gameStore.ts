@@ -30,6 +30,12 @@ import {
 } from '../game/systems/economy'
 import { esLimpio } from '../game/systems/hose'
 import {
+  alternarPieza,
+  aplicarCambio,
+  type CambioEstilo,
+  type Pieza,
+} from '../game/systems/estilo'
+import {
   comprarMejora as calcularCompra,
   comprarModelo as calcularCompraModelo,
   computeStats,
@@ -438,6 +444,14 @@ type GameState = {
    * el mismo Lote. Si no alcanza (o ya la tienes), deja un aviso y no toca nada.
    */
   comprarPipa: (id: ModeloId) => void
+  /**
+   * Un cambio de estilo sobre la pipa equipada (Paso 5): pintura, rótulo,
+   * calca o pieza. Cobra lo que diga balance.garage.estilo; quitar es gratis.
+   * Cosmético puro — la física ni se entera.
+   */
+  comprarEstilo: (cambio: CambioEstilo) => void
+  /** Pone o quita una pieza YA comprada. Gratis; si no es tuya, no hace nada. */
+  togglePiezaEstilo: (pieza: Pieza) => void
   /** Aplica una partida guardada. La llama initPersistence antes del render. */
   hydrate: (save: SaveData) => void
 }
@@ -997,6 +1011,43 @@ export const useGameStore = create<GameState>((set, get) => {
       },
     })
     s.showNotice(`${MODELOS[id].nombre} es tuya`)
+  },
+  comprarEstilo: (cambio) => {
+    const s = get()
+    const actual = s.garage.pipas[s.garage.equipada]
+    if (!actual) return
+    const compra = aplicarCambio(actual, cambio, s.economy.money)
+    if (!compra.ok) {
+      if (compra.motivo === 'SIN_DINERO')
+        s.showNotice(`No alcanza: faltan $${centavos((compra.costo ?? 0) - s.economy.money)}`)
+      else if (compra.motivo === 'YA_LA_TIENES') s.showNotice('Esa ya la traes')
+      // SIN_CAMBIO se queda callado: tocar el color puesto no es un error.
+      return
+    }
+    // Un solo set(), como toda compra: el autoguardado de 5 s no puede
+    // sorprenderla a medias. El estilo no toca capacidad ni física, así que
+    // aquí no hay litros que recortar.
+    set({
+      garage: {
+        ...s.garage,
+        pipas: { ...s.garage.pipas, [s.garage.equipada]: compra.pipa },
+      },
+      economy: { ...s.economy, money: centavos(s.economy.money - compra.costo) },
+    })
+    s.showNotice(compra.aviso)
+  },
+  togglePiezaEstilo: (pieza) => {
+    const s = get()
+    const actual = s.garage.pipas[s.garage.equipada]
+    if (!actual) return
+    const pipa = alternarPieza(actual, pieza)
+    if (!pipa) return
+    set({
+      garage: {
+        ...s.garage,
+        pipas: { ...s.garage.pipas, [s.garage.equipada]: pipa },
+      },
+    })
   },
   setMejora: (categoria, nivel) => {
     const s = get()

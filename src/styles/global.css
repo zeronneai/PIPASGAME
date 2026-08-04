@@ -1662,3 +1662,199 @@ canvas {
 .lote-btn:disabled {
   cursor: default;
 }
+
+/* ---- Taller · pestaña de Estilo (Fase 2, Paso 5) ---- */
+
+.estilo {
+  display: grid;
+  gap: 16px;
+}
+
+.estilo-seccion {
+  display: grid;
+  gap: 8px;
+}
+
+.estilo-titulo {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.estilo-precio {
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 400;
+  opacity: 0.6;
+}
+
+/*
+ * Filas de fichas con scroll horizontal: en un teléfono acostado no caben 10
+ * colores a lo ancho, y el pulgar arrastra mejor que apunta.
+ */
+.estilo-fila {
+  display: flex;
+  gap: 8px;
+  padding: 2px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+/* Los hex de los swatches son DATO del catálogo (estilo.ts), no tema: el
+   único lugar de esta pantalla donde el color no sale de theme.css. */
+.estilo-swatch {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 2px solid color-mix(in srgb, var(--color-text) 25%, transparent);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.estilo-swatch.puesta {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 45%, transparent);
+}
+
+.estilo-swatch.no-alcanza {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.estilo-rotulo {
+  display: flex;
+  gap: 8px;
+}
+
+.estilo-rotulo-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--color-text) 25%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  font-size: 1rem;
+}
+
+.estilo-calca {
+  flex: none;
+  min-width: 64px;
+  height: 52px;
+  padding: 2px;
+  border: 2px solid color-mix(in srgb, var(--color-text) 25%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+  cursor: pointer;
+}
+
+.estilo-calca.puesta {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 45%, transparent);
+}
+
+.estilo-calca.no-alcanza {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.estilo-calca-lienzo {
+  display: block;
+  width: 128px;
+  height: 44px;
+  border-radius: 7px;
+}
+
+.estilo-calca-nada {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 44px;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.estilo-piezas {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+}
+
+.estilo-pieza {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-height: 56px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+}
+
+.estilo-pieza-info {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.estilo-pieza-nombre {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.estilo-pieza-de {
+  font-size: 0.78rem;
+  opacity: 0.65;
+}
+
+.estilo-btn {
+  min-width: 92px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--color-accent);
+  color: var(--color-bg);
+  font-family: var(--font-ui);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.estilo-btn.no-alcanza {
+  background: color-mix(in srgb, var(--color-text) 12%, transparent);
+  color: var(--color-text);
+  opacity: 0.5;
+}
+
+.estilo-btn:disabled {
+  cursor: default;
+}
+
+/* La palanca de una pieza ya comprada: poner y quitar es gratis. */
+.estilo-palanca {
+  min-width: 92px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--color-text) 25%, transparent);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+.estilo-palanca.puesta {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  color: var(--color-accent);
+  font-weight: 700;
+  opacity: 1;
+}
