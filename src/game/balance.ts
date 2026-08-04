@@ -232,9 +232,16 @@ export const balance = {
     /** Los pedidos se piden en litros «redondos». */
     litersStep: 100,
   },
-  /** Con cuánto dinero empieza una partida nueva. Alcanza para ~medio tanque:
-   *  la primera decisión del juego ya es cuánta agua cargar. */
-  dineroInicial: 300,
+  /**
+   * Con cuánto dinero empieza una partida nueva.
+   *
+   * Tiene que alcanzar para ~MEDIO tanque de la pipa con la que amaneces (la
+   * heredada, 5,000 L a 0.05 el litro), no para llenarlo: si alcanza para
+   * llenar, la primera decisión del juego —¿cargo completo o guardo para
+   * gasolina y llego más lejos?— deja de existir. Con la mediana este número
+   * era 300; al arrancar en la heredada, 300 llenaba el tanque con sobra.
+   */
+  dineroInicial: 125,
 
   /*
    * EL GARAGE (Fase 2). Aquí va SOLO el dinero: qué hace cada modelo y cada

@@ -53,6 +53,13 @@ export function Interaction({
       return
     }
 
+    if (pending.kind === 'TALLER') {
+      // El taller es DOM puro: aquí solo se abre. El reloj sigue corriendo,
+      // que es lo que hace que ir cueste algo.
+      store.setTallerAbierto(true)
+      return
+    }
+
     if (pending.kind === 'SERVICE') {
       // Toda la aceptación vive en el store (Paso 3): aquí solo se dispara.
       if (pending.targetId) store.offerService(pending.targetId)

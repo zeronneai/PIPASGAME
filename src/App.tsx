@@ -17,6 +17,7 @@ import { RescueFade } from './ui/RescueFade'
 import { StatusBar } from './ui/StatusBar'
 import { RefillMeter } from './ui/RefillMeter'
 import { SummaryScreen } from './ui/SummaryScreen'
+import { TallerScreen } from './ui/TallerScreen'
 import { TapToStart } from './ui/TapToStart'
 import { TuningDrawer } from './ui/TuningDrawer'
 import { VirtualJoystick } from './ui/VirtualJoystick'
@@ -35,6 +36,7 @@ export default function App() {
   // El modo cambia poco, así que sí puede re-renderizar el HUD.
   const mode = useGameStore((s) => s.mode)
   const minimapExpanded = useGameStore((s) => s.minimapExpanded)
+  const tallerAbierto = useGameStore((s) => s.tallerAbierto)
 
   return (
     <>
@@ -54,7 +56,7 @@ export default function App() {
           {mode === 'ON_FOOT' ? (
             <VirtualJoystick />
           ) : (
-            !minimapExpanded && <DriveControls />
+            !minimapExpanded && !tallerAbierto && <DriveControls />
           )}
           <CameraDragArea />
           <ContextButton />
@@ -64,6 +66,8 @@ export default function App() {
           {/* Encima de todo lo jugable: aceptar un pedido es LA decisión. */}
           <OfferPanel />
           <HoseMinigame />
+          {/* El taller: encima de lo jugable, debajo del fin de día. */}
+          <TallerScreen />
           {/* El último de la pila jugable: cuando aparece, el día terminó. */}
           <SummaryScreen />
           <RescueFade />

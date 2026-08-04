@@ -43,9 +43,11 @@ import {
   CALLES,
   DOMICILIOS_TRAZA,
   GLORIETA,
+  HITOS,
   LOCALES_TRAZA,
   MAP_SIZE,
   PLAZAS,
+  TALLER,
   centroBahia,
   marcaBahia,
   type Bahia,
@@ -60,6 +62,10 @@ export const TOPE_HEIGHT = 0.12
 /** Altura de una barda de patio: cierra el predio sin taparle la vista. */
 export const BARDA_ALTURA = 2.4
 const BARDA_GRUESO = 0.6
+/** Una planta. Casi toda la colonia mide esto. */
+const ALTURA_MIN = 2.8
+/** Cuánto puede crecer sobre una planta: hasta dos y un pretil. */
+const ALTURA_RANGO = 3.8
 /**
  * Ancho de banqueta a cada lado de la calle. Cada metro de banqueta es un
  * metro menos de asfalto: con 2 m, una calle de 9 dejaba 5 m para una pipa de
@@ -253,6 +259,62 @@ for (const l of locales) {
 }
 
 /**
+ * El taller: el lugar al que se llega MANEJANDO a comprar y mejorar (sección
+ * 2 de la Fase 2). Su puerta se mide contra la pipa, no contra el jugador a
+ * pie, igual que la toma de agua.
+ */
+const TALLER_ALTO = 6
+export const taller = (() => {
+  const { pos, door } = frente(TALLER, Math.max(TALLER.sx, TALLER.sz))
+  pintarRect(reservado, [pos[0], pos[2]], TALLER.sx + 1, TALLER.sz + 1)
+  return {
+    id: TALLER.id,
+    nombre: TALLER.nombre,
+    /** Centro de la nave, ya metida en la manzana. */
+    pos: [pos[0], TALLER_ALTO / 2, pos[2]] as [number, number, number],
+    size: [TALLER.sx, TALLER_ALTO, TALLER.sz] as [number, number, number],
+    /** Dónde se para la pipa: sobre el pavimento, frente al portón. */
+    door,
+    /** El letrero sobre la nave: lo que se ve desde la calle. */
+    letrero: {
+      pos: [pos[0], TALLER_ALTO + 0.9, pos[2] - TALLER.sz / 2 + 0.4] as [
+        number,
+        number,
+        number,
+      ],
+      size: [TALLER.sx * 0.7, 1.4, 0.5] as [number, number, number],
+    },
+  }
+})()
+
+/**
+ * Los cuatro hitos: lo único que sobresale del perfil de una y dos plantas.
+ * Son puntos de referencia, no decoración — de ahí que sean cuatro y estén
+ * repartidos. Cada uno se resuelve contra su calle igual que un local, y su
+ * huella se reserva para que el fusionador no le meta un lote encima.
+ */
+export const hitos: (Box & { color: string })[] = HITOS.flatMap((h) => {
+  const { pos } = frente(h, Math.max(h.sx, h.sz))
+  const [cx, , cz] = pos
+  pintarRect(reservado, [cx, cz], h.sx + 1, h.sz + 1)
+  const cajas: (Box & { color: string })[] = [
+    {
+      pos: [cx, h.altura / 2, cz],
+      size: [h.sx, h.altura, h.sz],
+      color: h.color,
+    },
+  ]
+  if (h.remate) {
+    cajas.push({
+      pos: [cx, h.altura + h.remate.altura / 2, cz],
+      size: [h.remate.sx, h.remate.altura, h.remate.sz],
+      color: h.remate.color,
+    })
+  }
+  return cajas
+})
+
+/**
  * Domicilio de entrega de cada cliente fijo: el pedido se consigue tocando la
  * puerta del NEGOCIO, pero el agua se entrega en la casa u obra, siempre
  * lejos y siempre a alcance de una calle por la que quepa la pipa. Eso es lo
@@ -422,13 +484,23 @@ for (const r of lotes) {
   const sz = plano.size[2]
   const li = ((r.etiqueta - 1) / 1000) | 0
   const lj = (r.etiqueta - 1) % 1000
-  const altura = 5 + dadoDeLote(li, lj, 1) * 15
   /*
-   * Uno de cada cinco lotes es PATIO: cuatro bardas de 2.4 m en vez de un
-   * edificio. Desde la cámara se ve el interior y desde la calle es un muro:
-   * es lo que le da textura a la manzana sin abrirle un paso.
+   * SÓLIDO NO ES ALTO. Una colonia es de una y dos plantas: si todo mide 20 m
+   * el mapa deja de ser una colonia y se vuelve un laberinto sin salida, y el
+   * jugador pierde la única forma barata de ubicarse, que es ver por encima.
+   *
+   * La curva va sesgada hacia abajo (el dado elevado a 1.6) para que la
+   * mayoría sea de una planta y las de dos sean la excepción. Lo que sube por
+   * encima de esto son los HITOS, y son cuatro contados.
    */
-  const esPatio = dadoDeLote(li, lj, 2) < 0.2
+  const altura = ALTURA_MIN + Math.pow(dadoDeLote(li, lj, 1), 1.6) * ALTURA_RANGO
+  /*
+   * Casi un tercio de los lotes es PATIO: cuatro bardas de 2.4 m en vez de un
+   * edificio. Desde la cámara se ve el interior y desde la calle es un muro:
+   * es lo que le da textura a la manzana sin abrirle un paso, y lo que baja el
+   * perfil de la colonia sin dejar un solo hueco por donde cortar.
+   */
+  const esPatio = dadoDeLote(li, lj, 2) < 0.3
   const cabePatio = sx >= 7 && sz >= 7 && r.w * r.h === mayorPorLote.get(r.etiqueta)
   if (esPatio && cabePatio) {
     const [cx, , cz] = plano.pos
@@ -480,9 +552,16 @@ export const layoutStats = {
   sidewalks: sidewalks.length,
   locales: locales.length,
   topes: topes.length,
+  hitos: hitos.length,
   /** Cuboides estáticos que se le entregan a Rapier. */
   colliders:
-    1 + buildings.length + sidewalks.length + locales.length + topes.length + 3,
+    1 +
+    buildings.length +
+    sidewalks.length +
+    locales.length +
+    hitos.length +
+    topes.length +
+    3,
   /** Fracción del mapa que es calle. */
   fraccionCalle: solido.reduce((a, s) => a + (s ? 0 : 1), 0) / (N * N),
 }

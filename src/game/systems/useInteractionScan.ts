@@ -10,7 +10,7 @@ import {
 } from '../../state/gameStore'
 import { PIPA_DOOR } from '../vehicle/pipaParts'
 import { nearestInteractable } from '../world/interactableRegistry'
-import { WATER_SOURCE } from '../world/layout'
+import { taller, WATER_SOURCE } from '../world/layout'
 import { canStartRefill } from './economy'
 
 // Temporales de módulo: esto corre 10 veces por segundo, no vale la pena
@@ -91,6 +91,10 @@ export function useInteractionScan() {
          */
         const [px, py, pz] = WATER_SOURCE.pos
         const dPozo = Math.hypot(px - v.x, py - v.y, pz - v.z)
+        // Y el taller, con el mismo criterio: se llega manejando, así que lo
+        // que se mide es la pipa contra el portón.
+        const [tx, ty, tz] = taller.door
+        const dTaller = Math.hypot(tx - v.x, ty - v.y, tz - v.z)
         const { liters, money } = s.economy
 
         if (entregaId && !s.delivery) {
@@ -101,6 +105,8 @@ export function useInteractionScan() {
           canStartRefill(liters, money, balance, capacidadPipa())
         ) {
           action = { kind: 'REFILL', label: 'Cargar agua' }
+        } else if (!s.tallerAbierto && dTaller < tuning.interaction.tallerRadius) {
+          action = { kind: 'TALLER', label: 'Entrar al taller' }
         } else {
           action = { kind: 'EXIT', label: 'Bajar' }
         }

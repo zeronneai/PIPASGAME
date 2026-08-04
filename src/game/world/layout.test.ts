@@ -8,11 +8,14 @@ import {
   PLAYER_SPAWN,
   PLAZAS,
   WATER_SOURCE,
+  buildings,
   esLibre,
+  hitos,
   holgura,
   layoutStats,
   locales,
   mapaOcupacion,
+  taller,
   topes,
 } from './layout'
 import { floodFill } from './raster'
@@ -129,6 +132,58 @@ describe('trazo de la colonia', () => {
       }
       expect(invade, `${l.id} invade la calle`).toBe(0)
     }
+  })
+
+  it('planta los hitos dentro de la manzana, no sobre la calle', () => {
+    /*
+     * Solo lo que apoya en el piso: un remate en alto SÍ puede volar sobre la
+     * banqueta (el tinaco elevado es más ancho que su torre, como en la vida
+     * real) y a 12 m de altura no le estorba ni a la pipa ni al jugador.
+     */
+    for (const h of hitos.filter((h) => h.pos[1] - h.size[1] / 2 < 1)) {
+      let invade = 0
+      for (let dx = -h.size[0] / 2; dx <= h.size[0] / 2; dx += 0.5) {
+        for (let dz = -h.size[2] / 2; dz <= h.size[2] / 2; dz += 0.5) {
+          if (esLibre(h.pos[0] + dx, h.pos[2] + dz)) invade++
+        }
+      }
+      expect(invade, `el hito en (${h.pos[0]}, ${h.pos[2]}) invade la calle`).toBe(0)
+    }
+  })
+
+  it('deja la colonia baja, con cuatro hitos que sobresalen', () => {
+    /*
+     * Sólido no es alto. Si todo mide 20 m el mapa deja de ser una colonia y
+     * se vuelve un laberinto: el jugador pierde la forma más barata de
+     * ubicarse, que es ver por encima de las bardas.
+     */
+    const construidas = buildings
+      .map((b) => b.size[1])
+      .filter((a) => a > 2.5)
+      .sort((a, b) => a - b)
+    const p50 = construidas[Math.floor(construidas.length * 0.5)]
+    expect(p50, 'la mitad de la colonia es de una planta').toBeLessThan(5)
+    expect(Math.max(...construidas), 'ninguna casa pasa de dos plantas').toBeLessThan(8)
+
+    // Y los hitos sí sobresalen, si no, no sirven de referencia.
+    const cumbres = hitos.map((h) => h.pos[1] + h.size[1] / 2)
+    expect(cumbres.filter((c) => c >= 12).length).toBeGreaterThanOrEqual(3)
+    expect(hitos.length).toBeLessThanOrEqual(8)
+  })
+
+  it('deja el taller a la orilla de una calle por la que pasa la pipa', () => {
+    // Al taller se llega MANEJANDO (sección 2 de la Fase 2). Si su portón
+    // quedara en una calle donde la pipa no cabe, el taller no existiría.
+    let invade = 0
+    for (let dx = -taller.size[0] / 2; dx <= taller.size[0] / 2; dx += 0.5) {
+      for (let dz = -taller.size[2] / 2; dz <= taller.size[2] / 2; dz += 0.5) {
+        if (esLibre(taller.pos[0] + dx, taller.pos[2] + dz)) invade++
+      }
+    }
+    expect(invade, 'la nave del taller invade la calle').toBe(0)
+    expect(esLibre(taller.door[0], taller.door[2])).toBe(true)
+    // Dentro del radio de detección, con margen para estacionarse torcido.
+    expect(alcanzaA(enPipa, taller.door[0], taller.door[2], 6)).toBe(true)
   })
 
   it('no deja ningún tope enterrado en una manzana', () => {

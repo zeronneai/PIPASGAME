@@ -80,6 +80,12 @@ export const tuning = {
      */
     pozoRadius: 12,
     /**
+     * Radio para entrar al taller, medido de la pipa al portón. Mismo criterio
+     * que el pozo: al taller se llega MANEJANDO (sección 2 de la Fase 2), así
+     * que lo que tiene que estar cerca es la pipa y no el jugador a pie.
+     */
+    tallerRadius: 10,
+    /**
      * Radio para entregar, de la pipa a la puerta del local, en metros.
      * Mismo criterio que el pozo: la puerta está en la banqueta y la pipa
      * se queda en la calle.

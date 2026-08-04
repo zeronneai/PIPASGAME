@@ -5,10 +5,12 @@ import {
   BARDA_ALTURA,
   buildings,
   groundSlab,
+  hitos,
   isla,
   kiosco,
   locales,
   sidewalks,
+  taller,
   topes,
   waterParts,
   type Box,
@@ -31,6 +33,8 @@ const COLOR = {
   tope: '#b9a44e',
   isla: '#6f7a5f',
   kiosco: '#9a8a5c',
+  taller: '#57616e',
+  tallerLetrero: '#e0a33a',
   waterBase: '#6a6a70',
   waterPipe: '#4d8fbf',
   waterValve: '#37d0a7',
@@ -80,20 +84,28 @@ function InstancedBoxes({
 
 export function ColoniaGreybox() {
   /*
-   * Gris más claro entre más alto el edificio: sin esto la manzana es una masa
-   * plana imposible de leer al caminar. Los patios (las cajas de altura de
-   * barda) van en tono de adobe, para que se lean como muro de predio y no
-   * como un edificio chaparro.
+   * Gris más claro entre más alto: sin esto la manzana es una masa plana
+   * imposible de leer al caminar. El rango va apretado (2.8 a 6.6 m) porque la
+   * colonia es de una y dos plantas, así que el contraste se reparte ahí y no
+   * en una escala de rascacielos que ya no existe. Los patios van en tono de
+   * adobe, para que se lean como barda de predio y no como casa chaparra.
    */
   const buildingColors = useMemo(
     () =>
       buildings.map((b) =>
         b.size[1] <= BARDA_ALTURA + 0.01
           ? COLOR.barda
-          : _color.setHSL(0, 0, 0.42 + ((b.size[1] - 5) / 15) * 0.22).getStyle(),
+          : _color
+              .setHSL(0, 0, 0.4 + Math.min(1, (b.size[1] - 2.8) / 3.8) * 0.26)
+              .getStyle(),
       ),
     [],
   )
+  const hitoBoxes = useMemo<Box[]>(
+    () => hitos.map((h) => ({ pos: h.pos, size: h.size })),
+    [],
+  )
+  const hitoColors = useMemo(() => hitos.map((h) => h.color), [])
   const localeColors = useMemo(() => locales.map((l) => l.color), [])
   const localeBoxes = useMemo<Box[]>(
     () => locales.map((l) => ({ pos: l.pos, size: l.size })),
@@ -123,7 +135,31 @@ export function ColoniaGreybox() {
         color="#ffffff"
         instanceColors={localeColors}
       />
+      {/*
+        Los cuatro hitos. Son lo único que sobresale del perfil de la colonia,
+        y para eso están: se ven desde lejos y contestan «¿dónde estoy?» sin
+        abrir el minimapa.
+      */}
+      <InstancedBoxes
+        boxes={hitoBoxes}
+        color="#ffffff"
+        instanceColors={hitoColors}
+      />
+
       <InstancedBoxes boxes={topes} color={COLOR.tope} />
+
+      {/*
+        El taller: la nave y su letrero. Se llega manejando (sección 2 de la
+        Fase 2), así que lo que tiene que verse desde la calle es el letrero.
+      */}
+      <mesh position={taller.pos}>
+        <boxGeometry args={taller.size} />
+        <meshStandardMaterial color={COLOR.taller} />
+      </mesh>
+      <mesh position={taller.letrero.pos}>
+        <boxGeometry args={taller.letrero.size} />
+        <meshStandardMaterial color={COLOR.tallerLetrero} />
+      </mesh>
 
       {/* La isla de la glorieta y su kiosco: el obstáculo que obliga a rodear. */}
       <mesh position={isla.pos}>
@@ -197,6 +233,8 @@ function WorldColliders() {
       ...sidewalks,
       ...buildings,
       ...locales.map((l) => ({ pos: l.pos, size: l.size })),
+      ...hitos.map((h) => ({ pos: h.pos, size: h.size })),
+      { pos: taller.pos, size: taller.size },
       ...topes,
       kiosco,
       waterParts.base,

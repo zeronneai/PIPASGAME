@@ -70,7 +70,7 @@ export type GameMode = 'ON_FOOT' | 'DRIVING'
  * debe saber que existen los locales, ni traducir ids a etiquetas.
  */
 export type ContextAction = {
-  kind: 'BOARD' | 'EXIT' | 'SERVICE' | 'REFILL' | 'DELIVER'
+  kind: 'BOARD' | 'EXIT' | 'SERVICE' | 'REFILL' | 'DELIVER' | 'TALLER'
   label: string
   /** Id del Interactable (o del cliente, en DELIVER). */
   targetId?: string
@@ -325,6 +325,14 @@ type GameState = {
   /** Minimapa a pantalla completa. Vive en el store y no en el componente
    *  porque App oculta los controles de manejo mientras está abierto. */
   minimapExpanded: boolean
+  /**
+   * El taller abierto (Fase 2). Igual que el minimapa: vive en el store
+   * porque App tiene que esconder los controles de manejo mientras esté.
+   *
+   * El reloj de la jornada NO se detiene: el documento pide que ir al taller
+   * cueste, y lo que cuesta es tiempo del día.
+   */
+  tallerAbierto: boolean
   /** Clientes efímeros activos (casas y obras). Los administra el sistema
    *  Ephemerals; transitorios, nunca se guardan. */
   ephemeral: EphemeralClient[]
@@ -372,6 +380,7 @@ type GameState = {
   showNotice: (text: string) => void
   setRescueFade: (on: boolean) => void
   setMinimapExpanded: (on: boolean) => void
+  setTallerAbierto: (on: boolean) => void
   setEphemeral: (list: EphemeralClient[]) => void
   /** Llegaste con la pipa a un local con pedido: abre el minijuego, o
    *  resuelve sin abrirlo (exigente que cancela, tanque que no alcanza). */
@@ -430,6 +439,7 @@ export const useGameStore = create<GameState>((set, get) => {
   radioCall: null,
   rescueFade: false,
   minimapExpanded: false,
+  tallerAbierto: false,
   ephemeral: [],
   stats: newDayStats(eco0.reputation),
   summary: null,
@@ -614,6 +624,7 @@ export const useGameStore = create<GameState>((set, get) => {
   showNotice: (text) => set({ notice: { id: ++noticeSeq, text } }),
   setRescueFade: (rescueFade) => set({ rescueFade }),
   setMinimapExpanded: (minimapExpanded) => set({ minimapExpanded }),
+  setTallerAbierto: (tallerAbierto) => set({ tallerAbierto }),
   setEphemeral: (ephemeral) => set({ ephemeral }),
   startDelivery: (clientId) => {
     const s = get()
@@ -857,6 +868,9 @@ export const useGameStore = create<GameState>((set, get) => {
         offer: null,
         radioCall: null,
         contextAction: null,
+        // Y cierra el taller: si el día terminó estando adentro, lo que toca
+        // ver es el resumen, no el catálogo.
+        tallerAbierto: false,
       }
     })
   },

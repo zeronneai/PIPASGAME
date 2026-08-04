@@ -240,6 +240,102 @@ export const LOCALES_TRAZA: (Frente & { name: string; color: string })[] = [
 ]
 
 /**
+ * EL TALLER (Fase 2, sección 2). Un lugar físico y no un menú: llegas
+ * manejando, y eso te obliga a decidir cuándo vale la pena interrumpir la
+ * jornada para ir. Comprar deja de ser gratis y se vuelve parte de planear.
+ *
+ * Va en el suroeste, sobre Aldama: lejos de la toma de agua y lejos de la
+ * glorieta, para que ir sea un desvío de verdad y no algo que pasa solo.
+ */
+export const TALLER: Frente & { nombre: string; sx: number; sz: number } = {
+  id: 'taller',
+  nombre: 'Taller',
+  eje: [-62, 58],
+  dir: E,
+  sx: 14,
+  sz: 12,
+}
+
+/**
+ * LOS HITOS: las cuatro construcciones que sobresalen.
+ *
+ * La colonia es de una y dos plantas a propósito, para que se pueda ver por
+ * encima y uno se ubique sin minimapa. Estas cuatro son la excepción y por eso
+ * sirven: repartidas en las cuatro zonas, se ven desde lejos y contestan
+ * «¿dónde estoy?» de un vistazo. Si hubiera diez, dejarían de contestar nada.
+ *
+ * Se anclan al eje de su calle como los locales, así que no hay manera de
+ * plantar una torre a media avenida.
+ */
+export type Hito = Frente & {
+  nombre: string
+  /** Huella en metros. */
+  sx: number
+  sz: number
+  altura: number
+  color: string
+  /** Lo que remata la construcción: el tinaco sobre su torre, la espadaña
+   *  sobre el campanario. Va centrado encima de la base. */
+  remate?: { sx: number; sz: number; altura: number; color: string }
+}
+
+export const HITOS: Hito[] = [
+  {
+    id: 'iglesia',
+    nombre: 'La parroquia',
+    // A media colonia y sobre Morelos: es la referencia que se ve desde las
+    // cuatro esquinas del mapa.
+    eje: [-6, 18],
+    dir: N,
+    sx: 7,
+    sz: 7,
+    altura: 15,
+    color: '#c9bfa6',
+    remate: { sx: 3, sz: 3, altura: 5, color: '#a8987a' },
+  },
+  {
+    id: 'tinaco',
+    nombre: 'El tinaco elevado',
+    // Noroeste, sobre Reforma: la esquina más lejana del mapa necesitaba algo.
+    eje: [-70, -70],
+    dir: N,
+    sx: 4,
+    sz: 4,
+    altura: 12,
+    color: '#8d9099',
+    // El tanque es más ancho que su torre y vuela sobre la banqueta: así son
+    // los tinacos elevados de verdad, y a 12 m de altura no le estorba a nadie.
+    remate: { sx: 6.5, sz: 6.5, altura: 3.5, color: '#4d8fbf' },
+  },
+  {
+    id: 'bodega',
+    nombre: 'La bodega',
+    // Norte, sobre Corregidora: ancha y sin gracia, se reconoce por la silueta.
+    eje: [8, -83],
+    dir: E,
+    retiro: 1,
+    sx: 16,
+    sz: 12,
+    altura: 9,
+    color: '#9a7f6b',
+  },
+  {
+    id: 'escuela',
+    nombre: 'La escuela',
+    // Sur, sobre Hidalgo, que es la calle que cruza el mapa entero.
+    // A la altura de z=68 y no más al sur: el Bulevar viene curvando y a
+    // partir de ahí la manzana se angosta.
+    eje: [-30, 68],
+    dir: O,
+    retiro: 0.5,
+    sx: 14,
+    sz: 10,
+    altura: 8,
+    color: '#b06f6f',
+  },
+]
+
+/**
  * Dónde se ENTREGA el agua de cada cliente fijo. El pedido se consigue en el
  * negocio y el agua se entrega en la casa u obra, siempre lejos y siempre
  * sobre calle por la que quepa la pipa: eso es lo que le da sentido a planear

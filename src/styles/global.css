@@ -1256,3 +1256,150 @@ canvas {
     opacity: 0.35;
   }
 }
+
+/* ------------------------------------------------------------------ taller
+ *
+ * El taller (Fase 2). Es la única pantalla del juego que se navega con el
+ * dedo durante un rato, así que aquí las reglas de la sección 4 se cumplen
+ * al pie: nada tocable por debajo de 44 px, safe areas en los cuatro lados y
+ * ni un color fuera de theme.css.
+ *
+ * Ocupa la pantalla y no una tarjeta: son tres pestañas con listas, y en
+ * horizontal de teléfono una tarjeta chica no alcanza.
+ */
+.taller-backdrop {
+  position: fixed;
+  inset: 0;
+  /* Encima del minimapa a pantalla completa (28) y debajo del gate de
+     orientación (30), que siempre manda. El resumen de fin de día no compite:
+     cerrar la jornada cierra el taller. */
+  z-index: 29;
+  display: grid;
+  place-items: center;
+  padding: calc(var(--safe-top) + 8px) calc(var(--safe-right) + 8px)
+    calc(var(--safe-bottom) + 8px) calc(var(--safe-left) + 8px);
+  background: color-mix(in srgb, var(--color-bg) 82%, transparent);
+  touch-action: none;
+}
+
+.taller-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(760px, 100%);
+  height: 100%;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--color-bg);
+  box-shadow: 0 8px 32px var(--color-shadow);
+}
+
+.taller-header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent);
+}
+
+.taller-titulo {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--color-accent);
+}
+
+.taller-sub {
+  font-size: 0.8rem;
+  opacity: 0.65;
+}
+
+/* Empuja el botón de cerrar hasta la orilla y deja el dinero a su lado. */
+.taller-cartera {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  color: var(--color-accent-2);
+}
+
+.taller-cerrar {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-text) 10%, transparent);
+  color: var(--color-text);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.taller-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px 0;
+}
+
+.taller-tab {
+  flex: 1;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 10px 10px 0 0;
+  background: transparent;
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  font-size: 0.95rem;
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.taller-tab.activa {
+  border-bottom-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  font-weight: 700;
+  opacity: 1;
+}
+
+.taller-cuerpo {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px;
+  /* El pulgar arrastra la lista; el canvas de abajo no debe enterarse. */
+  overscroll-behavior: contain;
+}
+
+.taller-vacio {
+  display: grid;
+  gap: 8px;
+  place-content: center;
+  height: 100%;
+  text-align: center;
+}
+
+.taller-vacio-titulo {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.taller-vacio-texto {
+  max-width: 46ch;
+  margin: 0 auto;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  opacity: 0.7;
+}
+
+.taller-vacio-pronto {
+  justify-self: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-text) 10%, transparent);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
