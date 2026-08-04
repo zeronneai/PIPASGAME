@@ -32,6 +32,15 @@ export function useTankSlosh() {
     dt: number,
   ): SloshState => {
     const vehicle = useGameStore.getState().vehicle
+
+    // El enderezado de una volcadura pide agua quieta: el estado que quedó
+    // de estar de lado es basura y volvería a tumbar la pipa al aterrizar.
+    if (vehicle.sloshReset) {
+      state.current = createSloshState()
+      prevSpeed.current = 0
+      vehicle.sloshReset = false
+    }
+
     const speed = controller.currentVehicleSpeed()
     const accel = localAccel(speed, prevSpeed.current, body.angvel().y, dt)
     prevSpeed.current = speed

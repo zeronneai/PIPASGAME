@@ -12,6 +12,7 @@ import { Interaction } from './systems/Interaction'
 import { RadioDispatch } from './systems/RadioDispatch'
 import { Refill } from './systems/Refill'
 import { Rescue } from './systems/Rescue'
+import { Volcadura } from './systems/Volcadura'
 import { RenderStats } from './systems/RenderStats'
 import { PHYSICS_STEP, tuning } from './tuning'
 
@@ -44,6 +45,7 @@ export function Scene() {
               en este mismo frame. */}
           <Refill />
           <Rescue playerBody={playerBody} vehicleBody={vehicleBody} />
+          <Volcadura vehicleBody={vehicleBody} />
           {/* Después del Player y la Pipa en el árbol: sus useFrame corren
               primero, así la cámara ya ve la posición de este frame. */}
           <ThirdPersonCamera

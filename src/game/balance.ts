@@ -266,6 +266,22 @@ export const balance = {
   rescate: {
     /** Duración total del fundido (oscurecer + aclarar), en segundos. */
     pausaSegundos: 2.5,
+    /**
+     * Enderezar una VOLCADURA. El castigo es tiempo y agua, no dinero —
+     * igual que la caída. El fundido es más largo que el de caída porque el
+     * error fue más grande, y el derrame es una fracción de los litros que
+     * traías, interpolada entre min y max según lo brusco del golpe (la
+     * velocidad a la que ibas cuando empezó a irse de lado, contra el tope
+     * de tu pipa). Los umbrales de detección viven en tuning.vuelco.
+     */
+    volcadura: {
+      pausaSegundos: 4,
+      /** Fracción derramada volcando a velocidad tope. */
+      derrameMax: 0.35,
+      /** Fracción derramada aunque haya sido de ladito y despacio: el agua
+       *  de arriba siempre se sale por la escotilla. */
+      derrameMin: 0.1,
+    },
   },
   pedidos: {
     /**

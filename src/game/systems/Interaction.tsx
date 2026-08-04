@@ -60,6 +60,13 @@ export function Interaction({
       return
     }
 
+    if (pending.kind === 'ENDEREZAR') {
+      // Solo se deja el pedido: el fundido, el punto y el derrame los lleva
+      // Volcadura.tsx, que es quien tiene el cuerpo a la mano.
+      store.setEnderezando(true)
+      return
+    }
+
     if (pending.kind === 'SERVICE') {
       // Toda la aceptación vive en el store (Paso 3): aquí solo se dispara.
       if (pending.targetId) store.offerService(pending.targetId)

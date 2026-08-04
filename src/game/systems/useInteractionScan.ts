@@ -61,7 +61,11 @@ export function useInteractionScan() {
       doorWorldPosition(_door)
       const d = Math.hypot(_door.x - p.x, _door.y - p.y, _door.z - p.z)
       if (d < tuning.interaction.boardRadius) {
-        action = { kind: 'BOARD', label: 'Subir' }
+        // Volcada no hay por dónde subirse: el botón es enderezarla.
+        action =
+          s.vehicle.volcada && !s.enderezando
+            ? { kind: 'ENDEREZAR', label: 'Enderezar' }
+            : { kind: 'BOARD', label: 'Subir' }
       } else {
         const cerca = nearestInteractable(p.x, p.y, p.z)
         if (cerca) {
@@ -105,7 +109,10 @@ export function useInteractionScan() {
         const dTaller = Math.hypot(tx - v.x, ty - v.y, tz - v.z)
         const { liters, money } = s.economy
 
-        if (entregaId && !s.delivery) {
+        if (s.vehicle.volcada && !s.enderezando) {
+          // Volcada, lo demás no existe: primero hay que poder moverse.
+          action = { kind: 'ENDEREZAR', label: 'Enderezar' }
+        } else if (entregaId && !s.delivery) {
           action = { kind: 'DELIVER', label: 'Entregar agua', targetId: entregaId }
         } else if (
           !s.refill.active &&

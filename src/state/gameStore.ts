@@ -80,7 +80,7 @@ export type GameMode = 'ON_FOOT' | 'DRIVING'
  * debe saber que existen los locales, ni traducir ids a etiquetas.
  */
 export type ContextAction = {
-  kind: 'BOARD' | 'EXIT' | 'SERVICE' | 'REFILL' | 'DELIVER' | 'TALLER'
+  kind: 'BOARD' | 'EXIT' | 'SERVICE' | 'REFILL' | 'DELIVER' | 'TALLER' | 'ENDEREZAR'
   label: string
   /** Id del Interactable (o del cliente, en DELIVER). */
   targetId?: string
@@ -123,12 +123,22 @@ type VehicleState = {
   fillLevel: number
   /** Dónde está el agua dentro del tanque, en metros. Solo para debug y HUD. */
   slosh: { x: number; z: number }
+  /** Pedido de asentar el agua de golpe (lo deja el enderezado de una
+   *  volcadura; lo consume el paso de física). Sin esto, el chapoteo que
+   *  quedó de estar de lado vuelve a inclinar la pipa recién derecha. */
+  sloshReset: boolean
   /** Temperatura del motor, 0 a 1. La sube «meterle segunda». */
   engineTemp: number
   /** Motor fundido: sin potencia y sin segunda hasta que enfríe. */
   overheated: boolean
   /** Si la segunda está entrando de verdad ahora mismo. */
   boostActive: boolean
+  /** VOLCADA de verdad (inclinación sostenida, la evalúa Volcadura.tsx).
+   *  Mientras esté en true, el botón de contexto ofrece «Enderezar». */
+  volcada: boolean
+  /** |velocidad| máxima registrada mientras se iba de lado: lo brusco del
+   *  golpe, de donde sale cuánta agua se derrama al enderezar. */
+  golpeVuelco: number
   /*
    * Posición y rotación de la pipa. Viven AQUÍ y no en el componente, como
    * pide la sección 6: la pipa se queda exactamente donde la dejaste, y si el
@@ -329,9 +339,13 @@ type GameState = {
   delivery: DeliveryState | null
   /** Llamada del despacho en pantalla (Paso 7). La genera RadioDispatch. */
   radioCall: RadioCall | null
-  /** true = la pantalla fundida a negro (rescate por caída). El overlay del
-   *  DOM anima la opacidad contra este flag; el ritmo lo lleva Rescue.tsx. */
+  /** true = la pantalla fundida a negro (rescate por caída o enderezado de
+   *  volcadura — el overlay es el mismo). El DOM anima la opacidad contra
+   *  este flag; el ritmo lo llevan Rescue.tsx y Volcadura.tsx. */
   rescueFade: boolean
+  /** El jugador pidió enderezar la pipa volcada. Lo deja el botón (DOM) y lo
+   *  consume Volcadura.tsx dentro del Canvas, que es quien toca Rapier. */
+  enderezando: boolean
   /** Minimapa a pantalla completa. Vive en el store y no en el componente
    *  porque App oculta los controles de manejo mientras está abierto. */
   minimapExpanded: boolean
@@ -389,6 +403,7 @@ type GameState = {
   /** Aviso suelto desde un sistema (rescate, etc.). */
   showNotice: (text: string) => void
   setRescueFade: (on: boolean) => void
+  setEnderezando: (on: boolean) => void
   setMinimapExpanded: (on: boolean) => void
   setTallerAbierto: (on: boolean) => void
   setEphemeral: (list: EphemeralClient[]) => void
@@ -471,6 +486,7 @@ export const useGameStore = create<GameState>((set, get) => {
   delivery: null,
   radioCall: null,
   rescueFade: false,
+  enderezando: false,
   minimapExpanded: false,
   tallerAbierto: false,
   ephemeral: [],
@@ -490,9 +506,12 @@ export const useGameStore = create<GameState>((set, get) => {
     wheelsOnGround: 0,
     fillLevel: 0.5,
     slosh: { x: 0, z: 0 },
+    sloshReset: false,
     engineTemp: 0,
     overheated: false,
     boostActive: false,
+    volcada: false,
+    golpeVuelco: 0,
     pos: { x: PIPA_SPAWN[0], y: PIPA_SPAWN[1], z: PIPA_SPAWN[2] },
     rot: { x: 0, y: 0, z: 0, w: 1 },
   },
@@ -656,6 +675,7 @@ export const useGameStore = create<GameState>((set, get) => {
   },
   showNotice: (text) => set({ notice: { id: ++noticeSeq, text } }),
   setRescueFade: (rescueFade) => set({ rescueFade }),
+  setEnderezando: (enderezando) => set({ enderezando }),
   setMinimapExpanded: (minimapExpanded) => set({ minimapExpanded }),
   setTallerAbierto: (tallerAbierto) => set({ tallerAbierto }),
   setEphemeral: (ephemeral) => set({ ephemeral }),

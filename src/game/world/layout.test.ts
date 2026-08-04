@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   ANGOSTURAS,
   CALLEJONES,
+  poseEnCalle,
   DOMICILIOS,
   EPHEMERAL_SPOTS,
   MAP_SIZE,
@@ -335,6 +336,41 @@ describe('trazo de la colonia', () => {
     ).toBe(true)
     expect(alcanzaA(enHeredada, taller.door[0], taller.door[2], 6)).toBe(true)
     expect(alcanzaA(enHeredada, PIPA_SPAWN[0], PIPA_SPAWN[2], 0.5)).toBe(true)
+  })
+
+  it('siempre hay una pose cercana donde enderezar la pipa', () => {
+    /*
+     * El enderezado de una volcadura reaparece la pipa en `poseEnCalle`.
+     * Desde cualquier punto interesante del mapa (banquetas, fondos de
+     * manzana, el taller) tiene que existir calle donde quepa el modelo
+     * COMPLETO —ancho y largo— a distancia de grúa imaginaria, no de
+     * teletransporte largo.
+     */
+    const puntos: [number, number][] = [
+      ...Object.values(DOMICILIOS).map((d) => [d[0], d[2]] as [number, number]),
+      ...EPHEMERAL_SPOTS.map((s) => [s.pos[0], s.pos[2]] as [number, number]),
+      ...hitos.map((h) => [h.pos[0], h.pos[2]] as [number, number]),
+      [taller.pos[0], taller.pos[2]],
+      [PIPA_SPAWN[0], PIPA_SPAWN[2]],
+    ]
+    for (const id of ['heredada', 'mediana', 'grandota'] as ModeloId[]) {
+      const f = computeStats(pipaDeFabrica(id)).fisica
+      const medioAncho = f.chassis.width / 2 + 0.3
+      const medioLargo = f.chassis.length / 2 + 0.3
+      for (const [x, z] of puntos) {
+        const p = poseEnCalle(x, z, medioAncho, medioLargo, 0.7)
+        expect(p, `sin pose cerca de (${x}, ${z}) para ${id}`).not.toBeNull()
+        const { x: px, z: pz, yaw } = p!
+        // El eje completo cae sobre calle con holgura de medio ancho.
+        for (const t of [-medioLargo, 0, medioLargo]) {
+          const sx = px + Math.sin(yaw) * t
+          const sz = pz + Math.cos(yaw) * t
+          expect(esLibre(sx, sz), `eje fuera de calle en (${x}, ${z})`).toBe(true)
+          expect(holgura(sx, sz)).toBeGreaterThanOrEqual(medioAncho)
+        }
+        expect(Math.hypot(px - x, pz - z)).toBeLessThan(35)
+      }
+    }
   })
 
   it('no deja calle a la que no se pueda llegar', () => {

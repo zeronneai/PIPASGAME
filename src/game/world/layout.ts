@@ -190,6 +190,100 @@ export function holgura(x: number, z: number) {
   return Math.max(0, distSolido[j * N + i] - CELDA / 2)
 }
 
+/**
+ * La POSE de calle más cercana a (x, z) donde cabe un cuerpo de medio ancho
+ * y medio largo dados: punto + rumbo. Lo usa el enderezado de una volcadura:
+ * la pipa reaparece derecha sobre la calle más próxima, no en el anillo (eso
+ * es de caídas al vacío, donde perder la ruta ES el castigo).
+ *
+ * El LARGO importa: garantizar solo el medio ancho deja el centro en calle y
+ * la trompa encallada en la manzana. Por eso cada celda candidata se prueba
+ * con 16 rumbos —del más parecido al actual hacia afuera— exigiendo holgura
+ * de medio ancho a lo largo de todo el eje.
+ *
+ * Búsqueda por anillos de celdas crecientes con corte temprano. En la
+ * colonia cualquier punto tiene calle a menos de ~30 m, así que esto es
+ * barato y el null del final es teoría (el test lo respalda).
+ */
+export function poseEnCalle(
+  x: number,
+  z: number,
+  medioAncho: number,
+  medioLargo: number,
+  /** Rumbo actual (atan2(fwd.x, fwd.z)): se conserva lo más posible. */
+  yaw: number,
+  /** Punto a esquivar (el JUGADOR: su cápsula es cinemática y una pipa que
+   *  le cae encima se queda recargada en él como en un poste). */
+  evitar: { x: number; z: number; r: number } | null = null,
+  maxDist = 60,
+): { x: number; z: number; yaw: number } | null {
+  const cabeAqui = (px: number, pz: number) => {
+    const i = aCelda(rejilla, px)
+    const j = aCelda(rejilla, pz)
+    if (i < 0 || j < 0 || i >= N || j >= N) return false
+    const k = j * N + i
+    return rejilla.data[k] === 1 && distSolido[k] - CELDA / 2 >= medioAncho
+  }
+
+  /** El rumbo más parecido al actual con el eje completo sobre calle. */
+  const rumboQueCabe = (px: number, pz: number): number | null => {
+    for (let k = 0; k < 16; k++) {
+      // 0, +22.5°, −22.5°, +45°, −45°... el más fiel al rumbo actual gana.
+      const cand = yaw + (k % 2 === 0 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 8)
+      const dx = Math.sin(cand)
+      const dz = Math.cos(cand)
+      let cabe = true
+      for (const t of [-medioLargo, -medioLargo / 2, medioLargo / 2, medioLargo]) {
+        if (!cabeAqui(px + dx * t, pz + dz * t)) {
+          cabe = false
+          break
+        }
+      }
+      if (cabe) return cand
+    }
+    return null
+  }
+
+  const ci = aCelda(rejilla, x)
+  const cj = aCelda(rejilla, z)
+  const maxR = Math.ceil(maxDist / CELDA)
+  let mejor: { x: number; z: number; yaw: number } | null = null
+  let mejorD = Infinity
+
+  const prueba = (i: number, j: number) => {
+    if (i < 0 || j < 0 || i >= N || j >= N) return
+    const px = aMundo(rejilla, i)
+    const pz = aMundo(rejilla, j)
+    if (!cabeAqui(px, pz)) return
+    if (evitar && Math.hypot(px - evitar.x, pz - evitar.z) < evitar.r) return
+    const d = Math.hypot(px - x, pz - z)
+    if (d >= mejorD) return
+    const rumbo = rumboQueCabe(px, pz)
+    if (rumbo === null) return
+    mejorD = d
+    mejor = { x: px, z: pz, yaw: rumbo }
+  }
+
+  for (let r = 0; r <= maxR; r++) {
+    // Un anillo a distancia chebyshev r no puede acercarse más que (r−1)
+    // celdas en euclidiano: si ni eso mejora al candidato, ya está.
+    if ((r - 1) * CELDA > mejorD) break
+    if (r === 0) {
+      prueba(ci, cj)
+      continue
+    }
+    for (let i = ci - r; i <= ci + r; i++) {
+      prueba(i, cj - r)
+      prueba(i, cj + r)
+    }
+    for (let j = cj - r + 1; j <= cj + r - 1; j++) {
+      prueba(ci - r, j)
+      prueba(ci + r, j)
+    }
+  }
+  return mejor
+}
+
 /** La rejilla cruda, para el test de invariantes y el volcado del mapa. */
 export const mapaOcupacion = {
   n: N,

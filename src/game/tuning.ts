@@ -65,6 +65,19 @@ export const tuning = {
     /** Altura a la que se suelta de regreso: cae un metro y asienta. */
     dropY: 3,
   },
+  /** Cuándo se considera VOLCADA (el botón de enderezar es de Volcadura.tsx).
+   *  Umbrales físicos: cuánto cuesta enderezarla vive en balance.rescate. */
+  vuelco: {
+    /**
+     * Componente Y del vector «arriba» de la pipa por debajo de la cual está
+     * volcada: 0.35 ≈ más de 70° de inclinación. Un derrape sobre dos ruedas
+     * (up.y ~0.7) no dispara; de costado (~0) o de cabeza (−1), sí.
+     */
+    upY: 0.35,
+    /** Segundos sostenidos así antes de ofrecer el botón: los rebotes de un
+     *  golpe no cuentan, solo quedarse volcada de verdad. */
+    segundos: 2,
+  },
   interaction: {
     /** Radio de la zona de detección en la puerta de la pipa, en metros. */
     boardRadius: 3.5,
