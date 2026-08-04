@@ -16,7 +16,8 @@ import { jornadaTerminada } from './jornada'
 export function DayClock() {
   useFrame((_state, delta) => {
     const s = useGameStore.getState()
-    if (s.summary) return
+    // El resumen y la tarjeta del logro detienen el día: el mundo espera.
+    if (s.summary || s.logroSegunda) return
     s.clock.daySeconds += delta
     if (
       jornadaTerminada(s.clock.daySeconds) &&

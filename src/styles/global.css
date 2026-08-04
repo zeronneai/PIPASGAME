@@ -225,6 +225,24 @@ canvas {
   background: color-mix(in srgb, var(--color-accent-2) 50%, transparent);
 }
 
+/* La segunda sin ganar (Paso 6): a la vista pero con candado. El hueco en
+   los mandos ES el «te falta algo». */
+.drive-button.segunda-bloqueada {
+  border-color: color-mix(in srgb, var(--color-text) 25%, transparent);
+  color: color-mix(in srgb, var(--color-text) 45%, transparent);
+}
+
+.drive-button.segunda-bloqueada:active {
+  background: color-mix(in srgb, var(--color-text) 12%, transparent);
+}
+
+.segunda-candado {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  font-size: 0.7rem;
+}
+
 /* ---- HUD de manejo (Paso 10) ----
    Velocímetro, tanque y temperatura en un solo bloque, encima del botón de la
    segunda. Van juntos porque son los tres indicadores del vehículo, y de este
@@ -454,6 +472,11 @@ canvas {
   margin-left: -1px;
   background: var(--color-text);
   opacity: 0.8;
+}
+
+/* La marca del primer hito (la segunda): más tenue que la del radio. */
+.rep-tick-segunda {
+  opacity: 0.45;
 }
 
 /* ---- Pedidos activos ----
@@ -1021,6 +1044,43 @@ canvas {
 
 .summary-card {
   width: min(360px, 90vw);
+}
+
+/* ---- El logro de la segunda (Fase 2, Paso 6) ---- */
+
+.logro-card {
+  width: min(340px, 88vw);
+}
+
+/* El «2ª» grande: la medalla del logro, con el color del botón que se acaba
+   de encender. */
+.logro-marca {
+  width: 72px;
+  height: 72px;
+  margin: 2px auto 10px;
+  display: grid;
+  place-items: center;
+  border: 3px solid var(--color-accent-2);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-accent-2) 18%, transparent);
+  color: var(--color-accent-2);
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  font-weight: 700;
+}
+
+.logro-titulo {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--color-accent-2);
+}
+
+.logro-texto {
+  margin: 10px 0 4px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  opacity: 0.85;
 }
 
 .summary-titulo {

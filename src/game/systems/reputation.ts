@@ -63,6 +63,16 @@ export function isRadioUnlocked(rep: number, b: Balance = balance): boolean {
 }
 
 /**
+ * El primer hito (Fase 2, Paso 6): con esta reputación te GANAS la segunda.
+ * Esto solo evalúa el número; la permanencia (cruzar una vez la deja tuya
+ * para siempre, aunque la reputación caiga después) vive en el store como
+ * `economy.segundaDesbloqueada` — un logro no se devuelve.
+ */
+export function isSegundaUnlocked(rep: number, b: Balance = balance): boolean {
+  return rep >= b.reputacion.segundaUnlock
+}
+
+/**
  * Multiplicador de la propina según la reputación de la colonia (la conexión
  * con los pagos, Paso 6): interpola de tipFactorMin a tipFactorMax. Lo
  * consumen deliveryPayment al cobrar y la oferta al prometer.

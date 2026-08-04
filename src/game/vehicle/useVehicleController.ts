@@ -174,9 +174,16 @@ export function useVehicleController(
      * que es justo lo que la prueba del Paso 1 no permite.
      */
     const t = statsPipa().fisica
-    const veh = useGameStore.getState().vehicle
-    const driving = useGameStore.getState().mode === 'DRIVING'
+    const s = useGameStore.getState()
+    const veh = s.vehicle
+    const driving = s.mode === 'DRIVING'
     const { drive } = useInputStore.getState()
+    /*
+     * La segunda se GANA (Paso 6): sin el desbloqueo, el boost se corta aquí
+     * en el origen — más robusto que esconder el botón, cubre cualquier
+     * input futuro y no toca ni un número de tuning.
+     */
+    const input = s.economy.segundaDesbloqueada ? drive : { ...drive, boost: 0 }
 
     // El agua primero: su offset entra en las propiedades de masa de este
     // mismo paso, así el chapoteo afecta a la física y no solo al HUD.
@@ -190,7 +197,7 @@ export function useVehicleController(
     // banco de pruebas headless mide exactamente esta lógica.
     const cmd = computeDrive(
       speed,
-      driving ? drive : PARKED,
+      driving ? input : PARKED,
       steerAngle.current,
       PHYSICS_STEP,
       engineState.current,

@@ -69,6 +69,7 @@ import {
   deliveryRepDelta,
   eventRepDelta,
   isRadioUnlocked,
+  isSegundaUnlocked,
   newReputation,
   tipRepFactor,
 } from '../game/systems/reputation'
@@ -173,6 +174,12 @@ type EconomyState = {
   /** Tu lugar en la lista del despacho, 0..1 (Paso 7). Baja al rechazar
    *  llamadas, se recupera al aceptarlas, y persiste entre sesiones. */
   radioPrioridad: number
+  /**
+   * La segunda GANADA (Fase 2, Paso 6). Permanente a propósito, a diferencia
+   * del radio (que es derivado y se pierde con la reputación): un logro no
+   * se devuelve. Cruzar el umbral una vez la deja en true para siempre.
+   */
+  segundaDesbloqueada: boolean
 }
 
 /*
@@ -256,12 +263,20 @@ function aplicarRep(
   economy: EconomyState,
   colonia: string,
   delta: number,
-): { reputation: Record<string, number>; desbloqueaRadio: boolean } {
+): {
+  reputation: Record<string, number>
+  desbloqueaRadio: boolean
+  desbloqueaSegunda: boolean
+} {
   const antes = economy.reputation[colonia] ?? newReputation()
   const despues = applyRep(antes, delta)
   return {
     reputation: { ...economy.reputation, [colonia]: despues },
     desbloqueaRadio: !isRadioUnlocked(antes) && isRadioUnlocked(despues),
+    // La segunda se compara contra el FLAG y no contra el número de antes:
+    // es un logro permanente, y si ya la ganaste ningún cruce se repite.
+    desbloqueaSegunda:
+      !economy.segundaDesbloqueada && isSegundaUnlocked(despues),
   }
 }
 
@@ -315,6 +330,7 @@ const economyInicial = (): EconomyState => ({
   ),
   orders: [],
   radioPrioridad: 1,
+  segundaDesbloqueada: false,
 })
 
 type GameState = {
@@ -363,6 +379,21 @@ type GameState = {
    * cueste, y lo que cuesta es tiempo del día.
    */
   tallerAbierto: boolean
+  /**
+   * La tarjeta del logro de la segunda está en pantalla (Paso 6). Como el
+   * resumen de jornada: mientras exista, el mundo espera (reloj, radio y
+   * efímeros la chequean). Transitoria — el flag permanente vive en economy.
+   */
+  logroSegunda: boolean
+  /**
+   * Depuración visual (Fase 2, reforma del mundo): `colliders` dibuja las
+   * aristas de TODOS los colliders estáticos sobre la escena (barato: una
+   * geometría estática, +1 draw call); `physics` prende el debugRender de
+   * rapier (caro, ~33k vértices POR FRAME, pero es el único que enseña los
+   * cuerpos dinámicos — herramienta de escritorio). Viven aquí y no en leva
+   * porque leva se desmonta al cerrar el cajón.
+   */
+  debug: { colliders: boolean; physics: boolean }
   /** Clientes efímeros activos (casas y obras). Los administra el sistema
    *  Ephemerals; transitorios, nunca se guardan. */
   ephemeral: EphemeralClient[]
@@ -412,6 +443,9 @@ type GameState = {
   setEnderezando: (on: boolean) => void
   setMinimapExpanded: (on: boolean) => void
   setTallerAbierto: (on: boolean) => void
+  setLogroSegunda: (on: boolean) => void
+  setDebugColliders: (on: boolean) => void
+  setDebugPhysics: (on: boolean) => void
   setEphemeral: (list: EphemeralClient[]) => void
   /** Llegaste con la pipa a un local con pedido: abre el minijuego, o
    *  resuelve sin abrirlo (exigente que cancela, tanque que no alcanza). */
@@ -496,6 +530,8 @@ export const useGameStore = create<GameState>((set, get) => {
   enderezando: false,
   minimapExpanded: false,
   tallerAbierto: false,
+  logroSegunda: false,
+  debug: { colliders: false, physics: false },
   ephemeral: [],
   stats: newDayStats(eco0.reputation),
   summary: null,
@@ -685,6 +721,9 @@ export const useGameStore = create<GameState>((set, get) => {
   setEnderezando: (enderezando) => set({ enderezando }),
   setMinimapExpanded: (minimapExpanded) => set({ minimapExpanded }),
   setTallerAbierto: (tallerAbierto) => set({ tallerAbierto }),
+  setLogroSegunda: (logroSegunda) => set({ logroSegunda }),
+  setDebugColliders: (on) => set((s) => ({ debug: { ...s.debug, colliders: on } })),
+  setDebugPhysics: (on) => set((s) => ({ debug: { ...s.debug, physics: on } })),
   setEphemeral: (ephemeral) => set({ ephemeral }),
   startDelivery: (clientId) => {
     const s = get()
@@ -784,11 +823,16 @@ export const useGameStore = create<GameState>((set, get) => {
       return {
         delivery: null,
         notice: { id: ++noticeSeq, text: partes.join(' · ') },
+        // El momento del logro es el momento del mérito: la tarjeta de la
+        // segunda sale al cerrar ESTA entrega, en el mismo set().
+        ...(rep.desbloqueaSegunda && { logroSegunda: true }),
         economy: {
           ...st.economy,
           money: settled.money,
           liters: settled.liters,
           reputation: rep.reputation,
+          segundaDesbloqueada:
+            st.economy.segundaDesbloqueada || rep.desbloqueaSegunda,
           orders: st.economy.orders.filter((o) => o.id !== pedido.id),
           clientHistory: { ...st.economy.clientHistory, [pedido.clientId]: h },
         },
@@ -949,7 +993,13 @@ export const useGameStore = create<GameState>((set, get) => {
     set((s) => {
       const rep = aplicarRep(s.economy, colonia, delta)
       return {
-        economy: { ...s.economy, reputation: rep.reputation },
+        economy: {
+          ...s.economy,
+          reputation: rep.reputation,
+          segundaDesbloqueada:
+            s.economy.segundaDesbloqueada || rep.desbloqueaSegunda,
+        },
+        ...(rep.desbloqueaSegunda && { logroSegunda: true }),
         ...(rep.desbloqueaRadio && {
           notice: {
             id: ++noticeSeq,
@@ -1148,6 +1198,12 @@ export const useGameStore = create<GameState>((set, get) => {
         clientHistory: { ...base.clientHistory, ...save.clientHistory },
         orders: [],
         radioPrioridad: save.radioPrioridad ?? 1,
+        // Guardados anteriores al Paso 6: si la reputación ya estaba arriba
+        // del umbral, la segunda se conserva sin ceremonia; si no, se pierde
+        // — eso pide el paso («quítala del inicio»).
+        segundaDesbloqueada:
+          save.segundaDesbloqueada ??
+          Object.values(save.reputation).some((r) => isSegundaUnlocked(r)),
       },
       // La foto del día es la reputación con la que se despierta.
       stats: newDayStats({ ...base.reputation, ...save.reputation }),

@@ -7,6 +7,7 @@ import { DebugOverlay } from './ui/DebugOverlay'
 import { DriveControls } from './ui/DriveControls'
 import { HoseMinigame } from './ui/HoseMinigame'
 import { HUD } from './ui/HUD'
+import { LogroSegunda } from './ui/LogroSegunda'
 import { Minimap } from './ui/Minimap'
 import { NoticeToast } from './ui/NoticeToast'
 import { OfferPanel } from './ui/OfferPanel'
@@ -68,6 +69,8 @@ export default function App() {
           <HoseMinigame />
           {/* El taller: encima de lo jugable, debajo del fin de día. */}
           <TallerScreen />
+          {/* El momento del logro de la segunda: el mundo espera. */}
+          <LogroSegunda />
           {/* El último de la pila jugable: cuando aparece, el día terminó. */}
           <SummaryScreen />
           <RescueFade />

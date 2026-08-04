@@ -37,6 +37,10 @@ export type SaveData = {
   /** Prioridad en el despacho (Paso 7). Opcional: guardados anteriores al
    *  radio no la traen y se hidrata con 1. */
   radioPrioridad?: number
+  /** La segunda ganada (Fase 2, Paso 6). Opcional: un guardado anterior se
+   *  hidrata derivándola de la reputación — si ya estabas arriba del umbral,
+   *  la conservas sin ceremonia. */
+  segundaDesbloqueada?: boolean
   vehiclePos: { x: number; y: number; z: number }
   vehicleRot: { x: number; y: number; z: number; w: number }
   /** Posición y rumbo del jugador. Opcionales por los guardados viejos,
@@ -70,6 +74,7 @@ export function snapshotSave(s: StoreState): SaveData {
       ),
     ),
     radioPrioridad: economy.radioPrioridad,
+    segundaDesbloqueada: economy.segundaDesbloqueada,
     // Copias, no referencias: vehicle.pos se muta cada frame y un snapshot
     // que apunte al objeto vivo cambiaría después de tomado.
     vehiclePos: { x: vehicle.pos.x, y: vehicle.pos.y, z: vehicle.pos.z },

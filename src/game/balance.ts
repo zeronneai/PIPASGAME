@@ -199,6 +199,13 @@ export const balance = {
     /** Nivel que desbloquea el radio de despacho (el hito de la fase). */
     radioUnlock: 70,
     /**
+     * Nivel que GANA la segunda (Fase 2, Paso 6): el primer hito, unas 3-5
+     * entregas buenas arriba del arranque. A diferencia del radio (que se
+     * pierde si la colonia te retira el saludo), la segunda es un LOGRO:
+     * cruzarlo una vez la deja tuya para siempre.
+     */
+    segundaUnlock: 60,
+    /**
      * La conexión de la reputación con los PAGOS (Paso 6): la propina escala
      * con la reputación de la colonia, de tipFactorMin (rep 0) a tipFactorMax
      * (rep máxima). Solo la propina: el precio pactado se respeta, pero al

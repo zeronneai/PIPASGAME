@@ -1,7 +1,7 @@
 import { button, Leva, useControls } from 'leva'
 import { tuning } from '../game/tuning'
 import { balance } from '../game/balance'
-import type { PerfilCliente } from '../game/systems/clients'
+import { COLONIAS, type PerfilCliente } from '../game/systems/clients'
 import { clearSave } from '../game/systems/persistence'
 import { capacidadPipa, useGameStore } from '../state/gameStore'
 import {
@@ -16,6 +16,9 @@ import {
 } from '../game/systems/garage'
 import { PIEZAS, type Pieza as PiezaEstilo } from '../game/systems/estilo'
 import { STEERING_SOURCES, type SteeringId } from '../game/vehicle/steering'
+
+/** La colonia de los botones de reputación de leva (hoy hay una sola). */
+const COLONIA_LEVA = Object.keys(COLONIAS)[0]
 
 /**
  * Panel de ajustes en vivo. Cada control escribe directo en el objeto
@@ -231,6 +234,20 @@ export default function TuningPanel() {
         step: 1,
         onChange: (n: number) => void (balance.reputacion.radioUnlock = n),
       },
+      'segunda se gana en': {
+        value: balance.reputacion.segundaUnlock,
+        min: 30,
+        max: 100,
+        step: 1,
+        onChange: (n: number) => void (balance.reputacion.segundaUnlock = n),
+      },
+      // El gancho de prueba de los hitos: subir reputación sin repartir agua.
+      'reputación +5': button(() =>
+        useGameStore.getState().addReputation(COLONIA_LEVA, 5),
+      ),
+      'reputación −5': button(() =>
+        useGameStore.getState().addReputation(COLONIA_LEVA, -5),
+      ),
       'propina con rep 0 ×': {
         value: balance.reputacion.tipFactorMin,
         min: 0,
@@ -692,6 +709,23 @@ export default function TuningPanel() {
           ]),
         ),
       ),
+    },
+    CERRADA,
+  )
+
+  // Depuración visual: los flags viven en el store (leva se desmonta al
+  // cerrar el cajón) y el Canvas se suscribe a ellos.
+  useControls(
+    'debug',
+    {
+      'ver colliders': {
+        value: useGameStore.getState().debug.colliders,
+        onChange: (v: boolean) => useGameStore.getState().setDebugColliders(v),
+      },
+      'física (rapier, caro)': {
+        value: useGameStore.getState().debug.physics,
+        onChange: (v: boolean) => useGameStore.getState().setDebugPhysics(v),
+      },
     },
     CERRADA,
   )

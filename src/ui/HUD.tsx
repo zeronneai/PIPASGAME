@@ -18,6 +18,9 @@ import { TempGauge } from './TempGauge'
 export function HUD() {
   // El modo cambia poco: se puede suscribir sin costo por frame.
   const driving = useGameStore((s) => s.mode === 'DRIVING')
+  // El termómetro solo existe con la segunda ganada (Paso 6): aparece con el
+  // desbloqueo, y es parte de la recompensa.
+  const conSegunda = useGameStore((s) => s.economy.segundaDesbloqueada)
 
   if (!driving) return <StaminaBar />
 
@@ -25,7 +28,7 @@ export function HUD() {
     <div className="hud-drive">
       <Speedometer />
       <TankGauge />
-      <TempGauge />
+      {conSegunda && <TempGauge />}
     </div>
   )
 }

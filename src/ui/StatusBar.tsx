@@ -24,6 +24,7 @@ export function StatusBar() {
   const repRef = useRef<HTMLSpanElement>(null)
   const repFillRef = useRef<HTMLDivElement>(null)
   const repTickRef = useRef<HTMLDivElement>(null)
+  const segundaTickRef = useRef<HTMLDivElement>(null)
   const repWrapRef = useRef<HTMLSpanElement>(null)
 
   // Directo al DOM en un rAF, como los medidores: el dinero baila cada frame
@@ -53,9 +54,11 @@ export function StatusBar() {
         if (repWrapRef.current)
           repWrapRef.current.className = `status-rep${nivel ? ` rep-${nivel}` : ''}`
       }
-      // La marca del umbral sigue a leva en vivo; es una escritura barata.
+      // Las marcas de los umbrales siguen a leva en vivo; escritura barata.
       if (repTickRef.current)
         repTickRef.current.style.left = `${(r.radioUnlock / r.max) * 100}%`
+      if (segundaTickRef.current)
+        segundaTickRef.current.style.left = `${(r.segundaUnlock / r.max) * 100}%`
       raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
@@ -70,7 +73,9 @@ export function StatusBar() {
         <span ref={repRef} className="status-rep-num" />
         <span className="rep-bar">
           <div ref={repFillRef} className="rep-bar-fill" />
-          {/* La marca: ahí se abre el radio de despacho. */}
+          {/* Las marcas de los hitos: primero se gana la segunda, después
+              se abre el radio de despacho. Se VE cuánto falta para cada uno. */}
+          <div ref={segundaTickRef} className="rep-tick rep-tick-segunda" />
           <div ref={repTickRef} className="rep-tick" />
         </span>
       </span>

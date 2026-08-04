@@ -5,6 +5,7 @@ import {
   deliveryRepDelta,
   eventRepDelta,
   isRadioUnlocked,
+  isSegundaUnlocked,
   newReputation,
   tipRepFactor,
 } from './reputation'
@@ -18,6 +19,7 @@ B.reputacion = {
   min: 0,
   max: 100,
   radioUnlock: 70,
+  segundaUnlock: 60,
   tipFactorMin: 0.5,
   tipFactorMax: 1.5,
   minijuegoLimpio: 1,
@@ -131,5 +133,25 @@ describe('isRadioUnlocked', () => {
 
   it('invariante con el balance real: no se arranca con el radio ya abierto', () => {
     expect(isRadioUnlocked(newReputation())).toBe(false)
+  })
+})
+
+describe('isSegundaUnlocked', () => {
+  it('se gana exactamente en el umbral', () => {
+    expect(isSegundaUnlocked(59.9, B)).toBe(false)
+    expect(isSegundaUnlocked(60, B)).toBe(true)
+    expect(isSegundaUnlocked(100, B)).toBe(true)
+  })
+
+  it('invariantes con el balance real: no naces con ella, y es el PRIMER hito', () => {
+    // «Quítala del inicio» (Paso 6): el arranque queda por debajo.
+    expect(isSegundaUnlocked(newReputation())).toBe(false)
+    // El orden de la progresión: primero la segunda, después el radio.
+    expect(balance.reputacion.segundaUnlock).toBeLessThan(
+      balance.reputacion.radioUnlock,
+    )
+    expect(balance.reputacion.segundaUnlock).toBeGreaterThan(
+      balance.reputacion.start,
+    )
   })
 })

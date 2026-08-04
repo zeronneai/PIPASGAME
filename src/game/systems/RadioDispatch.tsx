@@ -34,7 +34,7 @@ export function RadioDispatch() {
   useFrame(() => {
     const s = useGameStore.getState()
     // Con el resumen en pantalla el despacho también descansa.
-    if (s.summary) return
+    if (s.summary || s.logroSegunda) return
     // Día nuevo: el reloj volvió a cero, la agenda del día anterior no vale.
     if (dia.current !== s.economy.day) {
       dia.current = s.economy.day

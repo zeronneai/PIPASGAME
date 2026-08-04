@@ -28,7 +28,7 @@ export function Ephemerals() {
 
   useFrame(() => {
     const s = useGameStore.getState()
-    if (s.summary) return
+    if (s.summary || s.logroSegunda) return
     const t = s.clock.daySeconds
 
     // Día nuevo: la colonia amanece distinta.
