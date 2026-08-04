@@ -379,3 +379,29 @@ export function comprarMejora(
     pipa: { ...pipa, mejoras: { ...pipa.mejoras, [cat]: siguiente } },
   }
 }
+
+export type MotivoNoCompraModelo = 'YA_LA_TIENES' | 'SIN_DINERO'
+
+export type CompraModelo =
+  | { ok: true; pipa: PipaConfig; costo: number }
+  | { ok: false; motivo: MotivoNoCompraModelo; costo: number | null }
+
+/**
+ * Compra un modelo del lote, si alcanza. Misma forma que `comprarMejora`: pura,
+ * y el store aplica el resultado de un golpe.
+ *
+ * La pipa sale DE FÁBRICA: las mejoras son por pipa, no globales (sección 4),
+ * así que estrenar modelo es empezar a mejorarlo de cero — eso es lo que hace
+ * que cambiar sea una decisión y no un upgrade automático.
+ */
+export function comprarModelo(
+  id: ModeloId,
+  yaLaTienes: boolean,
+  dinero: number,
+  b: Balance = balance,
+): CompraModelo {
+  if (yaLaTienes) return { ok: false, motivo: 'YA_LA_TIENES', costo: null }
+  const costo = precioModelo(id, b)
+  if (dinero < costo) return { ok: false, motivo: 'SIN_DINERO', costo }
+  return { ok: true, costo, pipa: pipaDeFabrica(id) }
+}

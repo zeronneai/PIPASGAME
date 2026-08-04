@@ -5,6 +5,7 @@ import { balance } from '../balance'
 import { tuning } from '../tuning'
 import {
   capacidadPipa,
+  statsPipa,
   useGameStore,
   type ContextAction,
 } from '../../state/gameStore'
@@ -18,11 +19,18 @@ import { canStartRefill } from './economy'
 const _door = new Vector3()
 const _quat = new Quaternion()
 
-/** Punto de la puerta del conductor en coordenadas del mundo. */
+/**
+ * Punto de la puerta del conductor en coordenadas del mundo.
+ *
+ * El punto local se escala en planta con el modelo equipado: la puerta de la
+ * grandota queda más lejos del centro que la de la heredada. La Y no: es un
+ * ajuste contra la altura del personaje, que no cambia de tamaño.
+ */
 export function doorWorldPosition(out: Vector3, local = PIPA_DOOR) {
   const { pos, rot } = useGameStore.getState().vehicle
+  const escala = statsPipa().escala
   out
-    .set(local.x, local.y, local.z)
+    .set(local.x * escala, local.y, local.z * escala)
     .applyQuaternion(_quat.set(rot.x, rot.y, rot.z, rot.w))
   return out.set(out.x + pos.x, out.y + pos.y, out.z + pos.z)
 }

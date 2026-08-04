@@ -6,9 +6,11 @@ import {
   MODELOS,
   NIVEL_MAX,
   comprarMejora,
+  comprarModelo,
   computeStats,
   pipaDeFabrica,
   precioMejora,
+  precioModelo,
   tieneCostoFisico,
   type Categoria,
   type ModeloId,
@@ -305,6 +307,45 @@ describe('comprarMejora', () => {
     const despues = computeStats(r.pipa, tuning.vehicle, B)
     expect(despues.fisica.engineForce).toBeGreaterThan(antes.fisica.engineForce)
     expect(despues.fisica.boost.heatRate).toBeGreaterThan(antes.fisica.boost.heatRate)
+  })
+})
+
+describe('comprarModelo', () => {
+  it('cobra el precio del lote y entrega la pipa DE FÁBRICA', () => {
+    const r = comprarModelo('grandota', false, 1_000_000, B)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.costo).toBe(B.garage.modelos.grandota)
+    // Sin mejoras: las mejoras son por pipa (sección 4), estrenar es de cero.
+    expect(r.pipa).toEqual(pipaDeFabrica('grandota'))
+  })
+
+  it('no vende dos veces la misma: nunca tienes dos iguales', () => {
+    const r = comprarModelo('grandota', true, 1_000_000, B)
+    expect(r.ok).toBe(false)
+    if (r.ok) return
+    expect(r.motivo).toBe('YA_LA_TIENES')
+  })
+
+  it('no deja comprar sin dinero, y con el exacto sí alcanza', () => {
+    const precio = B.garage.modelos.mediana
+    const corto = comprarModelo('mediana', false, precio - 1, B)
+    expect(corto.ok).toBe(false)
+    if (!corto.ok) {
+      expect(corto.motivo).toBe('SIN_DINERO')
+      expect(corto.costo).toBe(precio)
+    }
+    expect(comprarModelo('mediana', false, precio, B).ok).toBe(true)
+  })
+
+  it('el salto grande cuesta como salto grande: cada modelo más caro que el anterior', () => {
+    // Contra el balance real, como las reglas de diseño: la progresión de la
+    // sección 3 (empiezas con la heredada, la grandota es el «por fin»).
+    expect(precioModelo('heredada', balance)).toBe(0)
+    expect(precioModelo('mediana', balance)).toBeGreaterThan(0)
+    expect(precioModelo('grandota', balance)).toBeGreaterThan(
+      precioModelo('mediana', balance),
+    )
   })
 })
 

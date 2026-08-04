@@ -96,7 +96,11 @@ export const CALLES: Calle[] = [
   // ------------------------------------------------------------- rectas
   { nombre: 'hidalgo', forma: 'recta', a: [-30, -92], b: [-30, 92], ancho: 9 },
   { nombre: 'bravo', forma: 'recta', a: [-30, -40], b: [34, -40], ancho: 9 },
-  { nombre: 'corregidora', forma: 'recta', a: [8, -92], b: [8, -40], ancho: 8 },
+  /* Corregidora viene partida en dos: a media calle hay una ANGOSTURA (ver
+   * abajo) por la que la grandota no cabe. Sigue siendo pasante para las
+   * otras dos; la grandota rodea por Hidalgo o la Curva del Cerro. */
+  { nombre: 'corregidora', forma: 'recta', a: [8, -92], b: [8, -58], ancho: 8 },
+  { nombre: 'corregidora-sur', forma: 'recta', a: [8, -44], b: [8, -40], ancho: 8 },
   { nombre: 'ocampo', forma: 'recta', a: [-12, 18], b: [-12, 92], ancho: 9 },
   { nombre: 'allende', forma: 'recta', a: [-30, 56], b: [22, 56], ancho: 9 },
   /* Muere en el Bulevar: cruzarlo abriría un cruce de 17 m en diagonal. */
@@ -106,9 +110,49 @@ export const CALLES: Calle[] = [
   { nombre: 'reforma', forma: 'recta', a: [-92, -70], b: [-53, -70], ancho: 9 },
 
   // --------------------------------------------------------- retornos
-  /** Dos calles que no llegan a ningún lado: la colonia no es una retícula. */
-  { nombre: 'retorno-alameda', forma: 'recta', a: [-46, 18], b: [-46, -4], ancho: 8 },
-  { nombre: 'retorno-cerro', forma: 'recta', a: [46, -62], b: [30, -62], ancho: 8 },
+  /** Dos calles que no llegan a ningún lado: la colonia no es una retícula.
+   *  Sus bocas son ANGOSTURAS (abajo): la grandota no entra a ninguno. */
+  { nombre: 'retorno-alameda', forma: 'recta', a: [-46, 4], b: [-46, -4], ancho: 8 },
+  { nombre: 'retorno-cerro', forma: 'recta', a: [34, -62], b: [26, -62], ancho: 8 },
+  /* La boca del retorno Cerro se queda ancha: amarrar un cuello de 3 m
+   * directo contra el ARCO de la curva deja una unión biselada que no es ni
+   * calle ni cuello. El muñón enlaza con la curva como calle normal y la
+   * angostura va entre el muñón y el cuerpo, recta contra recta. */
+  { nombre: 'retorno-cerro-boca', forma: 'recta', a: [46, -62], b: [44, -62], ancho: 8 },
+]
+
+/**
+ * LAS ANGOSTURAS (Fase 2, Paso 4): cuellos de 3 m donde la grandota no cabe.
+ *
+ * Son la desventaja REAL del modelo grande que pide la sección 3: 2.88 m de
+ * camión por un hueco físico de 2.88 (los colliders de los lotes invaden
+ * TRASLAPE por lado) no pasa; la mediana (2.40) pasa apretada y derecha, y la
+ * heredada sobrada. Sin calles así, la grandota sería simplemente mejor y los
+ * otros dos modelos dejarían de existir.
+ *
+ * Reglas del dato, que el test cobra:
+ *   - El EJE va en coordenada ENTERA y alineado a los ejes. Los centros de
+ *     celda caen en ±0.25: así un ancho de 3 rasteriza a 6 columnas exactas
+ *     con 1.5 m del eje al muro — pasa el flood de la mediana (1.35) y no el
+ *     de la grandota (1.59). Un eje en centro de celda daría 7 columnas y la
+ *     grandota pasaría.
+ *   - El tramo a→b es solo la GARGANTA pura: las tapas redondas de la calle
+ *     ancha vecina abultan ancho/2 más allá de su extremo, y el test muestrea
+ *     este eje esperando holgura de cuello, no de bocacalle.
+ */
+export type Angostura = { id: string; a: Punto; b: Punto; ancho: number }
+
+export const ANGOSTURAS: Angostura[] = [
+  // Boca del retorno Alameda, desde Morelos: el retorno entero es de chicas.
+  { id: 'a-alameda', a: [-46, 14], b: [-46, 8], ancho: 3 },
+  // A media Corregidora: la única calle pasante con cuello. No deja a nadie
+  // fuera de alcance; a la grandota le cuesta la ruta, no el cliente.
+  { id: 'a-corregidora', a: [8, -54], b: [8, -48], ancho: 3 },
+  // Boca del retorno Cerro, desde la Curva del Cerro. Al fondo vive el único
+  // cliente del mapa al que la grandota no llega (spot-11). El eje termina en
+  // x=39 y no en la orilla del arco: la unión con una calle curva se bisela y
+  // ahí la holgura es de bocacalle, no de cuello.
+  { id: 'a-cerro', a: [39, -62], b: [37, -62], ancho: 3 },
 ]
 
 /**
@@ -200,6 +244,17 @@ export const BAHIAS: Bahia[] = [
   // La toma de agua: bahía propia sobre Independencia, a una cuadra de la
   // glorieta. La pipa se detiene en la calle y la manguera alcanza.
   { id: 'toma', eje: [66, 18], dir: S },
+  /*
+   * Al fondo del retorno Cerro, tras la angostura: el cliente al que la
+   * grandota NO llega (sección 3 de la Fase 2). Va al final para no mover el
+   * `tipo` de los diez spots de siempre, que se asigna por índice.
+   *
+   * La mordida abre al norte a propósito: es el único rincón del mapa a más
+   * del radio de entrega (12 m) de toda calle por la que pase la grandota —
+   * ni parándose en la Curva del Cerro se le puede entregar por encima de la
+   * barda. El test lo verifica con el flood por modelo.
+   */
+  { id: 'spot-11', eje: [26, -62], dir: N },
 ]
 
 /**

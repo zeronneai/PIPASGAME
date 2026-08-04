@@ -35,6 +35,7 @@ import {
   type Rejilla,
 } from './raster'
 import {
+  ANGOSTURAS,
   ANILLO,
   BAHIAS,
   BAHIA_ANCHO,
@@ -128,6 +129,14 @@ pintarDisco(reservado, GLORIETA.c, GLORIETA.rIsla)
 for (const c of CALLEJONES) {
   pintarSegmento(rejilla, c.a, c.b, c.ancho)
   pintarSegmento(sinBanqueta, c.a, c.b, c.ancho)
+}
+
+// Las angosturas se pintan como un callejón: sin banqueta (con ella el cuello
+// de 3 m se llenaría de plataforma) y con los muros de los lotes cerrándolo a
+// los lados, que es lo que lo vuelve un portón.
+for (const a of ANGOSTURAS) {
+  pintarSegmento(rejilla, a.a, a.b, a.ancho)
+  pintarSegmento(sinBanqueta, a.a, a.b, a.ancho)
 }
 
 for (const b of BAHIAS) {
@@ -567,4 +576,4 @@ export const layoutStats = {
 }
 
 /** La glorieta es el único espacio abierto permitido; el test lo exceptúa. */
-export { PLAZAS, CALLEJONES }
+export { PLAZAS, CALLEJONES, ANGOSTURAS }

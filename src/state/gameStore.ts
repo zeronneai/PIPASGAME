@@ -31,8 +31,10 @@ import {
 import { esLimpio } from '../game/systems/hose'
 import {
   comprarMejora as calcularCompra,
+  comprarModelo as calcularCompraModelo,
   computeStats,
   MEJORAS,
+  MODELOS,
   pipaDeFabrica,
   type Categoria,
   type ModeloId,
@@ -430,6 +432,12 @@ type GameState = {
    * ni volver a montar la pipa.
    */
   comprarMejora: (categoria: Categoria) => void
+  /**
+   * Compra un modelo del lote (Paso 4): cobra, lo da de alta DE FÁBRICA y te
+   * lo deja puesto — la acabas de comprar; volver a la anterior es un toque en
+   * el mismo Lote. Si no alcanza (o ya la tienes), deja un aviso y no toca nada.
+   */
+  comprarPipa: (id: ModeloId) => void
   /** Aplica una partida guardada. La llama initPersistence antes del render. */
   hydrate: (save: SaveData) => void
 }
@@ -960,6 +968,35 @@ export const useGameStore = create<GameState>((set, get) => {
       },
     })
     s.showNotice(`${MEJORAS[categoria].nombre} nivel ${compra.nivel}`)
+  },
+  comprarPipa: (id) => {
+    const s = get()
+    const compra = calcularCompraModelo(id, !!s.garage.pipas[id], s.economy.money)
+    if (!compra.ok) {
+      s.showNotice(
+        compra.motivo === 'YA_LA_TIENES'
+          ? `${MODELOS[id].nombre} ya es tuya`
+          : `No alcanza: faltan $${centavos((compra.costo ?? 0) - s.economy.money)}`,
+      )
+      return
+    }
+    // Un solo set(), como en comprarMejora: el autoguardado no puede
+    // sorprender la compra con el dinero cobrado y la pipa sin entregar.
+    const capacidad = computeStats(compra.pipa).capacidadLitros
+    const liters = clampLiters(s.economy.liters, balance, capacidad)
+    s.vehicle.fillLevel = liters / capacidad
+    set({
+      garage: {
+        pipas: { ...s.garage.pipas, [id]: compra.pipa },
+        equipada: id,
+      },
+      economy: {
+        ...s.economy,
+        money: centavos(s.economy.money - compra.costo),
+        liters,
+      },
+    })
+    s.showNotice(`${MODELOS[id].nombre} es tuya`)
   },
   setMejora: (categoria, nivel) => {
     const s = get()

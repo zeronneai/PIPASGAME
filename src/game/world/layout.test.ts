@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  ANGOSTURAS,
   CALLEJONES,
   DOMICILIOS,
   EPHEMERAL_SPOTS,
@@ -20,6 +21,7 @@ import {
 } from './layout'
 import { floodFill } from './raster'
 import { PIPA_SPAWN } from '../vehicle/pipaParts'
+import { computeStats, pipaDeFabrica, type ModeloId } from '../systems/garage'
 
 /*
  * Las invariantes del trazo. `layout.ts` es dato puro (no importa three ni
@@ -40,8 +42,23 @@ const aCelda = mapaOcupacion.aCelda
 
 /** Radio del cuerpo del jugador (CapsuleCollider 0.55, 0.35). */
 const RADIO_PIE = 0.45
-/** Medio ancho de la pipa (chassis 2.4) más un dedo de holgura. */
-const RADIO_PIPA = 1.35
+
+/**
+ * Medio ancho de cada modelo más un dedo de holgura, DERIVADO del garage: si
+ * un rebalanceo cambia la escala de un modelo, el mapa se re-audita solo.
+ * Desde el Paso 4 el trazo se mide contra los tres — las angosturas existen
+ * justo porque la grandota (1.59) no pasa por donde la mediana (1.35) sí.
+ */
+const RADIO = (id: ModeloId) =>
+  computeStats(pipaDeFabrica(id)).fisica.chassis.width / 2 + 0.15
+const RADIOS = {
+  heredada: RADIO('heredada'),
+  mediana: RADIO('mediana'),
+  grandota: RADIO('grandota'),
+}
+/** Medio chasis de la más angosta, SIN margen: lo que un callejón peatonal no
+ *  debe dejar pasar ni de milagro. */
+const MEDIO_HEREDADA = computeStats(pipaDeFabrica('heredada')).fisica.chassis.width / 2
 
 function inundar(radio: number) {
   const pasable = new Uint8Array(n * n)
@@ -60,7 +77,13 @@ function inundar(radio: number) {
 }
 
 const aPie = inundar(RADIO_PIE)
-const enPipa = inundar(RADIO_PIPA)
+const enHeredada = inundar(RADIOS.heredada)
+const enPipa = inundar(RADIOS.mediana)
+const enGrandota = inundar(RADIOS.grandota)
+
+/** Spots de efímeros fuera del alcance de la grandota, a propósito: el precio
+ *  de cargar el doble es que hay clientes que no son tuyos (sección 3). */
+const SPOTS_SOLO_CHICAS = ['spot-11']
 
 /** ¿Hay una celda alcanzada a menos de `radio` metros de (x, z)? */
 function alcanzaA(flood: Uint8Array, x: number, z: number, radio: number) {
@@ -79,11 +102,14 @@ function alcanzaA(flood: Uint8Array, x: number, z: number, radio: number) {
 }
 
 /**
- * Puntos del tramo central del callejón. Las bocas quedan fuera a propósito:
- * un callejón se dibuja entrando un poco a la calle para que amarre, así que
- * cerca de la boca la holgura es la de la calle, no la del callejón.
+ * Puntos del tramo central de un callejón o una angostura. Las bocas quedan
+ * fuera a propósito: se dibujan entrando un poco a la calle para que amarren,
+ * así que cerca de la boca la holgura es la de la calle, no la del cuello.
  */
-function ejeCallejon(c: (typeof CALLEJONES)[number], pasos = 10) {
+function ejeCallejon(
+  c: { a: readonly [number, number]; b: readonly [number, number] },
+  pasos = 10,
+) {
   const pts: [number, number][] = []
   for (let k = 0; k <= pasos; k++) {
     const t = 0.25 + (0.5 * k) / pasos
@@ -193,7 +219,7 @@ describe('trazo de la colonia', () => {
       expect(
         holgura(t.pos[0], t.pos[2]),
         `tope en (${t.pos[0]}, ${t.pos[2]})`,
-      ).toBeGreaterThan(RADIO_PIPA)
+      ).toBeGreaterThan(RADIOS.mediana)
     }
   })
 
@@ -231,12 +257,14 @@ describe('trazo de la colonia', () => {
       const eje = ejeCallejon(c)
       const anchoMin = Math.min(...eje.map(([x, z]) => holgura(x, z)))
       if (c.soloAPie) {
-        // Cabe el jugador (0.35 de radio) y NO cabe la pipa (1.2).
+        // Cabe el jugador (0.35 de radio) y NO cabe ni la pipa más angosta:
+        // peatonal quiere decir peatonal para el garage entero.
         expect(anchoMin, `${c.id} para el jugador`).toBeGreaterThan(RADIO_PIE)
-        expect(anchoMin, `${c.id} para la pipa`).toBeLessThan(1.2)
+        expect(anchoMin, `${c.id} para la pipa`).toBeLessThan(MEDIO_HEREDADA)
         for (const [x, z] of eje) {
           expect(alcanzaA(aPie, x, z, 0.5), `${c.id} a pie`).toBe(true)
           expect(alcanzaA(enPipa, x, z, 0.5), `${c.id} en pipa`).toBe(false)
+          expect(alcanzaA(enHeredada, x, z, 0.5), `${c.id} en heredada`).toBe(false)
         }
       } else {
         for (const [x, z] of eje) {
@@ -244,6 +272,69 @@ describe('trazo de la colonia', () => {
         }
       }
     }
+  })
+
+  it('las angosturas dejan pasar a la mediana y no a la grandota', () => {
+    /*
+     * La promesa del Paso 4 (sección 3 de la Fase 2): la grandota NO cabe en
+     * al menos dos calles del mapa. Se afirma por floods y no con `holgura`:
+     * el flood filtra `distSolido` crudo y `holgura` descuenta media celda,
+     * así que comparar la una contra los radios del otro miente por 0.25.
+     */
+    expect(RADIOS.mediana, 'la convención del radio cambió').toBeCloseTo(1.35, 5)
+    expect(ANGOSTURAS.length).toBeGreaterThanOrEqual(2)
+    for (const a of ANGOSTURAS) {
+      for (const [x, z] of ejeCallejon(a)) {
+        expect(alcanzaA(enPipa, x, z, 0.5), `${a.id} en mediana`).toBe(true)
+        expect(alcanzaA(enGrandota, x, z, 0.5), `${a.id} en grandota`).toBe(false)
+      }
+    }
+  })
+
+  it('deja clientes que no son de la grandota, pero nunca la deja tirada', () => {
+    // El precio de cargar el doble: hay spots donde la grandota no entra...
+    for (const id of SPOTS_SOLO_CHICAS) {
+      const s = EPHEMERAL_SPOTS.find((e) => e.id === id)!
+      expect(s, `${id} no existe`).toBeDefined()
+      expect(
+        alcanzaA(enGrandota, s.pos[0], s.pos[2], 8),
+        `${id} debería quedarle lejos a la grandota`,
+      ).toBe(false)
+    }
+    /*
+     * ...y NADA MÁS queda fuera: el taller (o no podrías volver a cambiar de
+     * pipa: softlock), la toma, el amanecer, TODOS los domicilios fijos (los
+     * pedidos de los clientes de siempre se pueden cumplir con cualquier
+     * pipa) y el resto de los spots.
+     */
+    expect(alcanzaA(enGrandota, taller.door[0], taller.door[2], 6)).toBe(true)
+    expect(
+      alcanzaA(enGrandota, WATER_SOURCE.pos[0], WATER_SOURCE.pos[2], 8),
+    ).toBe(true)
+    expect(alcanzaA(enGrandota, PIPA_SPAWN[0], PIPA_SPAWN[2], 0.5)).toBe(true)
+    for (const [id, d] of Object.entries(DOMICILIOS)) {
+      expect(alcanzaA(enGrandota, d[0], d[2], 8), `domicilio de ${id}`).toBe(true)
+    }
+    for (const s of EPHEMERAL_SPOTS) {
+      if (SPOTS_SOLO_CHICAS.includes(s.id)) continue
+      expect(alcanzaA(enGrandota, s.pos[0], s.pos[2], 8), `bahía ${s.id}`).toBe(true)
+    }
+  })
+
+  it('la heredada llega a todo lo que llega la mediana', () => {
+    // Más angosta nunca es peor para caber; se afirma directo en vez de
+    // razonarlo, que es más barato que equivocarse.
+    for (const [id, d] of Object.entries(DOMICILIOS)) {
+      expect(alcanzaA(enHeredada, d[0], d[2], 8), `domicilio de ${id}`).toBe(true)
+    }
+    for (const s of EPHEMERAL_SPOTS) {
+      expect(alcanzaA(enHeredada, s.pos[0], s.pos[2], 8), `bahía ${s.id}`).toBe(true)
+    }
+    expect(
+      alcanzaA(enHeredada, WATER_SOURCE.pos[0], WATER_SOURCE.pos[2], 8),
+    ).toBe(true)
+    expect(alcanzaA(enHeredada, taller.door[0], taller.door[2], 6)).toBe(true)
+    expect(alcanzaA(enHeredada, PIPA_SPAWN[0], PIPA_SPAWN[2], 0.5)).toBe(true)
   })
 
   it('no deja calle a la que no se pueda llegar', () => {
@@ -331,7 +422,9 @@ describe('trazo de la colonia', () => {
           continue
         }
         if (!esLibre(x, z)) fila += '#'
-        else if (holgura(x, z) < 1.35) fila += ':' // solo a pie
+        else if (holgura(x, z) < MEDIO_HEREDADA) fila += ':' // solo a pie
+        else if (holgura(x, z) < RADIOS.grandota - 0.25)
+          fila += '=' // pasan las chicas, la grandota no (crudo = holgura + 0.25)
         else fila += ' '
       }
       filas.push(fila)
