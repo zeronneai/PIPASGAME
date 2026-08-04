@@ -40,6 +40,43 @@ body {
   overflow: hidden;
 }
 
+/*
+ * GESTOS DEL SISTEMA, a fondo.
+ *
+ * Ponerlo solo en `html` no alcanza, y el motivo es concreto: la hoja de
+ * estilos del navegador le da a los CONTROLES DE FORMULARIO su propio valor
+ * de `user-select`, así que el `none` heredado nunca llega a un `<button>`.
+ * Y los controles de manejo son botones. Por eso mantener el acelerador
+ * levantaba la lupa de selección a media curva: el `html` estaba blindado y
+ * el botón no.
+ *
+ * Se declara sobre #root y sus descendientes en vez de sobre una lista de
+ * clases, porque una lista se queda vieja en cuanto alguien agrega un botón —
+ * y el síntoma aparece semanas después, en el teléfono, manejando.
+ */
+#root,
+#root *,
+#root *::before,
+#root *::after {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/*
+ * La excepción: donde SÍ se escribe. El panel de leva tiene campos numéricos
+ * y la Fase 2 trae los rótulos de la pipa, que son texto libre del jugador.
+ * Sin esto, el campo se enfoca pero no deja ni seleccionar ni corregir.
+ */
+#root input,
+#root textarea,
+#root select,
+#root [contenteditable='true'] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 canvas {
   display: block;
   touch-action: none;
