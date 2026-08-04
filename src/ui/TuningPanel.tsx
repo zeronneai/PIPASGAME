@@ -10,6 +10,7 @@ import {
   MODELOS,
   NIVEL_MAX,
   pipaDeFabrica,
+  type Eje,
   type ModeloId,
   type Nivel,
 } from '../game/systems/garage'
@@ -645,14 +646,44 @@ export default function TuningPanel() {
           [0, 1, 2].map((i) => [
             `${MEJORAS[cat].nombre.toLowerCase()} n${i + 1}`,
             {
-              value: balance.garage.mejoras[cat][i],
+              value: balance.garage.mejoras[cat].precios[i],
               min: 500,
               max: 60_000,
               step: 500,
               onChange: (n: number) =>
-                void (balance.garage.mejoras[cat][i] = n),
+                void (balance.garage.mejoras[cat].precios[i] = n),
             },
           ]),
+        ),
+      ),
+    },
+    CERRADA,
+  )
+
+  /*
+   * Y los EFECTOS, que son la otra mitad del Paso 3: cada eje que toca cada
+   * nivel, como factor. Son muchos controles y por eso van en su propia
+   * carpeta cerrada, pero tienen que estar: el documento pide poder mover
+   * precios Y efectos en vivo, y ajustar cuánto rinde una mejora sin poder
+   * sentirla en la misma sesión es adivinar.
+   */
+  useControls(
+    'garage · efectos',
+    {
+      ...Object.fromEntries(
+        CATEGORIAS.flatMap((cat) =>
+          balance.garage.mejoras[cat].niveles.flatMap((nivel, i) =>
+            (Object.keys(nivel) as Eje[]).map((eje) => [
+              `${MEJORAS[cat].nombre.toLowerCase()} n${i + 1} · ${eje}`,
+              {
+                value: nivel[eje] ?? 1,
+                min: 0.5,
+                max: 2,
+                step: 0.01,
+                onChange: (n: number) => void (nivel[eje] = n),
+              },
+            ]),
+          ),
         ),
       ),
     },

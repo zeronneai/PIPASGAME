@@ -3,9 +3,9 @@ import { balance, type Balance } from '../balance'
 import { tuning } from '../tuning'
 import {
   CATEGORIAS,
-  MEJORAS,
   MODELOS,
   NIVEL_MAX,
+  comprarMejora,
   computeStats,
   pipaDeFabrica,
   precioMejora,
@@ -172,7 +172,7 @@ describe('las mejoras hacen lo que prometen', () => {
     // tres números de cabeza.
     const n2 = stats('mediana', { motor: 2 }).fisica.engineForce
     expect(n2).toBeCloseTo(
-      tuning.vehicle.engineForce * (MEJORAS.motor.niveles[1].motor ?? 1),
+      tuning.vehicle.engineForce * (B.garage.mejoras.motor.niveles[1].motor ?? 1),
       6,
     )
   })
@@ -188,7 +188,7 @@ describe('las reglas de diseño del documento', () => {
      * Contra el balance REAL: abaratar la bomba por debajo de las que sí
      * pesan tiene que romper este test.
      */
-    const conCosto = CATEGORIAS.filter(tieneCostoFisico)
+    const conCosto = CATEGORIAS.filter((c) => tieneCostoFisico(c))
     const sinCosto = CATEGORIAS.filter((c) => !tieneCostoFisico(c))
     expect(conCosto.length).toBeGreaterThan(0)
     const masCaraConCosto = Math.max(
@@ -235,10 +235,10 @@ describe('las reglas de diseño del documento', () => {
 
   it('cada categoría tiene exactamente tres niveles con precio', () => {
     for (const cat of CATEGORIAS) {
-      expect(MEJORAS[cat].niveles).toHaveLength(NIVEL_MAX)
-      expect(balance.garage.mejoras[cat]).toHaveLength(NIVEL_MAX)
+      expect(balance.garage.mejoras[cat].niveles).toHaveLength(NIVEL_MAX)
+      expect(balance.garage.mejoras[cat].precios).toHaveLength(NIVEL_MAX)
       // Y cada nivel cuesta más que el anterior.
-      const precios = balance.garage.mejoras[cat]
+      const precios = balance.garage.mejoras[cat].precios
       for (let i = 1; i < precios.length; i++) {
         expect(precios[i], `${cat} nivel ${i + 1}`).toBeGreaterThan(
           precios[i - 1],
@@ -248,10 +248,70 @@ describe('las reglas de diseño del documento', () => {
   })
 })
 
+describe('comprarMejora', () => {
+  const cartera = 1_000_000
+
+  it('sube un nivel y cobra el precio de ESE nivel', () => {
+    const r = comprarMejora(con('mediana'), 'motor', cartera, B)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.nivel).toBe(1)
+    expect(r.costo).toBe(B.garage.mejoras.motor.precios[0])
+    expect(r.pipa.mejoras.motor).toBe(1)
+    // Y el segundo cuesta el segundo precio, no otra vez el primero.
+    const r2 = comprarMejora(r.pipa, 'motor', cartera, B)
+    expect(r2.ok && r2.costo).toBe(B.garage.mejoras.motor.precios[1])
+  })
+
+  it('no toca la pipa que recibe: devuelve una nueva', () => {
+    // Si mutara, el store aplicaría el cambio ANTES de cobrar y una compra
+    // fallida dejaría la mejora puesta gratis.
+    const antes = con('mediana')
+    const r = comprarMejora(antes, 'tanque', cartera, B)
+    expect(antes.mejoras.tanque).toBe(0)
+    expect(r.ok && r.pipa.mejoras.tanque).toBe(1)
+  })
+
+  it('no deja comprar sin dinero, y dice cuánto costaba', () => {
+    const precio = B.garage.mejoras.tanque.precios[0]
+    const r = comprarMejora(con('mediana'), 'tanque', precio - 1, B)
+    expect(r.ok).toBe(false)
+    if (r.ok) return
+    expect(r.motivo).toBe('SIN_DINERO')
+    expect(r.costo).toBe(precio)
+  })
+
+  it('con el dinero exacto sí alcanza', () => {
+    const precio = B.garage.mejoras.tanque.precios[0]
+    expect(comprarMejora(con('mediana'), 'tanque', precio, B).ok).toBe(true)
+  })
+
+  it('no deja pasar del nivel 3', () => {
+    const r = comprarMejora(con('mediana', { motor: 3 }), 'motor', cartera, B)
+    expect(r.ok).toBe(false)
+    if (r.ok) return
+    expect(r.motivo).toBe('AL_TOPE')
+    expect(r.costo).toBeNull()
+  })
+
+  it('comprar cambia la física de inmediato: el resultado ya rinde más', () => {
+    // Es la prueba del Paso 3: «comprar aplica cambios inmediatos a la
+    // física». Aquí se ve en los números; en el juego se ve porque el paso de
+    // física recalcula las estadísticas cada vez.
+    const antes = computeStats(con('mediana'), tuning.vehicle, B)
+    const r = comprarMejora(con('mediana'), 'motor', cartera, B)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    const despues = computeStats(r.pipa, tuning.vehicle, B)
+    expect(despues.fisica.engineForce).toBeGreaterThan(antes.fisica.engineForce)
+    expect(despues.fisica.boost.heatRate).toBeGreaterThan(antes.fisica.boost.heatRate)
+  })
+})
+
 describe('precioMejora', () => {
   it('cobra el nivel que sigue, y nada cuando ya está al tope', () => {
-    expect(precioMejora('motor', 0, B)).toBe(B.garage.mejoras.motor[0])
-    expect(precioMejora('motor', 2, B)).toBe(B.garage.mejoras.motor[2])
+    expect(precioMejora('motor', 0, B)).toBe(B.garage.mejoras.motor.precios[0])
+    expect(precioMejora('motor', 2, B)).toBe(B.garage.mejoras.motor.precios[2])
     expect(precioMejora('motor', NIVEL_MAX, B)).toBeNull()
   })
 })

@@ -1440,3 +1440,112 @@ canvas {
   text-transform: uppercase;
   opacity: 0.6;
 }
+
+/* ---- Taller · pestaña de Mejoras (Fase 2, Paso 3) ---- */
+
+.mejoras-lista {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+}
+
+.mejora {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  /* 56 y no 44: el renglón entero no es tocable, pero por debajo de esto las
+     dos cifras del trato no caben en dos líneas legibles. */
+  min-height: 56px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+}
+
+.mejora-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.mejora-encabezado {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.mejora-nombre {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+/* Los tres puntos del nivel: se lee de un vistazo cuánto le queda. */
+.mejora-pips {
+  display: flex;
+  gap: 3px;
+}
+
+.mejora-pips i {
+  width: 7px;
+  height: 7px;
+  border: 1px solid color-mix(in srgb, var(--color-text) 40%, transparent);
+  border-radius: 50%;
+}
+
+.mejora-pips i.lleno {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
+/*
+ * Las dos cifras del trato, al MISMO tamaño. Si el costo se enseñara más
+ * chico que el beneficio, la decisión se vuelve un trámite.
+ */
+.mejora-cifras {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin-top: 3px;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.mejora-sube b {
+  color: var(--color-success);
+}
+
+.mejora-cuesta {
+  opacity: 0.85;
+}
+
+.mejora-cuesta b {
+  color: var(--color-warning);
+}
+
+.mejora-limpia {
+  opacity: 0.55;
+  font-style: italic;
+}
+
+.mejora-btn {
+  min-width: 92px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--color-accent);
+  color: var(--color-bg);
+  font-family: var(--font-ui);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mejora-btn.no-alcanza {
+  background: color-mix(in srgb, var(--color-text) 12%, transparent);
+  color: var(--color-text);
+  opacity: 0.5;
+}
+
+.mejora-btn:disabled {
+  cursor: default;
+}

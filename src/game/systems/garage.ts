@@ -130,8 +130,6 @@ export type Mejora = {
   sube: string
   /** Qué le cuesta. Vacío = la mejora es limpia y por eso es cara. */
   cuesta: string
-  /** Un juego de factores por nivel: [nivel 1, nivel 2, nivel 3]. */
-  niveles: [Factores, Factores, Factores]
 }
 
 /**
@@ -148,66 +146,36 @@ export const MEJORAS: Record<Categoria, Mejora> = {
     nombre: 'Tanque',
     sube: 'Capacidad en litros',
     cuesta: 'Sube la tara: se vuelve más pesada',
-    niveles: [
-      { capacidad: 1.1, tara: 1.05 },
-      { capacidad: 1.22, tara: 1.11 },
-      { capacidad: 1.35, tara: 1.18 },
-    ],
   },
   motor: {
     id: 'motor',
     nombre: 'Motor',
     sube: 'Aceleración y velocidad máxima',
     cuesta: 'Se calienta más rápido',
-    niveles: [
-      { motor: 1.1, velocidad: 1.04, calor: 1.1 },
-      { motor: 1.22, velocidad: 1.08, calor: 1.2 },
-      { motor: 1.35, velocidad: 1.12, calor: 1.32 },
-    ],
   },
   bomba: {
     id: 'bomba',
     nombre: 'Bomba',
-    sube: 'Velocidad de carga en el pozo y de descarga',
+    sube: 'Carga en el pozo y descarga en la entrega',
     cuesta: '',
-    niveles: [
-      { carga: 1.15, descarga: 1.15 },
-      { carga: 1.32, descarga: 1.32 },
-      { carga: 1.5, descarga: 1.5 },
-    ],
   },
   suspension: {
     id: 'suspension',
     nombre: 'Suspensión',
     sube: 'Aguanta topes y baches, y se vuelca menos',
     cuesta: 'Sube la tara',
-    niveles: [
-      { suspension: 1.08, vuelco: 1.06, tara: 1.03 },
-      { suspension: 1.16, vuelco: 1.12, tara: 1.06 },
-      { suspension: 1.25, vuelco: 1.2, tara: 1.1 },
-    ],
   },
   llantas: {
     id: 'llantas',
     nombre: 'Llantas',
     sube: 'Agarre en curva y frenado',
     cuesta: '',
-    niveles: [
-      { agarre: 1.08, freno: 1.06 },
-      { agarre: 1.17, freno: 1.12 },
-      { agarre: 1.27, freno: 1.2 },
-    ],
   },
   enfriamiento: {
     id: 'enfriamiento',
     nombre: 'Enfriamiento',
     sube: 'Aguantas más la segunda antes de fundirla',
     cuesta: '',
-    niveles: [
-      { enfria: 1.15, calor: 0.92 },
-      { enfria: 1.32, calor: 0.85 },
-      { enfria: 1.5, calor: 0.78 },
-    ],
   },
 }
 
@@ -253,7 +221,10 @@ const nivelValido = (n: number): Nivel =>
  * Acumula los factores de un modelo y sus mejoras. Multiplicativo y en un solo
  * lugar: agregar un eje nuevo no obliga a tocar el cálculo de abajo.
  */
-export function factoresDe(cfg: PipaConfig): Record<Eje, number> {
+export function factoresDe(
+  cfg: PipaConfig,
+  b: Balance = balance,
+): Record<Eje, number> {
   const f = {} as Record<Eje, number>
   const aplicar = (src: Factores) => {
     for (const [eje, valor] of Object.entries(src)) {
@@ -266,7 +237,7 @@ export function factoresDe(cfg: PipaConfig): Record<Eje, number> {
     // El nivel 2 NO acumula el 1: cada nivel es el factor TOTAL de ese nivel,
     // así el catálogo se lee como «con esto la pipa queda así» y no hay que
     // multiplicar tres números de cabeza para saber qué compras.
-    if (nivel > 0) aplicar(MEJORAS[cat].niveles[nivel - 1])
+    if (nivel > 0) aplicar(b.garage.mejoras[cat].niveles[nivel - 1])
   }
   return f
 }
@@ -283,7 +254,7 @@ export function computeStats(
   t: VehicleStats = tuning.vehicle,
   b: Balance = balance,
 ): PipaStats {
-  const f = factoresDe(cfg)
+  const f = factoresDe(cfg, b)
   const x = (eje: Eje) => f[eje] ?? 1
 
   const capacidad = x('capacidad')
@@ -360,7 +331,7 @@ export function precioMejora(
   b: Balance = balance,
 ): number | null {
   if (nivelActual >= NIVEL_MAX) return null
-  return b.garage.mejoras[cat][nivelActual]
+  return b.garage.mejoras[cat].precios[nivelActual]
 }
 
 /** Precio de un modelo en el lote. La heredada no se compra: con esa empiezas. */
@@ -370,8 +341,41 @@ export function precioModelo(id: ModeloId, b: Balance = balance): number {
 
 /** Si una mejora empuja algún eje en el que subir es peor. Las que no, tienen
  *  que ser de las caras — hay un test que lo cobra. */
-export function tieneCostoFisico(cat: Categoria): boolean {
-  return MEJORAS[cat].niveles.some((nivel) =>
+export function tieneCostoFisico(cat: Categoria, b: Balance = balance): boolean {
+  return b.garage.mejoras[cat].niveles.some((nivel: Factores) =>
     EJES_DE_COSTO.some((eje) => (nivel[eje] ?? 1) > 1),
   )
+}
+
+/** Por qué no se pudo comprar. Se le dice al jugador tal cual. */
+export type MotivoNoCompra = 'AL_TOPE' | 'SIN_DINERO'
+
+export type Compra =
+  | { ok: true; pipa: PipaConfig; costo: number; nivel: Nivel }
+  | { ok: false; motivo: MotivoNoCompra; costo: number | null }
+
+/**
+ * Sube una categoría un nivel, si alcanza. Función pura: recibe la pipa y la
+ * cartera, y devuelve la pipa nueva y lo que cuesta — no toca el store, así
+ * que el test la mide sola y la acción del store solo aplica el resultado de
+ * un golpe (el autoguardado corre cada 5 s y no puede sorprender la compra a
+ * medias, con el dinero cobrado y la mejora sin poner).
+ */
+export function comprarMejora(
+  pipa: PipaConfig,
+  cat: Categoria,
+  dinero: number,
+  b: Balance = balance,
+): Compra {
+  const nivel = nivelValido(pipa.mejoras[cat] ?? 0)
+  const costo = precioMejora(cat, nivel, b)
+  if (costo === null) return { ok: false, motivo: 'AL_TOPE', costo: null }
+  if (dinero < costo) return { ok: false, motivo: 'SIN_DINERO', costo }
+  const siguiente = (nivel + 1) as Nivel
+  return {
+    ok: true,
+    costo,
+    nivel: siguiente,
+    pipa: { ...pipa, mejoras: { ...pipa.mejoras, [cat]: siguiente } },
+  }
 }

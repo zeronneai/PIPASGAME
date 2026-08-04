@@ -30,7 +30,9 @@ import {
 } from '../game/systems/economy'
 import { esLimpio } from '../game/systems/hose'
 import {
+  comprarMejora as calcularCompra,
   computeStats,
+  MEJORAS,
   pipaDeFabrica,
   type Categoria,
   type ModeloId,
@@ -416,9 +418,18 @@ type GameState = {
    * pero guardarla en un tanque que no existe es peor.
    */
   equiparPipa: (id: ModeloId) => void
-  /** Fija el nivel de una mejora en la pipa equipada. Igual que arriba: sin
-   *  cobrar, que eso es del Paso 3. */
+  /** Fija el nivel de una mejora SIN cobrar. Es la puerta de leva y de los
+   *  tests; el jugador compra con `comprarMejora`. */
   setMejora: (categoria: Categoria, nivel: Nivel) => void
+  /**
+   * Sube una mejora un nivel cobrándola (Paso 3). Valida que alcance y que no
+   * esté al tope; si no, deja un aviso y no toca nada.
+   *
+   * El efecto es INMEDIATO: la física lee las estadísticas del garage en cada
+   * paso, así que el motor empuja más desde el siguiente frame, sin recargar
+   * ni volver a montar la pipa.
+   */
+  comprarMejora: (categoria: Categoria) => void
   /** Aplica una partida guardada. La llama initPersistence antes del render. */
   hydrate: (save: SaveData) => void
 }
@@ -915,6 +926,40 @@ export const useGameStore = create<GameState>((set, get) => {
     // Con la pipa ya cambiada: setLiters mide contra la capacidad nueva y de
     // paso vuelve a sincronizar fillLevel, que es lo que ve la física.
     get().setLiters(s.economy.liters)
+  },
+  comprarMejora: (categoria) => {
+    const s = get()
+    const actual = s.garage.pipas[s.garage.equipada]
+    if (!actual) return
+    const compra = calcularCompra(actual, categoria, s.economy.money)
+    if (!compra.ok) {
+      s.showNotice(
+        compra.motivo === 'AL_TOPE'
+          ? `${MEJORAS[categoria].nombre} ya está al tope`
+          : `No alcanza: faltan $${centavos((compra.costo ?? 0) - s.economy.money)}`,
+      )
+      return
+    }
+    /*
+     * TODO en un solo set(): el autoguardado corre cada 5 s y no puede
+     * sorprender la compra a medias, con el dinero cobrado y la mejora sin
+     * poner. Por eso los litros se recalculan aquí y no con setLiters.
+     */
+    const capacidad = computeStats(compra.pipa).capacidadLitros
+    const liters = clampLiters(s.economy.liters, balance, capacidad)
+    s.vehicle.fillLevel = liters / capacidad
+    set({
+      garage: {
+        ...s.garage,
+        pipas: { ...s.garage.pipas, [s.garage.equipada]: compra.pipa },
+      },
+      economy: {
+        ...s.economy,
+        money: centavos(s.economy.money - compra.costo),
+        liters,
+      },
+    })
+    s.showNotice(`${MEJORAS[categoria].nombre} nivel ${compra.nivel}`)
   },
   setMejora: (categoria, nivel) => {
     const s = get()

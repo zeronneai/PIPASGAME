@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { MODELOS } from '../game/systems/garage'
 import { capacidadPipa, useGameStore } from '../state/gameStore'
+import { TallerMejoras } from './TallerMejoras'
 
 /*
- * EL TALLER (Fase 2, Paso 2). Por ahora es el cascarón: llegas manejando, se
- * abre, y las tres pestañas están vacías. Lo que se prueba en este paso es que
- * la pantalla se sienta bien en el teléfono, no lo que se puede comprar.
+ * EL TALLER (Fase 2). Llegas manejando y se abre. Mejoras ya funciona (Paso
+ * 3); Lote y Estilo siguen vacías hasta los Pasos 4 y 5.
  *
  * Tres reglas de la sección 4 del documento de Fase 0, que aquí no son
  * negociables porque esta pantalla es TODA de dedo:
@@ -28,7 +28,7 @@ const PESTANAS = [
     id: 'mejoras',
     nombre: 'Mejoras',
     titulo: 'Mejorar la que traes',
-    de: 'Tanque, motor, bomba, suspensión, llantas y enfriamiento. Casi toda mejora cobra algo a cambio.',
+    de: 'Tanque, motor, bomba, suspensión, llantas y enfriamiento.',
   },
   {
     id: 'estilo',
@@ -86,11 +86,15 @@ export function TallerScreen() {
         </nav>
 
         <section className="taller-cuerpo" role="tabpanel">
-          <div className="taller-vacio">
-            <div className="taller-vacio-titulo">{activa.titulo}</div>
-            <p className="taller-vacio-texto">{activa.de}</p>
-            <div className="taller-vacio-pronto">Todavía no abre</div>
-          </div>
+          {pestana === 'mejoras' ? (
+            <TallerMejoras />
+          ) : (
+            <div className="taller-vacio">
+              <div className="taller-vacio-titulo">{activa.titulo}</div>
+              <p className="taller-vacio-texto">{activa.de}</p>
+              <div className="taller-vacio-pronto">Todavía no abre</div>
+            </div>
+          )}
         </section>
       </div>
     </div>

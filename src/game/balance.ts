@@ -1,4 +1,9 @@
 import type { PerfilCliente } from './systems/clients'
+/* Solo el TIPO, y a propósito: `garage.ts` importa este archivo, así que un
+ * import de valor sería un ciclo. Un `import type` se borra al compilar y
+ * deja los factores de las mejoras bien tipados aquí, que es donde se
+ * escriben. */
+import type { Categoria, Factores } from './systems/garage'
 
 /*
  * TODOS los números de la economía viven aquí, separados de tuning.ts
@@ -34,6 +39,72 @@ export type PerfilBalance = {
   litros: { min: number; max: number }
   /** Cambio de reputación por entrega, según puntualidad. */
   rep: { onTime: number; late: number; veryLate: number }
+}
+
+/**
+ * Lo que rinde y lo que cuesta cada nivel de mejora (Fase 2, sección 4).
+ *
+ * Va como constante tipada y no en línea dentro de `balance` para que el tipo
+ * sea el MISMO para las seis categorías: en línea, TypeScript infiere una
+ * forma distinta por categoría y entonces nada puede recorrerlas en un bucle
+ * —ni el panel de leva, ni los tests, ni el propio garage—.
+ */
+export type MejoraBalance = {
+  /** Precio de cada nivel, en orden. */
+  precios: number[]
+  /** Factores de cada nivel. Cada uno es el TOTAL de ese nivel. */
+  niveles: Factores[]
+}
+
+const MEJORAS_GARAGE: Record<Categoria, MejoraBalance> = {
+  tanque: {
+    precios: [3_500, 8_000, 17_000],
+    niveles: [
+      { capacidad: 1.1, tara: 1.05 },
+      { capacidad: 1.22, tara: 1.11 },
+      { capacidad: 1.35, tara: 1.18 },
+    ],
+  },
+  motor: {
+    precios: [2_500, 6_000, 13_000],
+    niveles: [
+      { motor: 1.1, velocidad: 1.04, calor: 1.1 },
+      { motor: 1.22, velocidad: 1.08, calor: 1.2 },
+      { motor: 1.35, velocidad: 1.12, calor: 1.32 },
+    ],
+  },
+  bomba: {
+    precios: [4_000, 9_000, 18_000],
+    niveles: [
+      { carga: 1.15, descarga: 1.15 },
+      { carga: 1.32, descarga: 1.32 },
+      { carga: 1.5, descarga: 1.5 },
+    ],
+  },
+  suspension: {
+    precios: [1_800, 4_500, 9_000],
+    niveles: [
+      { suspension: 1.08, vuelco: 1.06, tara: 1.03 },
+      { suspension: 1.16, vuelco: 1.12, tara: 1.06 },
+      { suspension: 1.25, vuelco: 1.2, tara: 1.1 },
+    ],
+  },
+  llantas: {
+    precios: [4_200, 9_500, 19_000],
+    niveles: [
+      { agarre: 1.08, freno: 1.06 },
+      { agarre: 1.17, freno: 1.12 },
+      { agarre: 1.27, freno: 1.2 },
+    ],
+  },
+  enfriamiento: {
+    precios: [4_500, 10_000, 20_000],
+    niveles: [
+      { enfria: 1.15, calor: 0.92 },
+      { enfria: 1.32, calor: 0.85 },
+      { enfria: 1.5, calor: 0.78 },
+    ],
+  },
 }
 
 export const balance = {
@@ -260,21 +331,23 @@ export const balance = {
       grandota: 140_000,
     },
     /**
-     * Precio de los tres niveles de cada categoría, en orden.
+     * Las seis categorías de mejora: qué rinde cada nivel y qué cuesta.
      *
-     * Bomba, llantas y enfriamiento salen más caras a propósito: son las que
-     * no cobran nada en la física, y el documento (sección 4) pide que lo
-     * limpio se pague en la caja. Hay un test que no deja abaratarlas por
-     * debajo de las que sí traen costo.
+     * Los factores son MULTIPLICADORES sobre la pipa de referencia, y cada
+     * nivel es el total de ese nivel, no un incremento sobre el anterior: así
+     * el catálogo se lee como «con esto la pipa queda así» sin multiplicar
+     * tres números de cabeza.
+     *
+     * LA REGLA (sección 4): casi toda mejora tiene que traer un costo. Si
+     * todas son puro sí, no hay decisión, solo hay orden de compra. Las que no
+     * cobran nada en la física —bomba, enfriamiento y por ahora llantas— se
+     * pagan caras, y hay un test que no deja abaratarlas por debajo de las que
+     * sí pesan.
+     *
+     * Qué significa cada eje está en `systems/garage.ts`, que es quien los
+     * aplica; aquí solo viven los números, que son los que se mueven.
      */
-    mejoras: {
-      tanque: [3_500, 8_000, 17_000],
-      motor: [2_500, 6_000, 13_000],
-      bomba: [4_000, 9_000, 18_000],
-      suspension: [1_800, 4_500, 9_000],
-      llantas: [4_200, 9_500, 19_000],
-      enfriamiento: [4_500, 10_000, 20_000],
-    },
+    mejoras: MEJORAS_GARAGE,
   },
 }
 
