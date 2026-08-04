@@ -1,4 +1,4 @@
-import { useGameStore } from '../../state/gameStore'
+import { useGameStore, type GarageState } from '../../state/gameStore'
 import type { ClientHistory } from './clients'
 
 /*
@@ -35,6 +35,10 @@ export type SaveData = {
    *  que despiertan en el centro como siempre lo hicieron. */
   playerPos?: { x: number; y: number; z: number }
   playerYaw?: number
+  /** El garage (Fase 2): qué pipas tienes, con qué mejoras, y cuál traes.
+   *  Opcional a propósito, para no invalidar los guardados de la Fase 1: sin
+   *  él se hidrata el garage inicial y sigues con la heredada de fábrica. */
+  garage?: GarageState
 }
 
 type StoreState = ReturnType<typeof useGameStore.getState>
@@ -66,6 +70,17 @@ export function snapshotSave(s: StoreState): SaveData {
     },
     playerPos: { x: player.pos.x, y: player.pos.y, z: player.pos.z },
     playerYaw: player.yaw,
+    // Copia también: las mejoras se reemplazan con set() pero la referencia
+    // viva no tiene por qué acabar dentro de un JSON a medio serializar.
+    garage: {
+      equipada: s.garage.equipada,
+      pipas: Object.fromEntries(
+        Object.entries(s.garage.pipas).map(([id, cfg]) => [
+          id,
+          { modelo: cfg.modelo, mejoras: { ...cfg.mejoras } },
+        ]),
+      ),
+    },
   }
 }
 
@@ -85,6 +100,10 @@ export function parseSave(json: string | null): SaveData | null {
       typeof data.vehicleRot?.w !== 'number'
     )
       return null
+    // El garage es opcional, pero si viene a medias es peor que no venir:
+    // equipar una pipa que no está en la lista deja la física sin números.
+    if (data.garage && !data.garage.pipas?.[data.garage.equipada])
+      delete data.garage
     return data as SaveData
   } catch {
     return null

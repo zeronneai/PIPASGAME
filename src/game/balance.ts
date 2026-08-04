@@ -38,7 +38,12 @@ export type PerfilBalance = {
 
 export const balance = {
   tank: {
-    /** Litros. La pipa mediana estándar en México (sección 2.1). */
+    /**
+     * Litros de la pipa de REFERENCIA (la mediana estándar en México,
+     * sección 2.1). Ya no es «la» capacidad: desde la Fase 2 cada modelo sale
+     * de aquí por factor (`garage.ts`), así que mover este número mueve las
+     * tres pipas de forma coherente en vez de descuadrarlas entre sí.
+     */
     capacity: 10_000,
   },
   pozo: {
@@ -230,6 +235,40 @@ export const balance = {
   /** Con cuánto dinero empieza una partida nueva. Alcanza para ~medio tanque:
    *  la primera decisión del juego ya es cuánta agua cargar. */
   dineroInicial: 300,
+
+  /*
+   * EL GARAGE (Fase 2). Aquí va SOLO el dinero: qué hace cada modelo y cada
+   * mejora vive en `systems/garage.ts`, que es catálogo y no economía.
+   *
+   * Estos precios son de arranque y el Paso 7 los va a mover muchísimo: la
+   * meta del documento es que la primera mejora se sienta alcanzable en dos o
+   * tres jornadas, y la segunda pipa en diez o quince.
+   */
+  garage: {
+    /** Precio de cada modelo en el lote. La heredada no se compra: con esa
+     *  empiezas, y por eso vale 0. */
+    modelos: {
+      heredada: 0,
+      mediana: 45_000,
+      grandota: 140_000,
+    },
+    /**
+     * Precio de los tres niveles de cada categoría, en orden.
+     *
+     * Bomba, llantas y enfriamiento salen más caras a propósito: son las que
+     * no cobran nada en la física, y el documento (sección 4) pide que lo
+     * limpio se pague en la caja. Hay un test que no deja abaratarlas por
+     * debajo de las que sí traen costo.
+     */
+    mejoras: {
+      tanque: [3_500, 8_000, 17_000],
+      motor: [2_500, 6_000, 13_000],
+      bomba: [4_000, 9_000, 18_000],
+      suspension: [1_800, 4_500, 9_000],
+      llantas: [4_200, 9_500, 19_000],
+      enfriamiento: [4_500, 10_000, 20_000],
+    },
+  },
 }
 
 export type Balance = typeof balance

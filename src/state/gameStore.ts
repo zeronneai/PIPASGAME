@@ -29,6 +29,15 @@ import {
   type Puntualidad,
 } from '../game/systems/economy'
 import { esLimpio } from '../game/systems/hose'
+import {
+  computeStats,
+  pipaDeFabrica,
+  type Categoria,
+  type ModeloId,
+  type Nivel,
+  type PipaConfig,
+  type PipaStats,
+} from '../game/systems/garage'
 import type { EphemeralClient } from '../game/systems/ephemeral'
 import {
   newDayStats,
@@ -233,9 +242,47 @@ function aplicarRep(
   }
 }
 
+/**
+ * El garage: con qué pipas cuentas y cuál traes. Va por eventos (comprar,
+ * equipar), no por frame, así que es inmutable como `economy`.
+ *
+ * Se llavea por modelo porque «conservas la anterior» pero nunca tienes dos
+ * iguales: comprar la grandota no te quita la heredada, y cada una guarda SUS
+ * mejoras (sección 4 del documento de Fase 2).
+ */
+export type GarageState = {
+  pipas: Partial<Record<ModeloId, PipaConfig>>
+  equipada: ModeloId
+}
+
+/** Con la que empiezas: la heredada, pelona. */
+const garageInicial = (): GarageState => ({
+  pipas: { heredada: pipaDeFabrica('heredada') },
+  equipada: 'heredada',
+})
+
+/**
+ * Estadísticas de la pipa equipada. Es de donde la física saca TODOS sus
+ * números desde la Fase 2: modelo base más mejoras, no constantes fijas.
+ *
+ * Se recalcula en cada llamada a propósito: leva muta `tuning` y `balance` sin
+ * avisarle a nadie, así que una copia guardada se quedaría vieja al primer
+ * slider. Es un objeto chico y el paso de física lo pide una vez.
+ */
+export function statsPipa(): PipaStats {
+  const g = useGameStore.getState().garage
+  return computeStats(g.pipas[g.equipada] ?? pipaDeFabrica(g.equipada))
+}
+
+/** Litros que le caben a la pipa equipada. Sustituye a `balance.tank.capacity`
+ *  en todo lo que antes daba por hecho que la pipa era una sola. */
+export function capacidadPipa(): number {
+  return statsPipa().capacidadLitros
+}
+
 const economyInicial = (): EconomyState => ({
   money: balance.dineroInicial,
-  liters: balance.tank.capacity * 0.5,
+  liters: computeStats(pipaDeFabrica('heredada')).capacidadLitros * 0.5,
   day: 1,
   reputation: Object.fromEntries(
     Object.keys(COLONIAS).map((id) => [id, newReputation()]),
@@ -250,6 +297,8 @@ const economyInicial = (): EconomyState => ({
 type GameState = {
   mode: GameMode
   economy: EconomyState
+  /** Las pipas que posees y cuál traes. La física lee de aquí. */
+  garage: GarageState
   refill: RefillState
   /**
    * Reloj de la jornada en segundos reales. Se MUTA cada frame (DayClock.tsx)
@@ -348,6 +397,19 @@ type GameState = {
   setClientHistory: (clientId: string, history: ClientHistory) => void
   setOrders: (orders: Pedido[]) => void
   advanceDay: () => void
+  /**
+   * Cambia la pipa con la que sales. Sin lógica de dinero: comprar es del
+   * Paso 3 y equipar desde el taller es del Paso 4; esto existe para que leva
+   * y los tests puedan mover la configuración.
+   *
+   * Los litros se recortan a la capacidad de la pipa nueva: pasarte a la
+   * heredada con el tanque de la grandota lleno tira agua que ya pagaste,
+   * pero guardarla en un tanque que no existe es peor.
+   */
+  equiparPipa: (id: ModeloId) => void
+  /** Fija el nivel de una mejora en la pipa equipada. Igual que arriba: sin
+   *  cobrar, que eso es del Paso 3. */
+  setMejora: (categoria: Categoria, nivel: Nivel) => void
   /** Aplica una partida guardada. La llama initPersistence antes del render. */
   hydrate: (save: SaveData) => void
 }
@@ -358,6 +420,7 @@ export const useGameStore = create<GameState>((set, get) => {
   return {
   mode: 'ON_FOOT',
   economy: eco0,
+  garage: garageInicial(),
   refill: { active: false, litersLoaded: 0, cost: 0 },
   clock: { daySeconds: 0 },
   camera: { phi: 0 },
@@ -418,10 +481,13 @@ export const useGameStore = create<GameState>((set, get) => {
   addMoney: (delta) =>
     set((s) => ({ economy: { ...s.economy, money: s.economy.money + delta } })),
   setLiters: (liters) => {
-    const l = clampLiters(liters)
+    // La capacidad es la de la pipa EQUIPADA, no una constante: cada modelo
+    // tiene la suya y la mejora de tanque la mueve.
+    const capacidad = capacidadPipa()
+    const l = clampLiters(liters, balance, capacidad)
     // fillLevel se MUTA, no se reemplaza: es la regla de vehicle (estado por
     // frame, objeto estable). La física y el chapoteo lo leen tal cual.
-    get().vehicle.fillLevel = l / balance.tank.capacity
+    get().vehicle.fillLevel = l / capacidad
     set((s) => ({ economy: { ...s.economy, liters: l } }))
   },
   startRefill: () => {
@@ -433,9 +499,10 @@ export const useGameStore = create<GameState>((set, get) => {
   stopRefill: () => {
     const { refill, economy, vehicle } = get()
     if (!refill.active) return
-    const settled = settleRefill(economy, refill)
+    const capacidad = capacidadPipa()
+    const settled = settleRefill(economy, refill, balance, capacidad)
     // Misma sincronía que setLiters: fillLevel se muta, economy va con set().
-    vehicle.fillLevel = settled.liters / balance.tank.capacity
+    vehicle.fillLevel = settled.liters / capacidad
     set((s) => ({
       refill: { active: false, litersLoaded: 0, cost: 0 },
       economy: { ...s.economy, liters: settled.liters, money: settled.money },
@@ -633,7 +700,7 @@ export const useGameStore = create<GameState>((set, get) => {
     if (!clean && result.spilled > 0) delta += eventRepDelta('DERRAME')
 
     // Misma sincronía que el pozo: fillLevel se muta, economy va con set().
-    s.vehicle.fillLevel = settled.liters / balance.tank.capacity
+    s.vehicle.fillLevel = settled.liters / capacidadPipa()
     const nombre = pedido.clientName
     const cobrado = settled.pago.total + settled.bonus
     const partes = [`${nombre}: +$${cobrado.toFixed(2)}`]
@@ -672,7 +739,7 @@ export const useGameStore = create<GameState>((set, get) => {
     const d = s.delivery
     if (!d) return
     const liters = clampLiters(s.economy.liters - Math.max(0, spilled))
-    s.vehicle.fillLevel = liters / balance.tank.capacity
+    s.vehicle.fillLevel = liters / capacidadPipa()
     set((st) => {
       // Derramar castiga aunque sueltes la manguera: el agua ya está en la
       // banqueta del cliente.
@@ -827,6 +894,32 @@ export const useGameStore = create<GameState>((set, get) => {
   setOrders: (orders) => set((s) => ({ economy: { ...s.economy, orders } })),
   advanceDay: () =>
     set((s) => ({ economy: { ...s.economy, day: s.economy.day + 1 } })),
+  equiparPipa: (id) => {
+    const s = get()
+    if (!s.garage.pipas[id] || s.garage.equipada === id) return
+    set({ garage: { ...s.garage, equipada: id } })
+    // Con la pipa ya cambiada: setLiters mide contra la capacidad nueva y de
+    // paso vuelve a sincronizar fillLevel, que es lo que ve la física.
+    get().setLiters(s.economy.liters)
+  },
+  setMejora: (categoria, nivel) => {
+    const s = get()
+    const actual = s.garage.pipas[s.garage.equipada]
+    if (!actual) return
+    const pipa = {
+      ...actual,
+      mejoras: { ...actual.mejoras, [categoria]: nivel },
+    }
+    set({
+      garage: {
+        ...s.garage,
+        pipas: { ...s.garage.pipas, [s.garage.equipada]: pipa },
+      },
+    })
+    // El tanque cambia de tamaño con la mejora: los litros se recortan si ya
+    // no caben (bajar de nivel) y fillLevel se re-deriva de la capacidad nueva.
+    get().setLiters(s.economy.liters)
+  },
   hydrate: (save) => {
     const { vehicle, player } = get()
     // El jugador también se queda donde estaba (guardados viejos no lo
@@ -846,8 +939,24 @@ export const useGameStore = create<GameState>((set, get) => {
     vehicle.rot.y = save.vehicleRot.y
     vehicle.rot.z = save.vehicleRot.z
     vehicle.rot.w = save.vehicleRot.w
-    const liters = clampLiters(save.liters)
-    vehicle.fillLevel = liters / balance.tank.capacity
+    /*
+     * El garage va PRIMERO: la capacidad con la que se recortan los litros
+     * sale de la pipa equipada, así que hidratarlo después dejaría el tanque
+     * medido contra la pipa que no es. Un guardado sin garage (anterior a la
+     * Fase 2) cae en el inicial, igual que el resto.
+     */
+    set({
+      garage: save.garage
+        ? {
+            pipas: { ...garageInicial().pipas, ...save.garage.pipas },
+            equipada: save.garage.equipada,
+          }
+        : garageInicial(),
+    })
+
+    const capacidad = capacidadPipa()
+    const liters = clampLiters(save.liters, balance, capacidad)
+    vehicle.fillLevel = liters / capacidad
     // Se mezcla sobre lo inicial: si una versión nueva agrega clientes o
     // colonias, un guardado viejo no los deja fuera.
     const base = economyInicial()

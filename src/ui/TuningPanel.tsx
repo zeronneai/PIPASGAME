@@ -3,7 +3,16 @@ import { tuning } from '../game/tuning'
 import { balance } from '../game/balance'
 import type { PerfilCliente } from '../game/systems/clients'
 import { clearSave } from '../game/systems/persistence'
-import { useGameStore } from '../state/gameStore'
+import { capacidadPipa, useGameStore } from '../state/gameStore'
+import {
+  CATEGORIAS,
+  MEJORAS,
+  MODELOS,
+  NIVEL_MAX,
+  pipaDeFabrica,
+  type ModeloId,
+  type Nivel,
+} from '../game/systems/garage'
 import { STEERING_SOURCES, type SteeringId } from '../game/vehicle/steering'
 
 /**
@@ -147,7 +156,7 @@ export default function TuningPanel() {
       max: 1,
       step: 0.05,
       onChange: (n: number) =>
-        useGameStore.getState().setLiters(n * balance.tank.capacity),
+        useGameStore.getState().setLiters(n * capacidadPipa()),
     },
     'velocidad máxima': {
       value: v.maxSpeed,
@@ -524,7 +533,8 @@ export default function TuningPanel() {
         min: 0,
         max: 1,
         step: 0.05,
-        onChange: (n: number) => void (balance.aceptacion.servedTodayFactor = n),
+        onChange: (n: number) =>
+          void (balance.aceptacion.servedTodayFactor = n),
       },
       'surtido ayer ×': {
         value: balance.aceptacion.servedYesterdayFactor,
@@ -562,6 +572,92 @@ export default function TuningPanel() {
   useControls('economía · paciente', perfilSchema('paciente'), CERRADA)
   useControls('economía · normal', perfilSchema('normal'), CERRADA)
   useControls('economía · exigente', perfilSchema('exigente'), CERRADA)
+
+  /*
+   * EL GARAGE (Fase 2, Paso 1). Hasta que exista el taller, esta carpeta es la
+   * única forma de comprobar en el teléfono que la física de verdad lee del
+   * garage: subes «motor» y la pipa empuja más sin recargar nada.
+   *
+   * Equipar y subir nivel NO cobran: cobrar es del Paso 3.
+   */
+  useControls(
+    'garage',
+    {
+      pipa: {
+        value: useGameStore.getState().garage.equipada,
+        options: Object.fromEntries(
+          (Object.keys(MODELOS) as ModeloId[]).map((id) => [
+            MODELOS[id].nombre,
+            id,
+          ]),
+        ),
+        onChange: (id: ModeloId) => {
+          const s = useGameStore.getState()
+          // Desde leva se puede probar una pipa que aún no tienes: si no está
+          // en el lote, se agrega de fábrica y se equipa.
+          if (!s.garage.pipas[id]) {
+            useGameStore.setState({
+              garage: {
+                ...s.garage,
+                pipas: { ...s.garage.pipas, [id]: pipaDeFabrica(id) },
+              },
+            })
+          }
+          useGameStore.getState().equiparPipa(id)
+        },
+      },
+      ...Object.fromEntries(
+        CATEGORIAS.map((cat) => [
+          MEJORAS[cat].nombre.toLowerCase(),
+          {
+            value: 0,
+            min: 0,
+            max: NIVEL_MAX,
+            step: 1,
+            onChange: (n: number) =>
+              useGameStore.getState().setMejora(cat, n as Nivel),
+          },
+        ]),
+      ),
+    },
+    CERRADA,
+  )
+
+  useControls(
+    'garage · precios',
+    {
+      ...Object.fromEntries(
+        (Object.keys(MODELOS) as ModeloId[])
+          .filter((id) => balance.garage.modelos[id] > 0)
+          .map((id) => [
+            MODELOS[id].nombre.toLowerCase(),
+            {
+              value: balance.garage.modelos[id],
+              min: 0,
+              max: 400_000,
+              step: 5_000,
+              onChange: (n: number) => void (balance.garage.modelos[id] = n),
+            },
+          ]),
+      ),
+      ...Object.fromEntries(
+        CATEGORIAS.flatMap((cat) =>
+          [0, 1, 2].map((i) => [
+            `${MEJORAS[cat].nombre.toLowerCase()} n${i + 1}`,
+            {
+              value: balance.garage.mejoras[cat][i],
+              min: 500,
+              max: 60_000,
+              step: 500,
+              onChange: (n: number) =>
+                void (balance.garage.mejoras[cat][i] = n),
+            },
+          ]),
+        ),
+      ),
+    },
+    CERRADA,
+  )
 
   useControls(
     'pipa · segunda',

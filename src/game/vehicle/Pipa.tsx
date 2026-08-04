@@ -1,14 +1,37 @@
 import { useRef, type RefObject } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { CuboidCollider, RigidBody, type RapierRigidBody } from '@react-three/rapier'
+import {
+  CuboidCollider,
+  RigidBody,
+  type RapierRigidBody,
+} from '@react-three/rapier'
 import type { Group } from 'three'
-import { tuning } from '../tuning'
 import { PIPA_BODY } from './pipaParts'
 import { PipaModel } from './PipaModel'
 import { useVehicleController, WHEEL_COUNT } from './useVehicleController'
-import { useGameStore } from '../../state/gameStore'
+import { statsPipa, useGameStore } from '../../state/gameStore'
 
+/**
+ * La pipa que traes puesta.
+ *
+ * El `key` es lo importante: cambiar de modelo cambia el tamaño del chasis y
+ * los puntos de anclaje de las ruedas, y esos dos Rapier los congela al crear
+ * el collider y el controlador. Con el remontaje se reconstruye todo de un
+ * golpe, y como el cuerpo nace donde diga el store, la pipa no se teletransporta.
+ *
+ * Las MEJORAS no pasan por aquí: no tocan geometría, así que entran en vivo
+ * por el paso de física.
+ */
 export function Pipa({
+  bodyRef,
+}: {
+  bodyRef: RefObject<RapierRigidBody | null>
+}) {
+  const modelo = useGameStore((s) => s.garage.equipada)
+  return <PipaCuerpo key={modelo} bodyRef={bodyRef} />
+}
+
+function PipaCuerpo({
   bodyRef,
 }: {
   /** Lo recibe de fuera: la cámara lo necesita para seguir a la pipa. */
@@ -17,6 +40,14 @@ export function Pipa({
   const wheelsRef = useRef<Group>(null)
   const waterRef = useRef<Group>(null)
   const controllerRef = useVehicleController(bodyRef)
+
+  // Del garage, no de una constante: el modelo base más sus mejoras. Se lee
+  // al montar, que es cuando se arma el cuerpo; lo que cambia en vivo lo
+  // reaplica el paso de física.
+  const stats = statsPipa()
+  const t = stats.fisica
+  const escala = stats.escala
+  const B = PIPA_BODY
 
   // Las ruedas no son cuerpos físicos: el controlador las resuelve por raycast
   // y aquí solo se copian su altura de suspensión, su giro y su rodada.
@@ -30,7 +61,8 @@ export function Pipa({
       if (!anchor) continue
       const conn = controller.wheelChassisConnectionPointCs(i)
       const suspension =
-        controller.wheelSuspensionLength(i) ?? tuning.vehicle.suspension.restLength
+        controller.wheelSuspensionLength(i) ??
+        stats.fisica.suspension.restLength
       if (conn) anchor.position.set(conn.x, conn.y - suspension, conn.z)
       anchor.rotation.y = controller.wheelSteering(i) ?? 0
       if (spin) spin.rotation.x = controller.wheelRotation(i) ?? 0
@@ -40,12 +72,13 @@ export function Pipa({
     const agua = waterRef.current
     if (agua) {
       const { slosh } = useGameStore.getState().vehicle
-      agua.position.set(slosh.x, PIPA_BODY.tanque.y, PIPA_BODY.tanque.z + slosh.z)
+      agua.position.set(
+        slosh.x,
+        PIPA_BODY.tanque.y * escala,
+        PIPA_BODY.tanque.z * escala + slosh.z,
+      )
     }
   })
-
-  const t = tuning.vehicle
-  const B = PIPA_BODY
 
   // Nace donde diga el store, no donde diga una constante: si este componente
   // se remontara, la pipa reaparece donde la dejaste y no en su punto de
@@ -59,8 +92,8 @@ export function Pipa({
       colliders={false}
       position={[pos.x, pos.y, pos.z]}
       quaternion={[rot.x, rot.y, rot.z, rot.w]}
-      linearDamping={t.linearDamping}
-      angularDamping={t.angularDamping}
+      /* Los amortiguamientos se aplican en el paso de física, no aquí: este
+         componente no se re-renderiza y se quedarían congelados. */
       // Si se duerme, el controlador deja de moverla y parece un bug.
       canSleep={false}
     >
@@ -71,23 +104,33 @@ export function Pipa({
       */}
       <CuboidCollider
         args={[t.chassis.width / 2, t.chassis.height / 2, t.chassis.length / 2]}
-        position={[0, 0.4, 0]}
+        position={[0, 0.4 * escala, 0]}
         density={0}
       />
       <CuboidCollider
-        args={[B.cabina.size[0] / 2, B.cabina.size[1] / 2, B.cabina.size[2] / 2]}
-        position={[0, B.cabina.y, B.cabina.z]}
+        args={[
+          (B.cabina.size[0] / 2) * escala,
+          (B.cabina.size[1] / 2) * escala,
+          (B.cabina.size[2] / 2) * escala,
+        ]}
+        position={[0, B.cabina.y * escala, B.cabina.z * escala]}
         density={0}
       />
       <CuboidCollider
-        args={[B.tanque.radius, B.tanque.radius, B.tanque.length / 2]}
-        position={[0, B.tanque.y, B.tanque.z]}
+        args={[
+          B.tanque.radius * escala,
+          B.tanque.radius * escala,
+          (B.tanque.length / 2) * escala,
+        ]}
+        position={[0, B.tanque.y * escala, B.tanque.z * escala]}
         density={0}
       />
       <PipaModel
         wheelsRef={wheelsRef}
         wheelCount={WHEEL_COUNT}
         waterRef={waterRef}
+        stats={t}
+        escala={escala}
       />
     </RigidBody>
   )

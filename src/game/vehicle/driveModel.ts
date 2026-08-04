@@ -1,4 +1,4 @@
-import { tuning } from '../tuning'
+import type { VehicleStats } from '../systems/garage'
 
 /*
  * El tacto del manejo, como función pura.
@@ -6,7 +6,12 @@ import { tuning } from '../tuning'
  * Está separado del hook a propósito: sin React ni Rapier encima, el banco de
  * pruebas headless puede medir el frenado, la aceleración y el radio de giro
  * ejecutando ESTA misma función, no una copia que se desincroniza al primer
- * ajuste. Solo depende de `tuning`.
+ * ajuste.
+ *
+ * Desde la Fase 2 los números NO salen de `tuning`: entran por parámetro,
+ * calculados por el garage a partir del modelo base y sus mejoras. Así el
+ * mismo tacto sirve para las tres pipas, y el banco puede medir la que quiera
+ * sin tocar un global.
  */
 
 const DEG = Math.PI / 180
@@ -49,7 +54,8 @@ export type DriveCommand = {
   brakeRear: number
 }
 
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
+const clamp = (v: number, lo: number, hi: number) =>
+  Math.min(hi, Math.max(lo, v))
 
 export function computeDrive(
   /** Velocidad longitudinal en m/s; negativa en reversa. */
@@ -60,8 +66,9 @@ export function computeDrive(
   dt: number,
   /** Estado del motor; se muta con la temperatura de este paso. */
   engine: EngineState,
+  /** Las estadísticas de la pipa que se está manejando (garage.ts). */
+  t: VehicleStats,
 ): DriveCommand {
-  const t = tuning.vehicle
   const steerIn = clamp(input.steer, -1, 1)
   const throttleIn = clamp(input.throttle, 0, 1)
   const brakeIn = clamp(input.brake, 0, 1)

@@ -1,7 +1,7 @@
 import { useFrame } from '@react-three/fiber'
 import { balance } from '../balance'
 import { tuning } from '../tuning'
-import { useGameStore } from '../../state/gameStore'
+import { statsPipa, useGameStore } from '../../state/gameStore'
 import { WATER_SOURCE } from '../world/layout'
 import { refillTick } from './economy'
 
@@ -34,15 +34,21 @@ export function Refill() {
 
     // Litros y dinero EFECTIVOS: lo del tanque más lo de la sesión, que aún
     // no se liquida. Sin esto, la carga no sabría cuándo topar.
+    // La capacidad y la velocidad de la bomba son de la pipa que traes: una
+    // grandota tarda el doble en llenarse, y la mejora de bomba se siente aquí.
+    const pipa = statsPipa()
     const t = refillTick(
       s.economy.liters + r.litersLoaded,
       s.economy.money - r.cost,
       delta,
+      balance,
+      pipa.capacidadLitros,
+      pipa.bomba.carga,
     )
     r.litersLoaded += t.added
     r.cost += t.cost
     s.vehicle.fillLevel =
-      (s.economy.liters + r.litersLoaded) / balance.tank.capacity
+      (s.economy.liters + r.litersLoaded) / pipa.capacidadLitros
 
     if (t.stop) s.stopRefill()
   })

@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { balance } from '../game/balance'
-import { useGameStore } from '../state/gameStore'
+import { capacidadPipa, useGameStore } from '../state/gameStore'
 
 const litros = (n: number) => Math.floor(n).toLocaleString('es-MX')
 const pesos = (n: number) => `$${n.toFixed(2)}`
@@ -31,12 +30,13 @@ function Medidor() {
     let raf = 0
     const tick = () => {
       const { economy, refill, vehicle } = useGameStore.getState()
+      const capacidad = capacidadPipa()
       if (barRef.current) {
         barRef.current.style.transform = `scaleX(${vehicle.fillLevel})`
       }
       if (litrosRef.current) {
         const enTanque = economy.liters + refill.litersLoaded
-        litrosRef.current.textContent = `${litros(enTanque)} / ${litros(balance.tank.capacity)} L  (+${litros(refill.litersLoaded)})`
+        litrosRef.current.textContent = `${litros(enTanque)} / ${litros(capacidad)} L  (+${litros(refill.litersLoaded)})`
       }
       if (costoRef.current) {
         costoRef.current.textContent = `costo ${pesos(refill.cost)} · cartera ${pesos(economy.money - refill.cost)}`

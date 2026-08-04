@@ -43,8 +43,18 @@ export type Pedido = {
   pagoFactor?: number
 }
 
-export function clampLiters(liters: number, b: Balance = balance): number {
-  return Math.min(b.tank.capacity, Math.max(0, liters))
+/*
+ * OJO CON `capacidad` (Fase 2): desde el garage, cada pipa tiene la suya. El
+ * valor por defecto es la de REFERENCIA (`balance.tank.capacity`, la mediana
+ * de fábrica), que es lo que hace que los tests y las llamadas viejas sigan
+ * significando lo mismo; el juego siempre pasa la de la pipa equipada.
+ */
+export function clampLiters(
+  liters: number,
+  b: Balance = balance,
+  capacidad: number = b.tank.capacity,
+): number {
+  return Math.min(capacidad, Math.max(0, liters))
 }
 
 /** Redondeo a centavos. Todo el dinero que sale de aquí ya pasó por esto. */
@@ -77,9 +87,12 @@ export function refillTick(
   money: number,
   dt: number,
   b: Balance = balance,
+  capacidad: number = b.tank.capacity,
+  /** Multiplicador de la bomba de la pipa (mejora del garage). */
+  bomba = 1,
 ): { added: number; cost: number; stop: RefillStop | null } {
-  const wanted = Math.max(0, dt) * b.pozo.litersPerSecond
-  const headroom = Math.max(0, b.tank.capacity - liters)
+  const wanted = Math.max(0, dt) * b.pozo.litersPerSecond * bomba
+  const headroom = Math.max(0, capacidad - liters)
   const affordable =
     b.pozo.pricePerLiter > 0
       ? Math.max(0, money) / b.pozo.pricePerLiter
@@ -101,8 +114,9 @@ export function canStartRefill(
   liters: number,
   money: number,
   b: Balance = balance,
+  capacidad: number = b.tank.capacity,
 ): boolean {
-  return liters < b.tank.capacity && money >= b.pozo.pricePerLiter
+  return liters < capacidad && money >= b.pozo.pricePerLiter
 }
 
 /**
@@ -114,9 +128,10 @@ export function settleRefill(
   wallet: { liters: number; money: number },
   session: { litersLoaded: number; cost: number },
   b: Balance = balance,
+  capacidad: number = b.tank.capacity,
 ): { liters: number; money: number } {
   return {
-    liters: clampLiters(wallet.liters + session.litersLoaded, b),
+    liters: clampLiters(wallet.liters + session.litersLoaded, b, capacidad),
     money: centavos(wallet.money - session.cost),
   }
 }

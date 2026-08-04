@@ -1,8 +1,13 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Quaternion, Vector3 } from 'three'
+import { balance } from '../balance'
 import { tuning } from '../tuning'
-import { useGameStore, type ContextAction } from '../../state/gameStore'
+import {
+  capacidadPipa,
+  useGameStore,
+  type ContextAction,
+} from '../../state/gameStore'
 import { PIPA_DOOR } from '../vehicle/pipaParts'
 import { nearestInteractable } from '../world/interactableRegistry'
 import { WATER_SOURCE } from '../world/layout'
@@ -93,7 +98,7 @@ export function useInteractionScan() {
         } else if (
           !s.refill.active &&
           dPozo < tuning.interaction.pozoRadius &&
-          canStartRefill(liters, money)
+          canStartRefill(liters, money, balance, capacidadPipa())
         ) {
           action = { kind: 'REFILL', label: 'Cargar agua' }
         } else {

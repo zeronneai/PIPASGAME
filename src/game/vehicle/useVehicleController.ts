@@ -5,9 +5,10 @@ import {
   type RapierRigidBody,
 } from '@react-three/rapier'
 import type { DynamicRayCastVehicleController } from '@dimforge/rapier3d-compat'
-import { PHYSICS_STEP, tuning } from '../tuning'
+import { PHYSICS_STEP } from '../tuning'
 import { useInputStore } from '../../state/inputStore'
-import { useGameStore } from '../../state/gameStore'
+import { statsPipa, useGameStore } from '../../state/gameStore'
+import type { VehicleStats } from '../systems/garage'
 import { computeDrive, createEngineState } from './driveModel'
 import { totalMass } from './sloshModel'
 import { useTankSlosh } from './useTankSlosh'
@@ -19,9 +20,13 @@ const isFront = (i: number) => i < 2
 /** Sin control: la pipa estacionada mientras vas a pie. */
 const PARKED = { steer: 0, throttle: 0, brake: 0, boost: 0 }
 
-/** Posición de anclaje de cada rueda respecto al centro del chasis. */
-export function wheelAnchors() {
-  const w = tuning.vehicle.wheel
+/** Posición de anclaje de cada rueda respecto al centro del chasis.
+ *
+ *  Rapier congela estos puntos al crear la rueda, así que cambiar de modelo
+ *  (que cambia la escala) exige recrear el controlador. De eso se encarga el
+ *  remontaje por `key` de Pipa.tsx: aquí no hay nada que reaplicar. */
+export function wheelAnchors(stats: VehicleStats) {
+  const w = stats.wheel
   return [
     { x: w.halfTrack, y: w.connectionY, z: w.frontZ }, // 0 delantera izquierda
     { x: -w.halfTrack, y: w.connectionY, z: w.frontZ }, // 1 delantera derecha
@@ -48,7 +53,18 @@ export function useVehicleController(
   const updateSlosh = useTankSlosh()
   // Últimas propiedades aplicadas, para no recalcularlas ni despertar el
   // cuerpo cuando nada se movió: la pipa estacionada con el agua quieta.
-  const lastMass = useRef({ mass: NaN, comY: NaN, sloshX: NaN, sloshZ: NaN })
+  // El ancho/alto/largo entran en la comparación porque de ellos sale el
+  // tensor de inercia: sin eso, cambiar de pipa con el agua quieta dejaría la
+  // inercia de la pipa anterior.
+  const lastMass = useRef({
+    mass: NaN,
+    comY: NaN,
+    sloshX: NaN,
+    sloshZ: NaN,
+    w: NaN,
+    h: NaN,
+    l: NaN,
+  })
 
   /**
    * Masa explícita con el centro de masa abajo, más la inercia de una caja de
@@ -60,14 +76,22 @@ export function useVehicleController(
    * ejercen sobre el chasis.
    */
   const applyMassProperties = useCallback(
-    (body: RapierRigidBody, mass: number, sloshX: number, sloshZ: number) => {
-      const t = tuning.vehicle
+    (
+      body: RapierRigidBody,
+      t: VehicleStats,
+      mass: number,
+      sloshX: number,
+      sloshZ: number,
+    ) => {
       const last = lastMass.current
       if (
         last.mass === mass &&
         last.comY === t.comY &&
         last.sloshX === sloshX &&
-        last.sloshZ === sloshZ
+        last.sloshZ === sloshZ &&
+        last.w === t.chassis.width &&
+        last.h === t.chassis.height &&
+        last.l === t.chassis.length
       ) {
         return
       }
@@ -84,7 +108,15 @@ export function useVehicleController(
         { x: 0, y: 0, z: 0, w: 1 },
         true,
       )
-      lastMass.current = { mass, comY: t.comY, sloshX, sloshZ }
+      lastMass.current = {
+        mass,
+        comY: t.comY,
+        sloshX,
+        sloshZ,
+        w: a,
+        h: b,
+        l: c,
+      }
     },
     [],
   )
@@ -107,8 +139,8 @@ export function useVehicleController(
     // se llama setIndexForwardAxis. No es un typo nuestro.
     controller.setIndexForwardAxis = 2
 
-    const t = tuning.vehicle
-    for (const anchor of wheelAnchors()) {
+    const t = statsPipa().fisica
+    for (const anchor of wheelAnchors(t)) {
       controller.addWheel(
         anchor,
         { x: 0, y: -1, z: 0 }, // la suspensión y el raycast van hacia abajo
@@ -119,7 +151,7 @@ export function useVehicleController(
     }
 
     const fill = useGameStore.getState().vehicle.fillLevel
-    applyMassProperties(body, totalMass(fill), 0, 0)
+    applyMassProperties(body, t, totalMass(fill, t), 0, 0)
     controllerRef.current = controller
     return controller
   }, [world, bodyRef, applyMassProperties])
@@ -129,7 +161,15 @@ export function useVehicleController(
     return () => {
       if (created.current) world.removeVehicleController(created.current)
       created.current = null
-      lastMass.current = { mass: NaN, comY: NaN, sloshX: NaN, sloshZ: NaN }
+      lastMass.current = {
+        mass: NaN,
+        comY: NaN,
+        sloshX: NaN,
+        sloshZ: NaN,
+        w: NaN,
+        h: NaN,
+        l: NaN,
+      }
     }
   }, [world])
 
@@ -138,7 +178,13 @@ export function useVehicleController(
     const body = bodyRef.current
     if (!controller || !body) return
 
-    const t = tuning.vehicle
+    /*
+     * Las estadísticas de la pipa equipada, una vez por paso: modelo base más
+     * mejoras. Se recalculan en vez de guardarse porque leva muta `tuning` y
+     * `balance` sin avisar, y una copia se quedaría vieja al primer slider —
+     * que es justo lo que la prueba del Paso 1 no permite.
+     */
+    const t = statsPipa().fisica
     const veh = useGameStore.getState().vehicle
     const driving = useGameStore.getState().mode === 'DRIVING'
     const { drive } = useInputStore.getState()
@@ -146,7 +192,7 @@ export function useVehicleController(
     // El agua primero: su offset entra en las propiedades de masa de este
     // mismo paso, así el chapoteo afecta a la física y no solo al HUD.
     const slosh = updateSlosh(controller, body, PHYSICS_STEP)
-    applyMassProperties(body, totalMass(veh.fillLevel), slosh.x, slosh.z)
+    applyMassProperties(body, t, totalMass(veh.fillLevel, t), slosh.x, slosh.z)
 
     const speed = controller.currentVehicleSpeed()
     veh.speed = speed
@@ -159,12 +205,19 @@ export function useVehicleController(
       steerAngle.current,
       PHYSICS_STEP,
       engineState.current,
+      t,
     )
     steerAngle.current = cmd.steer
     veh.steer = cmd.steer
     veh.engineTemp = engineState.current.temp
     veh.overheated = engineState.current.overheated
     veh.boostActive = engineState.current.boostActive
+
+    // Los amortiguamientos son props de <RigidBody>, y ese componente no se
+    // vuelve a renderizar nunca: puestos ahí, el slider de leva no hacía nada
+    // y una mejora de suspensión tampoco haría nada. Se aplican aquí.
+    body.setLinearDamping(t.linearDamping)
+    body.setAngularDamping(t.angularDamping)
 
     let onGround = 0
     for (let i = 0; i < WHEEL_COUNT; i++) {

@@ -1,4 +1,5 @@
 import { tuning } from '../tuning'
+import type { VehicleStats } from '../systems/garage'
 
 /*
  * El chapoteo del agua, como función pura.
@@ -113,8 +114,8 @@ export function localAccel(
   return { x: speed * angvelY, z: (speed - prevSpeed) / dt }
 }
 
-/** Masa total según el nivel: tara más el agua que trae. */
-export function totalMass(fillLevel: number): number {
-  const v = tuning.vehicle
+/** Masa total según el nivel: tara más el agua que trae. La tara y el agua
+ *  son de la pipa equipada, que las calcula el garage. */
+export function totalMass(fillLevel: number, v: VehicleStats): number {
   return v.tareMass + v.waterMass * Math.min(1, Math.max(0, fillLevel))
 }
