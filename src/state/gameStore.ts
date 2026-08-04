@@ -32,7 +32,10 @@ import { esLimpio } from '../game/systems/hose'
 import {
   alternarPieza,
   aplicarCambio,
+  inventarioDesdeGarage,
+  inventarioInicial,
   type CambioEstilo,
+  type InventarioEstilo,
   type Pieza,
 } from '../game/systems/estilo'
 import {
@@ -319,6 +322,9 @@ type GameState = {
   economy: EconomyState
   /** Las pipas que posees y cuál traes. La física lee de aquí. */
   garage: GarageState
+  /** Lo COMPRADO del estilo (colores, calcas, piezas): del jugador, global y
+   *  para siempre. Lo aplicado vive en cada PipaConfig.estilo. */
+  inventarioEstilo: InventarioEstilo
   refill: RefillState
   /**
    * Reloj de la jornada en segundos reales. Se MUTA cada frame (DayClock.tsx)
@@ -478,6 +484,7 @@ export const useGameStore = create<GameState>((set, get) => {
   mode: 'ON_FOOT',
   economy: eco0,
   garage: garageInicial(),
+  inventarioEstilo: inventarioInicial(),
   refill: { active: false, litersLoaded: 0, cost: 0 },
   clock: { daySeconds: 0 },
   camera: { phi: 0 },
@@ -1036,22 +1043,22 @@ export const useGameStore = create<GameState>((set, get) => {
     const s = get()
     const actual = s.garage.pipas[s.garage.equipada]
     if (!actual) return
-    const compra = aplicarCambio(actual, cambio, s.economy.money)
+    const compra = aplicarCambio(actual, s.inventarioEstilo, cambio, s.economy.money)
     if (!compra.ok) {
       if (compra.motivo === 'SIN_DINERO')
         s.showNotice(`No alcanza: faltan $${centavos((compra.costo ?? 0) - s.economy.money)}`)
-      else if (compra.motivo === 'YA_LA_TIENES') s.showNotice('Esa ya la traes')
-      // SIN_CAMBIO se queda callado: tocar el color puesto no es un error.
+      // SIN_CAMBIO se queda callado: tocar lo puesto no es un error.
       return
     }
     // Un solo set(), como toda compra: el autoguardado de 5 s no puede
-    // sorprenderla a medias. El estilo no toca capacidad ni física, así que
-    // aquí no hay litros que recortar.
+    // sorprenderla a medias. Comprar da de alta en el inventario; aplicar lo
+    // tuyo pasa por aquí igual, con costo cero y el inventario intacto.
     set({
       garage: {
         ...s.garage,
         pipas: { ...s.garage.pipas, [s.garage.equipada]: compra.pipa },
       },
+      inventarioEstilo: compra.inv,
       economy: { ...s.economy, money: centavos(s.economy.money - compra.costo) },
     })
     s.showNotice(compra.aviso)
@@ -1060,7 +1067,7 @@ export const useGameStore = create<GameState>((set, get) => {
     const s = get()
     const actual = s.garage.pipas[s.garage.equipada]
     if (!actual) return
-    const pipa = alternarPieza(actual, pieza)
+    const pipa = alternarPieza(actual, s.inventarioEstilo, pieza)
     if (!pipa) return
     set({
       garage: {
@@ -1112,13 +1119,17 @@ export const useGameStore = create<GameState>((set, get) => {
      * medido contra la pipa que no es. Un guardado sin garage (anterior a la
      * Fase 2) cae en el inicial, igual que el resto.
      */
+    const garage = save.garage
+      ? {
+          pipas: { ...garageInicial().pipas, ...save.garage.pipas },
+          equipada: save.garage.equipada,
+        }
+      : garageInicial()
     set({
-      garage: save.garage
-        ? {
-            pipas: { ...garageInicial().pipas, ...save.garage.pipas },
-            equipada: save.garage.equipada,
-          }
-        : garageInicial(),
+      garage,
+      // Guardados anteriores al inventario: amnistía — lo que las pipas
+      // traían puesto o comprado se da por pagado.
+      inventarioEstilo: save.inventarioEstilo ?? inventarioDesdeGarage(garage.pipas),
     })
 
     const capacidad = capacidadPipa()

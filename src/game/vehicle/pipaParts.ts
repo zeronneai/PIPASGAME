@@ -2,7 +2,29 @@
  * Datos de la pipa: dónde amanece, de qué color es cada parte y qué mide cada
  * pieza. Separado del componente a propósito, igual que world/layout.ts: en la
  * Fase 2 la personalización va a leer y escribir esto sin tocar el render.
+ *
+ * Este módulo NO importa nada en runtime (solo el tipo VehicleStats, que se
+ * borra al compilar): lo consumen el mundo Y la vista previa del taller sin
+ * arrastrar rapier.
  */
+
+import type { VehicleStats } from '../systems/garage'
+
+/** Posición de anclaje de cada rueda respecto al centro del chasis.
+ *
+ *  Rapier congela estos puntos al crear la rueda, así que cambiar de modelo
+ *  (que cambia la escala) exige recrear el controlador — de eso se encarga el
+ *  remontaje por `key` de Pipa.tsx. La vista previa del taller los usa para
+ *  plantar ruedas estáticas sin física. */
+export function wheelAnchors(stats: VehicleStats) {
+  const w = stats.wheel
+  return [
+    { x: w.halfTrack, y: w.connectionY, z: w.frontZ }, // 0 delantera izquierda
+    { x: -w.halfTrack, y: w.connectionY, z: w.frontZ }, // 1 delantera derecha
+    { x: w.halfTrack, y: w.connectionY, z: w.rearZ }, // 2 trasera izquierda
+    { x: -w.halfTrack, y: w.connectionY, z: w.rearZ }, // 3 trasera derecha
+  ]
+}
 
 /**
  * Dónde amanece estacionada: sobre la calle Morelos, 15 m al oeste del spawn

@@ -1,6 +1,13 @@
 import { useGameStore, type GarageState } from '../../state/gameStore'
 import type { ClientHistory } from './clients'
-import { sanitizarRotulo, type Estilo } from './estilo'
+import {
+  CALCAS,
+  COLORES,
+  PIEZAS,
+  sanitizarRotulo,
+  type Estilo,
+  type InventarioEstilo,
+} from './estilo'
 
 /*
  * Guardado en localStorage (sección 2.9). Se persiste exactamente lo que
@@ -40,6 +47,9 @@ export type SaveData = {
    *  Opcional a propósito, para no invalidar los guardados de la Fase 1: sin
    *  él se hidrata el garage inicial y sigues con la heredada de fábrica. */
   garage?: GarageState
+  /** Lo comprado del estilo (global del jugador). Opcional: un guardado sin
+   *  él se hidrata dando por pagado lo que las pipas traigan puesto. */
+  inventarioEstilo?: InventarioEstilo
 }
 
 type StoreState = ReturnType<typeof useGameStore.getState>
@@ -95,6 +105,11 @@ export function snapshotSave(s: StoreState): SaveData {
         ]),
       ),
     },
+    inventarioEstilo: {
+      colores: [...s.inventarioEstilo.colores],
+      calcas: [...s.inventarioEstilo.calcas],
+      piezas: [...s.inventarioEstilo.piezas],
+    },
   }
 }
 
@@ -139,6 +154,29 @@ export function parseSave(json: string | null): SaveData | null {
           continue
         }
         cfg.estilo = { ...cfg.estilo!, rotulo: sanitizarRotulo(e.rotulo) }
+      }
+    }
+    /*
+     * El inventario también trae ids libres: se filtran contra los catálogos
+     * (un save editado a mano no da de alta colores fantasma). Si la forma
+     * viene rota, se tira solo el inventario — hydrate lo re-deriva de lo
+     * que las pipas traigan puesto.
+     */
+    if (data.inventarioEstilo !== undefined) {
+      const inv = data.inventarioEstilo as Partial<InventarioEstilo> | null
+      if (
+        !inv ||
+        !Array.isArray(inv.colores) ||
+        !Array.isArray(inv.calcas) ||
+        !Array.isArray(inv.piezas)
+      ) {
+        delete data.inventarioEstilo
+      } else {
+        data.inventarioEstilo = {
+          colores: inv.colores.filter((c) => c in COLORES),
+          calcas: inv.calcas.filter((c) => c in CALCAS),
+          piezas: inv.piezas.filter((p) => p in PIEZAS),
+        }
       }
     }
     return data as SaveData

@@ -1665,7 +1665,52 @@ canvas {
 
 /* ---- Taller · pestaña de Estilo (Fase 2, Paso 5) ---- */
 
+/* Pantalla dividida: el aparador 3D a la izquierda, las opciones a la
+   derecha. El juego es landscape-locked, así que la división siempre cabe. */
 .estilo {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.estilo-vista {
+  position: sticky;
+  top: 0;
+  flex: 0 0 40%;
+  display: grid;
+  gap: 4px;
+}
+
+.estilo-vista-lienzo {
+  height: clamp(150px, 34vh, 240px);
+  overflow: hidden;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+  /* Imprescindible: sin esto el scroll de la lista roba el arrastre. */
+  touch-action: none;
+  cursor: grab;
+}
+
+.estilo-vista-cargando {
+  display: grid;
+  place-items: center;
+  height: clamp(150px, 34vh, 240px);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+  font-size: 0.8rem;
+  opacity: 0.5;
+}
+
+.estilo-vista-pista {
+  margin: 0;
+  font-size: 0.7rem;
+  text-align: center;
+  opacity: 0.45;
+}
+
+.estilo-opciones {
+  flex: 1;
+  min-width: 0;
   display: grid;
   gap: 16px;
 }
@@ -1678,10 +1723,17 @@ canvas {
 .estilo-titulo {
   display: flex;
   gap: 10px;
-  align-items: baseline;
+  align-items: center;
+  min-height: 44px;
   font-family: var(--font-display);
   font-size: 1rem;
   font-weight: 700;
+}
+
+/* El precio de referencia o el botón de pagar, a la orilla derecha. */
+.estilo-titulo > .estilo-precio,
+.estilo-titulo > .estilo-btn {
+  margin-left: auto;
 }
 
 .estilo-precio {
@@ -1714,19 +1766,44 @@ canvas {
   cursor: pointer;
 }
 
+/* Tres marcas por ficha: puesta (anillo acento), seleccionada sin pagar
+   (anillo claro) y tuya (puntito de esquina). */
 .estilo-swatch.puesta {
   border-color: var(--color-accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 45%, transparent);
 }
 
-.estilo-swatch.no-alcanza {
-  opacity: 0.35;
-  cursor: default;
+.estilo-swatch.sel,
+.estilo-calca.sel {
+  border-color: var(--color-text);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-text) 55%, transparent);
 }
 
-.estilo-rotulo {
-  display: flex;
-  gap: 8px;
+.estilo-swatch,
+.estilo-calca {
+  position: relative;
+}
+
+.estilo-swatch.tuya::after,
+.estilo-calca.tuya::after {
+  content: '';
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--color-bg);
+  border-radius: 50%;
+  background: var(--color-success);
+}
+
+.estilo-punto {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--color-success);
 }
 
 .estilo-rotulo-input {
@@ -1791,8 +1868,15 @@ canvas {
   align-items: center;
   min-height: 56px;
   padding: 8px 10px;
+  border: 1px solid transparent;
   border-radius: 12px;
   background: color-mix(in srgb, var(--color-text) 6%, transparent);
+  cursor: pointer; /* tocar el renglón previsualiza la pieza en el aparador */
+}
+
+/* El renglón cuya previsualización difiere de lo puesto. */
+.estilo-pieza.preview {
+  border-color: color-mix(in srgb, var(--color-text) 40%, transparent);
 }
 
 .estilo-pieza-info {

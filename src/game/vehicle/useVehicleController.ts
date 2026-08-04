@@ -10,6 +10,7 @@ import { useInputStore } from '../../state/inputStore'
 import { statsPipa, useGameStore } from '../../state/gameStore'
 import type { VehicleStats } from '../systems/garage'
 import { computeDrive, createEngineState } from './driveModel'
+import { wheelAnchors } from './pipaParts'
 import { totalMass } from './sloshModel'
 import { useTankSlosh } from './useTankSlosh'
 
@@ -20,20 +21,8 @@ const isFront = (i: number) => i < 2
 /** Sin control: la pipa estacionada mientras vas a pie. */
 const PARKED = { steer: 0, throttle: 0, brake: 0, boost: 0 }
 
-/** Posición de anclaje de cada rueda respecto al centro del chasis.
- *
- *  Rapier congela estos puntos al crear la rueda, así que cambiar de modelo
- *  (que cambia la escala) exige recrear el controlador. De eso se encarga el
- *  remontaje por `key` de Pipa.tsx: aquí no hay nada que reaplicar. */
-export function wheelAnchors(stats: VehicleStats) {
-  const w = stats.wheel
-  return [
-    { x: w.halfTrack, y: w.connectionY, z: w.frontZ }, // 0 delantera izquierda
-    { x: -w.halfTrack, y: w.connectionY, z: w.frontZ }, // 1 delantera derecha
-    { x: w.halfTrack, y: w.connectionY, z: w.rearZ }, // 2 trasera izquierda
-    { x: -w.halfTrack, y: w.connectionY, z: w.rearZ }, // 3 trasera derecha
-  ]
-}
+// wheelAnchors vive en pipaParts.ts (sin rapier): también lo usa la vista
+// previa del taller, que no debe arrastrar la física a su bundle.
 
 /**
  * Controlador de la pipa sobre el DynamicRayCastVehicleController de Rapier.

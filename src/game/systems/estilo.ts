@@ -8,10 +8,11 @@
  * aceptación. En cuanto lo cosmético diera ventaja, el jugador dejaría de
  * elegir lo que le gusta y elegiría lo óptimo. Hay un test que lo cobra.
  *
- * El estilo es POR PIPA, como las mejoras: la grandota recién comprada sale
- * gris del lote y la pintas tú. Pintura, rótulo y calca cobran cada aplicada
- * (quitar es gratis); cromo y detalles se compran una vez por pipa y de ahí
- * en adelante se ponen y quitan gratis.
+ * Lo APLICADO es POR PIPA (la grandota recién comprada sale gris del lote),
+ * pero lo COMPRADO es DEL JUGADOR: el inventario. Un color, calca o pieza se
+ * paga UNA vez y queda tuyo para siempre — aplicarlo en cualquier pipa, hoy
+ * o mañana, es gratis. La única labor que se paga por evento es el rótulo:
+ * cada cambio de texto es una visita al rotulista.
  */
 
 import { balance, type Balance } from '../balance'
@@ -43,10 +44,40 @@ export type Estilo = {
   rotulo: string
   /** Motivo pintado en las placas del tanque, debajo del rótulo. */
   calca: CalcaId | null
-  /** Llave presente = pieza comprada; el valor dice si está puesta. */
+  /** true = la pieza está PUESTA en esta pipa. La POSESIÓN ya no vive aquí:
+   *  vive en el InventarioEstilo del jugador. */
   cromo: Partial<Record<PiezaCromo, boolean>>
   detalles: Partial<Record<Detalle, boolean>>
 }
+
+/**
+ * Lo que el jugador YA COMPRÓ, global y para siempre. Vive aparte del
+ * estilo de cada pipa: pintar la grandota del rojo que pagaste en la
+ * heredada no cuesta nada.
+ */
+export type InventarioEstilo = {
+  colores: ColorId[]
+  calcas: CalcaId[]
+  piezas: Pieza[]
+}
+
+export const inventarioInicial = (): InventarioEstilo => ({
+  colores: [],
+  calcas: [],
+  piezas: [],
+})
+
+/** Los grises del lote no se compran: con esos sale toda pipa. */
+export const COLORES_DE_FABRICA: ColorId[] = ['gris-flota', 'aluminio']
+
+export const tieneColor = (inv: InventarioEstilo, id: ColorId) =>
+  COLORES_DE_FABRICA.includes(id) || inv.colores.includes(id)
+
+export const tieneCalca = (inv: InventarioEstilo, id: CalcaId) =>
+  inv.calcas.includes(id)
+
+export const tienePieza = (inv: InventarioEstilo, id: Pieza) =>
+  inv.piezas.includes(id)
 
 /**
  * La paleta. Los dos primeros son los grises de fábrica con nombre puesto —
@@ -135,44 +166,65 @@ export type CambioEstilo =
   | { tipo: 'calca'; calca: CalcaId | null }
   | { tipo: 'pieza'; pieza: Pieza }
 
-export type MotivoNoEstilo = 'SIN_DINERO' | 'YA_LA_TIENES' | 'SIN_CAMBIO'
+export type MotivoNoEstilo = 'SIN_DINERO' | 'SIN_CAMBIO'
 
 export type CompraEstilo =
-  | { ok: true; pipa: PipaConfig; costo: number; aviso: string }
+  | {
+      ok: true
+      pipa: PipaConfig
+      /** El inventario tras la compra (la misma referencia si no hubo alta). */
+      inv: InventarioEstilo
+      costo: number
+      aviso: string
+    }
   | { ok: false; motivo: MotivoNoEstilo; costo: number | null }
 
-/** Precio de un cambio. Quitar (rótulo vacío, calca null) siempre es gratis. */
-export function precioCambio(cambio: CambioEstilo, b: Balance = balance): number {
+/**
+ * Precio de un cambio CONTRA el inventario: lo tuyo es gratis (Aplicar), lo
+ * nuevo cuesta (Comprar). Quitar (rótulo vacío, calca null) siempre es
+ * gratis. La UI pinta sus botones con esto.
+ */
+export function precioCambio(
+  cambio: CambioEstilo,
+  inv: InventarioEstilo,
+  b: Balance = balance,
+): number {
   const e = b.garage.estilo
   switch (cambio.tipo) {
     case 'pintura':
-      return e.pintura[cambio.parte]
+      return tieneColor(inv, cambio.color) ? 0 : e.pintura[cambio.parte]
     case 'rotulo':
       return sanitizarRotulo(cambio.texto) === '' ? 0 : e.rotulo
     case 'calca':
-      return cambio.calca === null ? 0 : e.calca
+      return cambio.calca === null || tieneCalca(inv, cambio.calca) ? 0 : e.calca
     case 'pieza':
-      return e.piezas[cambio.pieza]
+      return tienePieza(inv, cambio.pieza) ? 0 : e.piezas[cambio.pieza]
   }
 }
 
 /**
- * Aplica un cambio de estilo, si alcanza. Pura como `comprarMejora`: recibe la
- * pipa y la cartera, devuelve la pipa nueva y el costo, y el store aplica el
- * resultado en un solo set().
+ * Aplica un cambio de estilo, si alcanza. Pura como `comprarMejora`: recibe
+ * pipa, inventario y cartera; devuelve pipa e inventario nuevos y el costo, y
+ * el store aplica todo en un solo set(). Comprar da de alta en el inventario;
+ * aplicar lo que ya es tuyo sale en cero.
  */
 export function aplicarCambio(
   pipa: PipaConfig,
+  inv: InventarioEstilo,
   cambio: CambioEstilo,
   dinero: number,
   b: Balance = balance,
 ): CompraEstilo {
   const actual = estiloDe(pipa)
-  const costo = precioCambio(cambio, b)
-  const cobra = (estilo: Estilo, aviso: string): CompraEstilo =>
+  const costo = precioCambio(cambio, inv, b)
+  const cobra = (
+    estilo: Estilo,
+    aviso: string,
+    invNuevo: InventarioEstilo = inv,
+  ): CompraEstilo =>
     dinero < costo
       ? { ok: false, motivo: 'SIN_DINERO', costo }
-      : { ok: true, costo, aviso, pipa: { ...pipa, estilo } }
+      : { ok: true, costo, aviso, inv: invNuevo, pipa: { ...pipa, estilo } }
 
   switch (cambio.tipo) {
     case 'pintura': {
@@ -181,6 +233,9 @@ export function aplicarCambio(
       return cobra(
         { ...actual, pintura: { ...actual.pintura, [cambio.parte]: cambio.color } },
         `${cambio.parte === 'cabina' ? 'Cabina' : 'Tanque'} en ${COLORES[cambio.color].nombre.toLowerCase()}`,
+        tieneColor(inv, cambio.color)
+          ? inv
+          : { ...inv, colores: [...inv.colores, cambio.color] },
       )
     }
     case 'rotulo': {
@@ -198,30 +253,75 @@ export function aplicarCambio(
       return cobra(
         { ...actual, calca: cambio.calca },
         cambio.calca === null ? 'Calcas fuera' : CALCAS[cambio.calca].nombre,
+        cambio.calca === null || tieneCalca(inv, cambio.calca)
+          ? inv
+          : { ...inv, calcas: [...inv.calcas, cambio.calca] },
       )
     }
     case 'pieza': {
-      const bolsa = esCromo(cambio.pieza) ? actual.cromo : actual.detalles
-      if (cambio.pieza in bolsa)
-        return { ok: false, motivo: 'YA_LA_TIENES', costo: null }
+      // Comprarla la deja puesta; si ya es tuya, esto la pone (gratis).
+      const puesta = esCromo(cambio.pieza)
+        ? actual.cromo[cambio.pieza] === true
+        : actual.detalles[cambio.pieza as Detalle] === true
+      if (puesta && tienePieza(inv, cambio.pieza))
+        return { ok: false, motivo: 'SIN_CAMBIO', costo: null }
       const estilo = esCromo(cambio.pieza)
         ? { ...actual, cromo: { ...actual.cromo, [cambio.pieza]: true } }
         : { ...actual, detalles: { ...actual.detalles, [cambio.pieza]: true } }
-      return cobra(estilo, PIEZAS[cambio.pieza].nombre)
+      return cobra(
+        estilo,
+        PIEZAS[cambio.pieza].nombre,
+        tienePieza(inv, cambio.pieza)
+          ? inv
+          : { ...inv, piezas: [...inv.piezas, cambio.pieza] },
+      )
     }
   }
 }
 
 /**
  * Pone o quita una pieza YA COMPRADA. Gratis: lo que se paga es la pieza, no
- * el gusto de quitarla un rato. Devuelve null si no es tuya.
+ * el gusto de quitarla un rato. Devuelve null si no está en el inventario.
  */
-export function alternarPieza(pipa: PipaConfig, pieza: Pieza): PipaConfig | null {
+export function alternarPieza(
+  pipa: PipaConfig,
+  inv: InventarioEstilo,
+  pieza: Pieza,
+): PipaConfig | null {
+  if (!tienePieza(inv, pieza)) return null
   const actual = estiloDe(pipa)
-  const bolsa = esCromo(pieza) ? actual.cromo : actual.detalles
-  if (!(pieza in bolsa)) return null
   const estilo = esCromo(pieza)
-    ? { ...actual, cromo: { ...actual.cromo, [pieza]: !actual.cromo[pieza] } }
-    : { ...actual, detalles: { ...actual.detalles, [pieza]: !actual.detalles[pieza] } }
+    ? { ...actual, cromo: { ...actual.cromo, [pieza]: actual.cromo[pieza] !== true } }
+    : {
+        ...actual,
+        detalles: { ...actual.detalles, [pieza]: actual.detalles[pieza as Detalle] !== true },
+      }
   return { ...pipa, estilo }
+}
+
+/**
+ * Amnistía para guardados anteriores al inventario: lo que cualquier pipa
+ * traía puesto (o comprado, en la semántica vieja de llave presente) se da
+ * por pagado. Nadie pierde lo que ya era suyo.
+ */
+export function inventarioDesdeGarage(
+  pipas: Partial<Record<string, PipaConfig>>,
+): InventarioEstilo {
+  const inv = inventarioInicial()
+  for (const cfg of Object.values(pipas)) {
+    const e = cfg?.estilo
+    if (!e) continue
+    for (const color of [e.pintura.cabina, e.pintura.tanque]) {
+      if (!tieneColor(inv, color) && COLORES[color]) inv.colores.push(color)
+    }
+    if (e.calca && CALCAS[e.calca] && !inv.calcas.includes(e.calca))
+      inv.calcas.push(e.calca)
+    for (const pieza of [
+      ...Object.keys(e.cromo ?? {}),
+      ...Object.keys(e.detalles ?? {}),
+    ] as Pieza[]) {
+      if (PIEZAS[pieza] && !inv.piezas.includes(pieza)) inv.piezas.push(pieza)
+    }
+  }
+  return inv
 }
