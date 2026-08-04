@@ -1,16 +1,13 @@
-import { useLayoutEffect, useMemo, useRef } from 'react'
-import {
-  CuboidCollider,
-  CylinderCollider,
-  RigidBody,
-} from '@react-three/rapier'
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { useRapier } from '@react-three/rapier'
 import { Color, Matrix4, Quaternion, Vector3, type InstancedMesh } from 'three'
 import {
+  BARDA_ALTURA,
   buildings,
   groundSlab,
+  isla,
   kiosco,
   locales,
-  roads,
   sidewalks,
   topes,
   waterParts,
@@ -19,7 +16,7 @@ import {
 import { Interactable } from './Interactable'
 
 // Temporales de módulo: solo se usan en el llenado inicial, pero no hay razón
-// para asignar 400 objetos.
+// para asignar mil objetos.
 const _m = new Matrix4()
 const _pos = new Vector3()
 const _scale = new Vector3()
@@ -28,10 +25,11 @@ const _up = new Vector3(0, 1, 0)
 const _color = new Color()
 
 const COLOR = {
-  ground: '#54545a',
-  road: '#6e6e73',
-  sidewalk: '#8d8d93',
+  asfalto: '#54545a',
+  banqueta: '#8d8d93',
+  barda: '#8a7f6b',
   tope: '#b9a44e',
+  isla: '#6f7a5f',
   kiosco: '#9a8a5c',
   waterBase: '#6a6a70',
   waterPipe: '#4d8fbf',
@@ -40,7 +38,7 @@ const COLOR = {
 
 /**
  * Un draw call por conjunto: una geometría de cubo unitario, escalada y
- * ROTADA por instancia (la avenida diagonal es un box con rotY).
+ * ROTADA por instancia (los topes de las curvas van girados).
  */
 function InstancedBoxes({
   boxes,
@@ -81,12 +79,18 @@ function InstancedBoxes({
 }
 
 export function ColoniaGreybox() {
-  // Gris más claro entre más alto el edificio: sin esto la manzana es una
-  // masa plana imposible de leer al caminar.
+  /*
+   * Gris más claro entre más alto el edificio: sin esto la manzana es una masa
+   * plana imposible de leer al caminar. Los patios (las cajas de altura de
+   * barda) van en tono de adobe, para que se lean como muro de predio y no
+   * como un edificio chaparro.
+   */
   const buildingColors = useMemo(
     () =>
       buildings.map((b) =>
-        _color.setHSL(0, 0, 0.46 + ((b.size[1] - 4) / 16) * 0.2).getStyle(),
+        b.size[1] <= BARDA_ALTURA + 0.01
+          ? COLOR.barda
+          : _color.setHSL(0, 0, 0.42 + ((b.size[1] - 5) / 15) * 0.22).getStyle(),
       ),
     [],
   )
@@ -98,14 +102,17 @@ export function ColoniaGreybox() {
 
   return (
     <>
-      {/* El suelo de rescate: 3 cm bajo la calle, tapa cualquier rendija. */}
+      {/*
+        El asfalto: una sola losa con la cara superior en y = 0. Las calles ya
+        no son cajas — son el hueco que dejan las manzanas — así que no hay
+        juntas entre segmentos ni el escalón anti z-fighting de antes.
+      */}
       <mesh position={groundSlab.pos}>
         <boxGeometry args={groundSlab.size} />
-        <meshStandardMaterial color={COLOR.ground} />
+        <meshStandardMaterial color={COLOR.asfalto} />
       </mesh>
 
-      <InstancedBoxes boxes={roads} color={COLOR.road} />
-      <InstancedBoxes boxes={sidewalks} color={COLOR.sidewalk} />
+      <InstancedBoxes boxes={sidewalks} color={COLOR.banqueta} />
       <InstancedBoxes
         boxes={buildings}
         color="#ffffff"
@@ -118,7 +125,11 @@ export function ColoniaGreybox() {
       />
       <InstancedBoxes boxes={topes} color={COLOR.tope} />
 
-      {/* El kiosco de la plaza: el obstáculo que la vuelve glorieta. */}
+      {/* La isla de la glorieta y su kiosco: el obstáculo que obliga a rodear. */}
+      <mesh position={isla.pos}>
+        <cylinderGeometry args={[isla.radius, isla.radius, isla.height, 24]} />
+        <meshStandardMaterial color={COLOR.isla} />
+      </mesh>
       <mesh position={kiosco.pos}>
         <boxGeometry args={kiosco.size} />
         <meshStandardMaterial color={COLOR.kiosco} />
@@ -165,15 +176,24 @@ export function ColoniaGreybox() {
 }
 
 /**
- * Todo el mundo estático cuelga de un solo RigidBody fijo: son ~150 formas
- * primitivas, ni un trimesh. Rapier los mete al broad phase estático una vez
- * y no vuelve a tocarlos. La diagonal es un CuboidCollider rotado.
+ * Todo el mundo estático cuelga de UN cuerpo fijo, y los colliders se crean
+ * DIRECTO contra Rapier en vez de con un componente por caja.
+ *
+ * El motivo es el conteo: seguir el borde de una curva a medio metro cuesta
+ * más de mil cuboides. Para Rapier eso no es nada (son estáticos, entran una
+ * vez al BVH y ahí se quedan), pero mil componentes de React con su estado y
+ * su ciclo de vida sí se sienten al montar la escena. Aquí es una pasada de
+ * mil llamadas y se acabó.
+ *
+ * Cada caja que se dibuja tiene su collider y cada collider se dibuja: no hay
+ * muros invisibles ni fachadas que se atraviesen.
  */
 function WorldColliders() {
-  const cuboids = useMemo<Box[]>(
-    () => [
+  const { rapier, world } = useRapier()
+
+  useEffect(() => {
+    const cuboides: Box[] = [
       groundSlab,
-      ...roads,
       ...sidewalks,
       ...buildings,
       ...locales.map((l) => ({ pos: l.pos, size: l.size })),
@@ -181,24 +201,41 @@ function WorldColliders() {
       kiosco,
       waterParts.base,
       waterParts.valve,
-    ],
-    [],
-  )
+    ]
 
-  return (
-    <RigidBody type="fixed" colliders={false}>
-      {cuboids.map((b, i) => (
-        <CuboidCollider
-          key={i}
-          args={[b.size[0] / 2, b.size[1] / 2, b.size[2] / 2]}
-          position={b.pos}
-          rotation={[0, b.rotY ?? 0, 0]}
-        />
-      ))}
-      <CylinderCollider
-        args={[waterParts.pipe.height / 2, waterParts.pipe.radius]}
-        position={waterParts.pipe.pos}
-      />
-    </RigidBody>
-  )
+    const body = world.createRigidBody(rapier.RigidBodyDesc.fixed())
+    for (const b of cuboides) {
+      const desc = rapier.ColliderDesc.cuboid(
+        b.size[0] / 2,
+        b.size[1] / 2,
+        b.size[2] / 2,
+      ).setTranslation(b.pos[0], b.pos[1], b.pos[2])
+      if (b.rotY) {
+        const half = b.rotY / 2
+        desc.setRotation({ x: 0, y: Math.sin(half), z: 0, w: Math.cos(half) })
+      }
+      world.createCollider(desc, body)
+    }
+
+    // La isla de la glorieta y el tubo de la toma, que son cilindros.
+    world.createCollider(
+      rapier.ColliderDesc.cylinder(isla.height / 2, isla.radius).setTranslation(
+        ...isla.pos,
+      ),
+      body,
+    )
+    world.createCollider(
+      rapier.ColliderDesc.cylinder(
+        waterParts.pipe.height / 2,
+        waterParts.pipe.radius,
+      ).setTranslation(...waterParts.pipe.pos),
+      body,
+    )
+
+    return () => {
+      world.removeRigidBody(body)
+    }
+  }, [rapier, world])
+
+  return null
 }

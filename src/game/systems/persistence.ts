@@ -14,9 +14,10 @@ import type { ClientHistory } from './clients'
  */
 
 const SAVE_KEY = 'pipero-save'
-/** v2: el trazo de la colonia cambió y las posiciones guardadas del mundo
- *  viejo caerían dentro de edificios. Un guardado v1 arranca partida nueva. */
-export const SAVE_VERSION = 2
+/** v3: la colonia se rediseñó otra vez (manzanas macizas), y una posición
+ *  guardada del trazo viejo deja al jugador o a la pipa DENTRO de un edificio
+ *  —ahora sí macizo—. Un guardado viejo arranca partida nueva. */
+export const SAVE_VERSION = 3
 
 export type SaveData = {
   version: number

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { MAP_SIZE, roads, WATER_SOURCE } from '../game/world/layout'
+import { footprints, MAP_SIZE, WATER_SOURCE } from '../game/world/layout'
 import { useGameStore } from '../state/gameStore'
 import type { PerfilCliente } from '../game/systems/clients'
 
@@ -53,25 +53,24 @@ function draw(el: HTMLCanvasElement) {
   /** Mundo → mapa. +x del mundo a la derecha, +z hacia abajo. */
   const M = (n: number) => (n + MAP_SIZE / 2) * escala
 
-  ctx.fillStyle = COLOR.fondo
+  /*
+   * El dibujo va al revés que el trazo viejo: primero se rellena TODO de
+   * color calle y encima se pintan las manzanas. En el trazo nuevo las calles
+   * son el hueco que dejan las manzanas, así que pintarlas una por una ya no
+   * tiene sentido — y de paso los callejones salen gratis, como las rendijas
+   * que quedan entre dos manzanas.
+   */
+  ctx.fillStyle = COLOR.calle
   ctx.fillRect(0, 0, W, W)
 
-  // Las calles dibujan la colonia entera, segmento por segmento: el trazo
-  // ya no es retícula, así que se pintan tal cual (la diagonal, rotada).
-  ctx.fillStyle = COLOR.calle
-  for (const r of roads) {
-    const w = r.size[0] * escala
-    const l = r.size[2] * escala
-    if (r.rotY) {
-      ctx.save()
-      ctx.translate(M(r.pos[0]), M(r.pos[2]))
-      // rotY del mundo (sobre Y, hacia -z) es giro antihorario en el mapa.
-      ctx.rotate(-r.rotY)
-      ctx.fillRect(-w / 2, -l / 2, w, l)
-      ctx.restore()
-    } else {
-      ctx.fillRect(M(r.pos[0]) - w / 2, M(r.pos[2]) - l / 2, w, l)
-    }
+  ctx.fillStyle = COLOR.fondo
+  for (const f of footprints) {
+    ctx.fillRect(
+      M(f.pos[0]) - (f.size[0] * escala) / 2,
+      M(f.pos[2]) - (f.size[2] * escala) / 2,
+      f.size[0] * escala,
+      f.size[2] * escala,
+    )
   }
 
   const s = useGameStore.getState()

@@ -36,7 +36,7 @@ import {
   type DayStats,
   type ResumenJornada,
 } from '../game/systems/jornada'
-import { DOMICILIOS } from '../game/world/layout'
+import { DOMICILIOS, PLAYER_SPAWN } from '../game/world/layout'
 import {
   prioridadTrasAceptar,
   prioridadTrasRechazo,
@@ -371,7 +371,7 @@ export const useGameStore = create<GameState>((set, get) => {
   stats: newDayStats(eco0.reputation),
   summary: null,
   player: {
-    pos: { x: 0, y: 1, z: 0 },
+    pos: { x: PLAYER_SPAWN[0], y: PLAYER_SPAWN[1], z: PLAYER_SPAWN[2] },
     yaw: 0,
     stamina: 1,
     running: false,

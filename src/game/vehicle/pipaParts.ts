@@ -5,16 +5,14 @@
  */
 
 /**
- * Dónde amanece estacionada. Sobre la calle x = 0, a 16 m del spawn del
- * jugador: verificado contra world/layout.ts que no cae en un bache ni en un
- * tope, con un tope a 56 m al norte y otro a 40 m al sur para poder probarlos.
+ * Dónde amanece estacionada: sobre la calle Morelos, 15 m al oeste del spawn
+ * del jugador y a media cuadra de la glorieta. `layout.test.ts` verifica que
+ * cae en calle por la que pasa la pipa y con holgura de sobra.
  *
  * La altura deja las ruedas justo sobre el asfalto; la suspensión asienta el
  * resto en el primer segundo.
  */
-/** En la plaza, al oeste del kiosco: el trazo nuevo ya no tiene calle en el
- *  viejo (0, 16). */
-export const PIPA_SPAWN: [number, number, number] = [14, 1.25, -2]
+export const PIPA_SPAWN: [number, number, number] = [-15, 1.25, 18]
 
 /**
  * Puerta del conductor, en coordenadas locales de la pipa.

@@ -1,32 +1,82 @@
 /*
- * Geometría de la colonia, versión irregular. Solo datos: este módulo no
- * toca three ni React, así que los sistemas (pozo, locales, minimapa,
- * rescate) pueden importarlo sin arrastrar la escena.
+ * Geometría de la colonia. Solo datos: este módulo no toca three ni React, así
+ * que los sistemas (pozo, locales, minimapa, rescate) y los tests pueden
+ * importarlo sin arrastrar la escena.
  *
- * YA NO es una retícula: el trazo está hecho A MANO — un anillo perimetral,
- * una avenida diagonal, una plaza con kiosco que se rodea como glorieta,
- * calles que no llegan de lado a lado, y tres callejones angostos que son
- * atajos. La gracia es que conocer la colonia sea una ventaja: el callejón
- * que te ahorra media vuelta solo lo descubres manejando.
+ * EL MODELO ESTÁ INVERTIDO respecto a la versión anterior: ya no se dibujan
+ * calles Y manzanas por separado, dejando en medio un terreno ambiguo por el
+ * que se podía pasar. Ahora se PINTA la red de calles (`traza.ts`) sobre una
+ * rejilla de 0.5 m y **todo lo que quedó sin pintar es volumen sólido**. Que
+ * ninguna manzana sea transitable dejó de ser algo que cuidar a mano: es una
+ * consecuencia del pipeline, y `layout.test.ts` lo verifica.
  *
- * Las alturas de los edificios sí salen de una semilla fija: la colonia es
- * idéntica en cada recarga, que es lo que hace comparables las pruebas.
+ * De ahí salen, en orden:
+ *   calle → banquetas (dilatar el sólido) → lotes (fusionar el sólido en
+ *   rectángulos) → edificios y patios (altura por lote, semilla fija).
+ *
+ * Las alturas salen de una semilla fija: la colonia es idéntica en cada
+ * recarga, que es lo que hace comparables las pruebas.
  */
 
-export const MAP_SIZE = 200 // metros por lado
+import {
+  CELDA,
+  aMundo,
+  aCelda,
+  crearRejilla,
+  distanciaA,
+  engrosar,
+  fusionarRects,
+  pintarAnillo,
+  pintarArco,
+  pintarDisco,
+  pintarRect,
+  pintarSegmento,
+  type RectCeldas,
+  type Rejilla,
+} from './raster'
+import {
+  ANILLO,
+  BAHIAS,
+  BAHIA_ANCHO,
+  BAHIA_FONDO,
+  CALLEJONES,
+  CALLES,
+  DOMICILIOS_TRAZA,
+  GLORIETA,
+  LOCALES_TRAZA,
+  MAP_SIZE,
+  PLAZAS,
+  centroBahia,
+  marcaBahia,
+  type Bahia,
+  type Frente,
+} from './traza'
+
+export { MAP_SIZE, ANILLO }
 export const SIDEWALK_HEIGHT = 0.15
 export const ROAD_THICKNESS = 0.2
 export const TOPE_HEIGHT = 0.12
 
-/** Centro de la calle del anillo perimetral. Lo usa el rescate por caída:
- *  es el terreno firme garantizado más cercano a cualquier borde. */
-export const ANILLO = 96
+/** Altura de una barda de patio: cierra el predio sin taparle la vista. */
+export const BARDA_ALTURA = 2.4
+const BARDA_GRUESO = 0.6
+/**
+ * Ancho de banqueta a cada lado de la calle. Cada metro de banqueta es un
+ * metro menos de asfalto: con 2 m, una calle de 9 dejaba 5 m para una pipa de
+ * 2.4 y se sentía un pasillo. El brinco es de 15 cm, así que subirse a la
+ * banqueta con la pipa se puede — pero se siente, que es lo que se busca.
+ */
+const BANQUETA = 1.5
+/** Lado máximo de un lote, en metros: más grande y la manzana es una masa. */
+const LOTE_MAX = 14
+/** Traslape entre lotes vecinos: sella la junta y evita caras coplanares. */
+const TRASLAPE = 0.06
 
 export type Box = {
   /** Centro del cuerpo, no la base. */
   pos: [number, number, number]
   size: [number, number, number]
-  /** Giro sobre Y en radianes (la avenida diagonal). Ausente = alineado. */
+  /** Giro sobre Y en radianes. Ausente = alineado a los ejes. */
   rotY?: number
 }
 
@@ -34,7 +84,7 @@ export type Local = Box & {
   id: string
   name: string
   color: string
-  /** Punto de la puerta, sobre la banqueta y frente a la calle. La
+  /** Punto de la puerta, sobre la calle o el callejón al que da. La
    *  detección se mide contra esto, no contra el centro del edificio. */
   door: [number, number, number]
 }
@@ -49,264 +99,393 @@ function mulberry32(seed: number) {
   }
 }
 
-const rnd = mulberry32(20260803)
+// ------------------------------------------------------------- la rejilla
 
-// ---------------------------------------------------------------- calles
+/** 1 = calle (transitable), 0 = sólido. La verdad del mapa. */
+const rejilla: Rejilla = crearRejilla(MAP_SIZE, CELDA)
+/** 1 = calle donde NO va banqueta: los callejones son angostos de por sí. */
+const sinBanqueta: Rejilla = crearRejilla(MAP_SIZE, CELDA)
+/** 1 = banqueta forzada: las bahías son plataforma completa. */
+const conBanqueta: Rejilla = crearRejilla(MAP_SIZE, CELDA)
+/** 1 = sólido que NO genera lote (la isla y las huellas de los locales). */
+const reservado: Rejilla = crearRejilla(MAP_SIZE, CELDA)
 
-/*
- * Cada calle es UNA caja (visual + collider), no losetas: menos instancias
- * y menos colliders que la retícula vieja. El «suelo de rescate» de abajo
- * tapa cualquier rendija entre segmentos.
+for (const c of CALLES) {
+  if (c.forma === 'recta') pintarSegmento(rejilla, c.a, c.b, c.ancho)
+  else pintarArco(rejilla, c.c, c.r, c.a0, c.a1, c.ancho)
+}
+
+// La calzada de la glorieta: anillo, no disco. La isla se queda sólida.
+pintarAnillo(rejilla, GLORIETA.c, GLORIETA.rIsla, GLORIETA.rExt)
+pintarDisco(reservado, GLORIETA.c, GLORIETA.rIsla)
+
+for (const c of CALLEJONES) {
+  pintarSegmento(rejilla, c.a, c.b, c.ancho)
+  pintarSegmento(sinBanqueta, c.a, c.b, c.ancho)
+}
+
+for (const b of BAHIAS) {
+  // A lo largo de `dir` mide el fondo; a lo ancho, el ancho.
+  const largoX = b.dir[0] !== 0
+  const c = centroBahia(b)
+  const sx = largoX ? BAHIA_FONDO : BAHIA_ANCHO
+  const sz = largoX ? BAHIA_ANCHO : BAHIA_FONDO
+  pintarRect(rejilla, c, sx, sz)
+  pintarRect(conBanqueta, c, sx, sz)
+}
+
+const N = rejilla.n
+const solido = new Uint8Array(N * N)
+for (let k = 0; k < solido.length; k++) solido[k] = rejilla.data[k] ? 0 : 1
+
+/** Metros de cada celda al sólido más cercano. De aquí salen las banquetas,
+ *  la erosión por ancho de cuerpo y la prueba de que no hay campo abierto. */
+const distSolido = distanciaA(solido, N, CELDA)
+
+// La orilla del mapa cuenta como muro: el anillo perimetral tiene manzana de
+// un solo lado y sin esto parecería campo abierto de 10 m de radio.
+for (let j = 0; j < N; j++) {
+  for (let i = 0; i < N; i++) {
+    const alBorde = (Math.min(i, j, N - 1 - i, N - 1 - j) + 0.5) * CELDA
+    const k = j * N + i
+    if (alBorde < distSolido[k]) distSolido[k] = alBorde
+  }
+}
+
+// ---------------------------------------------------------------- consultas
+
+/** ¿Se puede pisar este punto? (fuera del mapa cuenta como sólido) */
+export function esLibre(x: number, z: number) {
+  const i = aCelda(rejilla, x)
+  const j = aCelda(rejilla, z)
+  if (i < 0 || j < 0 || i >= N || j >= N) return false
+  return rejilla.data[j * N + i] === 1
+}
+
+/** Holgura hasta el muro más cercano, en metros. Un cuerpo de radio r cabe
+ *  aquí si `holgura(x,z) >= r`. Con eso el test decide qué callejón es
+ *  peatonal y cuál pasa la pipa, en vez de fiarse del ojo.
  *
- * Nombres del trazo (para leer los comentarios):
- *   A  vertical x=-40, completa            B  vertical x=24, muere en la plaza
- *   C  vertical x=60, solo mitad sur       D  horizontal z=-40, muere en B
- *   E  horizontal z=8, solo al este        F  horizontal z=56, muere en c2
- *   c1/c2/c3 callejones (4.5 m)            diag  avenida a 45° del NW a la plaza
- */
-const seg = (
-  cx: number,
-  cz: number,
-  sx: number,
-  sz: number,
-  rotY?: number,
-): Box => ({
-  pos: [cx, 0, cz], // la y se ajusta abajo con el escalón anti z-fighting
-  size: [sx, ROAD_THICKNESS, sz],
-  ...(rotY !== undefined && { rotY }),
-})
+ *  La distancia se mide de centro a centro de celda, así que se le descuenta
+ *  media celda: el muro empieza en la orilla de su celda, no en su centro. */
+export function holgura(x: number, z: number) {
+  const i = aCelda(rejilla, x)
+  const j = aCelda(rejilla, z)
+  if (i < 0 || j < 0 || i >= N || j >= N) return 0
+  return Math.max(0, distSolido[j * N + i] - CELDA / 2)
+}
 
-export const roads: Box[] = [
-  seg(0, -ANILLO, MAP_SIZE, 8), // anillo norte
-  seg(0, ANILLO, MAP_SIZE, 8), // anillo sur
-  seg(-ANILLO, 0, 8, MAP_SIZE), // anillo oeste
-  seg(ANILLO, 0, 8, MAP_SIZE), // anillo este
-  seg(-40, 0, 8, MAP_SIZE), // A: la única transversal completa
-  seg(24, -55, 8, 90), // B: del norte a la plaza, no sigue
-  seg(60, 54, 8, 92), // C: de E al sur, no existe al norte
-  seg(-36, -40, 128, 8), // D: muere al topar con B
-  seg(71, 8, 58, 8), // E: de la plaza al anillo este
-  seg(-52, 56, 96, 8), // F: muere en el callejón c2
-  seg(-68, -68, 4.5, 56), // c1: atajo NW, anillo norte ↔ D
-  seg(-8, 76, 4.5, 48), // c2: atajo sur, F ↔ anillo sur
-  seg(62, -68, 68, 4.5), // c3: atajo NE, B ↔ anillo este
-  // La avenida diagonal: del corner NW (-95,-95) a la plaza (11,11).
-  seg(-42, -42, 9, 150, Math.PI / 4),
-  // La plaza: pavimento a nivel de calle; se maneja sobre ella.
-  seg(24, 8, 36, 36),
-]
+/** La rejilla cruda, para el test de invariantes y el volcado del mapa. */
+export const mapaOcupacion = {
+  n: N,
+  celda: CELDA,
+  min: rejilla.min,
+  calle: rejilla.data,
+  distSolido,
+  aMundo: (i: number) => aMundo(rejilla, i),
+  aCelda: (x: number) => aCelda(rejilla, x),
+}
 
-// Escalón de 2 mm por segmento: los cruces comparten plano y sin esto
-// z-pelean. Invisible al ojo e imperceptible a la rueda.
-roads.forEach((r, i) => {
-  r.pos[1] = -ROAD_THICKNESS / 2 - i * 0.002
-})
-
-/** El kiosco al centro de la plaza: se rodea, como glorieta. */
-export const kiosco: Box = { pos: [24, 1.25, 8], size: [6, 2.5, 6] }
+// ----------------------------------------------------------------- suelo
 
 /**
- * Suelo de rescate: una losa bajo TODO el mapa, 3 cm debajo del nivel de
- * calle. Las rendijas entre segmentos y las orillas de las manzanas caen
- * aquí, no al vacío. El vacío de verdad empieza donde termina el mapa.
+ * El asfalto: una sola losa bajo todo el mapa con la cara superior en y = 0.
+ * Ya no hay cajas de calle (y por lo tanto tampoco el escalón anti z-fighting
+ * de la versión anterior, ni juntas que se sientan como baches en las curvas).
  */
 export const groundSlab: Box = {
-  pos: [0, -ROAD_THICKNESS / 2 - 0.03, 0],
+  pos: [0, -ROAD_THICKNESS / 2, 0],
   size: [MAP_SIZE, ROAD_THICKNESS, MAP_SIZE],
 }
 
-// ------------------------------------------------------------- manzanas
+// ------------------------------------------------- locales, casas y toma
 
-/*
- * Manzanas irregulares, definidas a mano entre las calles: de la esquinita
- * de 6×12 junto a la diagonal a la manzanota de 58×61 del sur. Cada una es
- * una plataforma de banqueta de 15 cm, como antes.
- */
-const BLOCKS: { cx: number; cz: number; sx: number; sz: number }[] = [
-  { cx: -55, cz: -81.5, sx: 20, sz: 19 }, // B1 NW, junto al callejón c1
-  { cx: -49, cz: -66, sx: 8, sz: 12 }, // B3 escaloncito contra la diagonal
-  { cx: -85, cz: -58, sx: 12, sz: 26 }, // B4 franja oeste de la diagonal
-  { cx: -75, cz: -51, sx: 6, sz: 12 }, // B4b esquinita mínima
-  { cx: -68, cz: 8, sx: 46, sz: 84 }, // B5 manzanota centro-oeste
-  { cx: -68, cz: 76.5, sx: 46, sz: 29 }, // B10 suroeste
-  { cx: -22.5, cz: 76.5, sx: 23, sz: 29 }, // B11 sur, entre A y c2
-  { cx: 26, cz: 60.5, sx: 58, sz: 61 }, // B12 manzanota sur (c2 la libra)
-  { cx: -8, cz: -68, sx: 52, sz: 46 }, // B6 norte-centro
-  { cx: 61.5, cz: -81, sx: 59, sz: 20 }, // B7 NE, arriba del callejón c3
-  { cx: 61.5, cz: -39.5, sx: 59, sz: 51 }, // B8 NE grande, bajo c3
-  { cx: 68.5, cz: -3.5, sx: 45, sz: 13 }, // B9 franja entre plaza y anillo E
-  { cx: 79.5, cz: 53.5, sx: 23, sz: 75 }, // B13 larga del sureste
-  { cx: 9, cz: -25, sx: 18, sz: 22 }, // B14 entre la diagonal y la plaza
-]
-
-export const sidewalks: Box[] = BLOCKS.map((b) => ({
-  // De -0.2 (fondo de la calle) a 0.15 (nivel de banqueta)
-  pos: [b.cx, (SIDEWALK_HEIGHT - ROAD_THICKNESS) / 2, b.cz],
-  size: [b.sx, SIDEWALK_HEIGHT + ROAD_THICKNESS, b.sz],
-}))
-
-// ----------------------------------------------- locales, casas y toma
-
-/*
- * Los 6 locales fijos, colocados a mano: cada uno con la puerta a SU calle
- * (dos dan a callejones: quien los conoce, cobra más rápido). Los ids y
- * colores son los mismos de siempre; clients.ts no se entera del trazo.
- */
-export const locales: Local[] = [
-  {
-    id: 'local-1', name: 'Local 1', color: '#d94f4f',
-    pos: [2, SIDEWALK_HEIGHT + 2, 66], size: [9, 4, 9],
-    door: [-3, SIDEWALK_HEIGHT, 66], // al callejón c2
-  },
-  {
-    id: 'local-2', name: 'Local 2', color: '#e0a33a',
-    pos: [0, SIDEWALK_HEIGHT + 2, -51], size: [9, 4, 9],
-    door: [0, SIDEWALK_HEIGHT, -46.5], // a la calle D
-  },
-  {
-    id: 'local-3', name: 'Local 3', color: '#3ec98a',
-    pos: [37, SIDEWALK_HEIGHT + 2, -40], size: [9, 4, 9],
-    door: [32.5, SIDEWALK_HEIGHT, -40], // a la calle B
-  },
-  {
-    id: 'local-4', name: 'Local 4', color: '#4d8fe0',
-    pos: [73, SIDEWALK_HEIGHT + 2, 40], size: [9, 4, 9],
-    door: [68.5, SIDEWALK_HEIGHT, 40], // a la calle C
-  },
-  {
-    id: 'local-5', name: 'Local 5', color: '#b06fd6',
-    pos: [-50, SIDEWALK_HEIGHT + 2, 20], size: [9, 4, 9],
-    door: [-45.5, SIDEWALK_HEIGHT, 20], // a la calle A
-  },
-  {
-    id: 'local-6', name: 'Local 6', color: '#e07a3a',
-    pos: [60, SIDEWALK_HEIGHT + 2, -76], size: [9, 4, 9],
-    door: [60, SIDEWALK_HEIGHT, -71.5], // al callejón c3
-  },
-]
+/** Lado de la caja de un local. */
+const LOCAL_LADO = 9
 
 /**
- * Domicilio de entrega de cada cliente fijo (cambio de diseño de Fase 1):
- * el pedido se consigue tocando la puerta del NEGOCIO, pero el agua se
- * entrega en la casa u obra, siempre lejos y siempre a alcance de una
- * calle. Eso es lo que vuelve a darle sentido a planear la ruta.
+ * Resuelve un frente contra la rejilla: avanza desde el eje de la calle hasta
+ * salir del pavimento y devuelve la puerta (un metro adentro de la banqueta)
+ * y el centro de la caja (metida en la manzana). Así el local queda pegado a
+ * SU calle sin importar cuánto mida esa calle ni que sea curva.
  */
-export const DOMICILIOS: Record<string, [number, number, number]> = {
-  'local-1': [-63, SIDEWALK_HEIGHT, -80], // casa junto al callejón c1
-  'local-2': [86, SIDEWALK_HEIGHT, 70], // casa junto al anillo este
-  'local-3': [-85, SIDEWALK_HEIGHT, 75], // casa junto al anillo oeste
-  'local-4': [-10, SIDEWALK_HEIGHT, -85], // la obra, junto al anillo norte
-  'local-5': [85, SIDEWALK_HEIGHT, -30], // planta junto al anillo este
-  'local-6': [50, SIDEWALK_HEIGHT, 34], // casa junto a la calle C
+function frente(f: Frente, fondo = 0) {
+  const [ex, ez] = f.eje
+  let t = 0
+  while (t < 40 && esLibre(ex + f.dir[0] * t, ez + f.dir[1] * t)) t += CELDA
+  const borde = t // primer punto sólido
+  const puerta = Math.max(0, borde - 1)
+  const dentro = borde + fondo / 2 + (f.retiro ?? 0)
+  return {
+    door: [ex + f.dir[0] * puerta, SIDEWALK_HEIGHT, ez + f.dir[1] * puerta] as [
+      number,
+      number,
+      number,
+    ],
+    pos: [ex + f.dir[0] * dentro, SIDEWALK_HEIGHT + 2, ez + f.dir[1] * dentro] as [
+      number,
+      number,
+      number,
+    ],
+  }
 }
 
-/** Lugares donde pueden aparecer clientes efímeros (casas y obras que van
- *  y vienen). Todos sobre manzana y a alcance de una calle. */
+/*
+ * Los 6 locales. Dos dan a callejón peatonal (`c-barda` y `c-kiosco`): el
+ * pedido se toma a pie, así que conocer el atajo te ahorra rodear manejando.
+ */
+export const locales: Local[] = LOCALES_TRAZA.map((l) => {
+  const { door, pos } = frente(l, LOCAL_LADO)
+  return {
+    id: l.id,
+    name: l.name,
+    color: l.color,
+    pos,
+    size: [LOCAL_LADO, 4, LOCAL_LADO] as [number, number, number],
+    door,
+  }
+})
+
+// La huella de cada local se reserva: el fusionador no debe generar un lote
+// encima (se dibujan aparte, con su color).
+for (const l of locales) {
+  pintarRect(reservado, [l.pos[0], l.pos[2]], l.size[0] + 1, l.size[2] + 1)
+}
+
+/**
+ * Domicilio de entrega de cada cliente fijo: el pedido se consigue tocando la
+ * puerta del NEGOCIO, pero el agua se entrega en la casa u obra, siempre
+ * lejos y siempre a alcance de una calle por la que quepa la pipa. Eso es lo
+ * que le da sentido a planear la ruta.
+ */
+export const DOMICILIOS: Record<string, [number, number, number]> =
+  Object.fromEntries(DOMICILIOS_TRAZA.map((d) => [d.id, frente(d).door]))
+
+/** Lugares donde pueden aparecer clientes efímeros: el fondo de cada bahía,
+ *  que está abierta a la calle y cerrada por los otros tres lados. */
+const marca = (b: Bahia): [number, number, number] => {
+  const m = marcaBahia(b)
+  return [m[0], SIDEWALK_HEIGHT, m[1]]
+}
+
 export const EPHEMERAL_SPOTS: {
   id: string
   tipo: 'casa' | 'obra'
   pos: [number, number, number]
-}[] = [
-  { id: 'spot-1', tipo: 'casa', pos: [-86, SIDEWALK_HEIGHT, -20] },
-  { id: 'spot-2', tipo: 'obra', pos: [-30, SIDEWALK_HEIGHT, -50] },
-  { id: 'spot-3', tipo: 'casa', pos: [16, SIDEWALK_HEIGHT, -30] },
-  { id: 'spot-4', tipo: 'casa', pos: [-52, SIDEWALK_HEIGHT, 66] },
-  { id: 'spot-5', tipo: 'obra', pos: [34, SIDEWALK_HEIGHT, 88] },
-  { id: 'spot-6', tipo: 'casa', pos: [72, SIDEWALK_HEIGHT, 18] },
-  { id: 'spot-7', tipo: 'obra', pos: [44, SIDEWALK_HEIGHT, -74] },
-  { id: 'spot-8', tipo: 'casa', pos: [88, SIDEWALK_HEIGHT, 52] },
-  { id: 'spot-9', tipo: 'casa', pos: [0, SIDEWALK_HEIGHT, 34] },
-  { id: 'spot-10', tipo: 'obra', pos: [-50, SIDEWALK_HEIGHT, -86] },
-]
+}[] = BAHIAS.filter((b) => b.id !== 'toma').map((b, i) => ({
+  id: b.id,
+  tipo: i % 3 === 1 ? 'obra' : 'casa',
+  pos: marca(b),
+}))
 
-/** Dónde se llena la pipa: en la orilla de la manzana sur, frente a C y a
- *  una cuadra de la plaza. */
+/** Dónde se llena la pipa: en su propia bahía sobre Independencia, a una
+ *  cuadra de la glorieta. */
 export const WATER_SOURCE = {
   id: 'toma-de-agua',
   name: 'Toma de agua',
-  pos: [50, SIDEWALK_HEIGHT, 32] as [number, number, number],
+  pos: marca(BAHIAS.find((b) => b.id === 'toma')!),
   radius: 5,
 }
 
 export const waterParts = {
   base: {
-    pos: [50, SIDEWALK_HEIGHT + 0.15, 32],
+    pos: [WATER_SOURCE.pos[0], SIDEWALK_HEIGHT + 0.15, WATER_SOURCE.pos[2]],
     size: [4, 0.3, 4],
   } as Box,
   pipe: {
-    pos: [50, SIDEWALK_HEIGHT + 0.3 + 1.1, 32] as [number, number, number],
+    pos: [
+      WATER_SOURCE.pos[0],
+      SIDEWALK_HEIGHT + 0.3 + 1.1,
+      WATER_SOURCE.pos[2],
+    ] as [number, number, number],
     radius: 0.35,
     height: 2.2,
   },
   valve: {
-    pos: [50, SIDEWALK_HEIGHT + 0.3 + 2.2 + 0.2, 32],
+    pos: [
+      WATER_SOURCE.pos[0],
+      SIDEWALK_HEIGHT + 0.3 + 2.2 + 0.2,
+      WATER_SOURCE.pos[2],
+    ],
     size: [1.2, 0.4, 0.5],
   } as Box,
 }
 
-// ------------------------------------------------------------- edificios
+/** La isla de la glorieta: jardín elevado con el kiosco encima. Rodearla es
+ *  la gracia; treparla no es opción. */
+export const isla = {
+  pos: [GLORIETA.c[0], 0.6, GLORIETA.c[1]] as [number, number, number],
+  radius: GLORIETA.rIsla,
+  height: 1.2,
+}
+
+export const kiosco: Box = {
+  pos: [GLORIETA.c[0], 1.2 + 1.25, GLORIETA.c[1]],
+  size: [6, 2.5, 6],
+}
+
+/** Dónde amanece el jugador: sobre Morelos, con la pipa 15 m al oeste. */
+export const PLAYER_SPAWN: [number, number, number] = [0, 1, 18]
+
+// ------------------------------------------------------ banquetas y lotes
 
 /*
- * Relleno por manzana: lotes de ~13 m con huecos aleatorios (semilla fija)
- * y alturas variables. Se respeta un claro alrededor de locales, toma,
- * domicilios y spots efímeros — ahí no se construye encima.
+ * Banqueta = celda de calle a menos de 2 m del sólido, menos los callejones
+ * (uno de 1.8 m se llenaría entero) y más las bahías (plataforma completa,
+ * para que la cajita del cliente efímero se pare sobre algo).
  */
-const RESERVADOS: [number, number][] = [
-  ...locales.map((l) => [l.pos[0], l.pos[2]] as [number, number]),
-  [WATER_SOURCE.pos[0], WATER_SOURCE.pos[2]],
-  ...Object.values(DOMICILIOS).map((d) => [d[0], d[2]] as [number, number]),
-  ...EPHEMERAL_SPOTS.map((s) => [s.pos[0], s.pos[2]] as [number, number]),
-]
+const maskBanqueta = new Uint8Array(N * N)
+for (let k = 0; k < maskBanqueta.length; k++) {
+  if (!rejilla.data[k]) continue
+  if (sinBanqueta.data[k]) continue
+  maskBanqueta[k] = conBanqueta.data[k] || distSolido[k] <= BANQUETA ? 1 : 0
+}
 
-const CLARO = 7 // radio libre alrededor de un punto reservado
+/** Rect de celdas → caja de mundo, con el traslape que sella las juntas. */
+function aCaja(r: RectCeldas, y0: number, alto: number): Box {
+  const sx = r.w * CELDA + TRASLAPE * 2
+  const sz = r.h * CELDA + TRASLAPE * 2
+  return {
+    pos: [
+      rejilla.min + (r.i + r.w / 2) * CELDA,
+      y0 + alto / 2,
+      rejilla.min + (r.j + r.h / 2) * CELDA,
+    ],
+    size: [sx, alto, sz],
+  }
+}
+
+/*
+ * Las banquetas se fusionan a 2 m, no a 0.5: son una plancha de 15 cm que no
+ * sella nada, y seguir el borde de una curva con precisión de medio metro
+ * cuesta cientos de cajas que a ras de suelo nadie distingue. Donde SÍ importa
+ * el medio metro es en los muros, y esos van abajo a resolución fina.
+ */
+const banquetaGruesa = engrosar(maskBanqueta, N, 4, 4)
+export const sidewalks: Box[] = fusionarRects(
+  banquetaGruesa.mask,
+  banquetaGruesa.n,
+  4096,
+).map((r) =>
+  // De -0.1 (enterrada en el asfalto) a 0.15 (nivel de banqueta).
+  aCaja(
+    { i: r.i * 4, j: r.j * 4, w: r.w * 4, h: r.h * 4, etiqueta: 1 },
+    -0.1,
+    0.1 + SIDEWALK_HEIGHT,
+  ),
+)
+
+/*
+ * Los lotes. El sólido se etiqueta con una retícula de 14 m ANTES de fusionar:
+ * todas las celdas de un lote comparten etiqueta y por lo tanto altura, así
+ * que el borde escalonado de una curva no queda como serrucho de alturas
+ * distintas, sino como un edificio cuya planta sigue la curva.
+ *
+ * El dado se saca de la POSICIÓN del lote, no de una secuencia: mover una
+ * calle cambia la forma de las manzanas vecinas, no las alturas de toda la
+ * colonia (que era lo que pasaba con el `rnd()` corrido de la versión
+ * anterior). Misma colonia en cada recarga, de todos modos.
+ */
+function dadoDeLote(li: number, lj: number, sal: number) {
+  return mulberry32((li * 73856093) ^ (lj * 19349663) ^ (sal * 83492791))()
+}
+
+const LADO_LOTE = Math.round(LOTE_MAX / CELDA)
+const etiquetas = new Int32Array(N * N)
+for (let j = 0; j < N; j++) {
+  for (let i = 0; i < N; i++) {
+    const k = j * N + i
+    if (!solido[k] || reservado.data[k]) continue
+    etiquetas[k] = 1 + ((i / LADO_LOTE) | 0) * 1000 + ((j / LADO_LOTE) | 0)
+  }
+}
+
+const lotes = fusionarRects(etiquetas, N, LADO_LOTE)
 
 export const buildings: Box[] = []
-for (const b of BLOCKS) {
-  const margen = 2
-  const anchoUtil = b.sx - margen * 2
-  const largoUtil = b.sz - margen * 2
-  const nx = Math.max(1, Math.floor(anchoUtil / 13))
-  const nz = Math.max(1, Math.floor(largoUtil / 13))
-  const loteX = anchoUtil / nx
-  const loteZ = largoUtil / nz
-  for (let i = 0; i < nx; i++) {
-    for (let j = 0; j < nz; j++) {
-      const cx = b.cx - anchoUtil / 2 + loteX * (i + 0.5)
-      const cz = b.cz - largoUtil / 2 + loteZ * (j + 0.5)
-      // Consumir el random SIEMPRE: quitar un reservado no debe barajar
-      // las alturas del resto de la colonia.
-      const hueco = rnd() < 0.16
-      const altura = 4 + rnd() * 16
-      if (hueco) continue
-      if (RESERVADOS.some(([rx, rz]) => Math.hypot(rx - cx, rz - cz) < CLARO))
-        continue
-      const fx = Math.max(4, loteX - 2)
-      const fz = Math.max(4, loteZ - 2)
-      buildings.push({
-        pos: [cx, SIDEWALK_HEIGHT + altura / 2, cz],
-        size: [fx, altura, fz],
-      })
-    }
+/** Huella plana de cada lote. La usa el minimapa: dibujar solo las bardas de
+ *  un patio dejaría el interior en blanco, como si se pudiera pasar. */
+export const footprints: Box[] = []
+
+/** La caja más grande de cada lote: ahí es donde cabe un patio. */
+const mayorPorLote = new Map<number, number>()
+for (const r of lotes) {
+  const area = r.w * r.h
+  const previo = mayorPorLote.get(r.etiqueta)
+  if (previo === undefined || area > previo) mayorPorLote.set(r.etiqueta, area)
+}
+
+for (const r of lotes) {
+  const plano = aCaja(r, 0, 0.01)
+  footprints.push(plano)
+  const sx = plano.size[0]
+  const sz = plano.size[2]
+  const li = ((r.etiqueta - 1) / 1000) | 0
+  const lj = (r.etiqueta - 1) % 1000
+  const altura = 5 + dadoDeLote(li, lj, 1) * 15
+  /*
+   * Uno de cada cinco lotes es PATIO: cuatro bardas de 2.4 m en vez de un
+   * edificio. Desde la cámara se ve el interior y desde la calle es un muro:
+   * es lo que le da textura a la manzana sin abrirle un paso.
+   */
+  const esPatio = dadoDeLote(li, lj, 2) < 0.2
+  const cabePatio = sx >= 7 && sz >= 7 && r.w * r.h === mayorPorLote.get(r.etiqueta)
+  if (esPatio && cabePatio) {
+    const [cx, , cz] = plano.pos
+    const y = BARDA_ALTURA / 2
+    buildings.push(
+      { pos: [cx, y, cz - sz / 2 + BARDA_GRUESO / 2], size: [sx, BARDA_ALTURA, BARDA_GRUESO] },
+      { pos: [cx, y, cz + sz / 2 - BARDA_GRUESO / 2], size: [sx, BARDA_ALTURA, BARDA_GRUESO] },
+      { pos: [cx - sx / 2 + BARDA_GRUESO / 2, y, cz], size: [BARDA_GRUESO, BARDA_ALTURA, sz] },
+      { pos: [cx + sx / 2 - BARDA_GRUESO / 2, y, cz], size: [BARDA_GRUESO, BARDA_ALTURA, sz] },
+    )
+  } else {
+    buildings.push({
+      pos: [plano.pos[0], (esPatio ? BARDA_ALTURA : altura) / 2, plano.pos[2]],
+      size: [sx, esPatio ? BARDA_ALTURA : altura, sz],
+    })
   }
 }
 
 // ------------------------------------------------------------------ topes
 
-/** A mano, a media cuadra de calles largas; nunca en cruces ni callejones. */
+const g70 = (70 * Math.PI) / 180
+
+/** A mano, a media cuadra de calles largas; nunca en cruces ni callejones.
+ *  Los de las curvas van girados: en una curva, el tope sigue el radio. */
 export const topes: Box[] = [
-  { pos: [-40, TOPE_HEIGHT / 2, -20], size: [8, TOPE_HEIGHT, 0.7] }, // A
-  { pos: [-40, TOPE_HEIGHT / 2, 40], size: [8, TOPE_HEIGHT, 0.7] }, // A
-  { pos: [0, TOPE_HEIGHT / 2, -40], size: [0.7, TOPE_HEIGHT, 8] }, // D
-  { pos: [-60, TOPE_HEIGHT / 2, 56], size: [0.7, TOPE_HEIGHT, 8] }, // F
-  { pos: [60, TOPE_HEIGHT / 2, 70], size: [8, TOPE_HEIGHT, 0.7] }, // C
-  { pos: [24, TOPE_HEIGHT / 2, -80], size: [8, TOPE_HEIGHT, 0.7] }, // B
+  { pos: [-70, TOPE_HEIGHT / 2, 18], size: [0.7, TOPE_HEIGHT, 9] }, // Morelos
+  { pos: [-30, TOPE_HEIGHT / 2, 40], size: [9, TOPE_HEIGHT, 0.7] }, // Hidalgo
+  { pos: [32.4, TOPE_HEIGHT / 2, -25], size: [9, TOPE_HEIGHT, 0.7] }, // salida norte
+  {
+    // Avenida Curva a 70°: igual que el de la Media Luna, sobre el radio.
+    pos: [-96 + 42 * Math.cos(g70), TOPE_HEIGHT / 2, -60 + 42 * Math.sin(g70)],
+    size: [0.7, TOPE_HEIGHT, 11],
+    rotY: Math.PI / 2 - g70,
+  },
+  { pos: [84, TOPE_HEIGHT / 2, 18], size: [0.7, TOPE_HEIGHT, 10] }, // Independencia
+  { pos: [10, TOPE_HEIGHT / 2, -40], size: [0.7, TOPE_HEIGHT, 9] }, // Bravo
+  {
+    // Media Luna a 30°: el eje largo apunta al centro del arco.
+    pos: [-10 + 62 * Math.cos(Math.PI / 6), TOPE_HEIGHT / 2, 40 + 62 * Math.sin(Math.PI / 6)],
+    size: [0.7, TOPE_HEIGHT, 9],
+    rotY: Math.PI / 2 - Math.PI / 6,
+  },
 ]
 
-/** Resumen para verificar el presupuesto a ojo. */
+/** Resumen para verificar el presupuesto a ojo (y en el test). */
 export const layoutStats = {
-  roads: roads.length,
-  sidewalks: sidewalks.length,
+  lotes: lotes.length,
   buildings: buildings.length,
+  sidewalks: sidewalks.length,
   locales: locales.length,
   topes: topes.length,
+  /** Cuboides estáticos que se le entregan a Rapier. */
+  colliders:
+    1 + buildings.length + sidewalks.length + locales.length + topes.length + 3,
+  /** Fracción del mapa que es calle. */
+  fraccionCalle: solido.reduce((a, s) => a + (s ? 0 : 1), 0) / (N * N),
 }
+
+/** La glorieta es el único espacio abierto permitido; el test lo exceptúa. */
+export { PLAZAS, CALLEJONES }
