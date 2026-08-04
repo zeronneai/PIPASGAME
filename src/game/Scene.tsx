@@ -4,7 +4,9 @@ import { Physics, type RapierRigidBody } from '@react-three/rapier'
 import { Player } from './player/Player'
 import { Pipa } from './vehicle/Pipa'
 import { ThirdPersonCamera } from './camera/ThirdPersonCamera'
+import { ColliderDebugView } from './world/ColliderDebugView'
 import { ColoniaGreybox } from './world/ColoniaGreybox'
+import { useGameStore } from '../state/gameStore'
 import { DayClock } from './systems/DayClock'
 import { DeliveryMarkers } from './systems/DeliveryMarkers'
 import { Ephemerals } from './systems/Ephemerals'
@@ -19,6 +21,8 @@ import { PHYSICS_STEP, tuning } from './tuning'
 export function Scene() {
   const playerBody = useRef<RapierRigidBody>(null)
   const vehicleBody = useRef<RapierRigidBody>(null)
+  // Debug de rapier: cambia poco (checkbox de leva) — puede re-renderizar.
+  const debugPhysics = useGameStore((s) => s.debug.physics)
 
   return (
     <Canvas
@@ -32,7 +36,7 @@ export function Scene() {
       <Suspense fallback={null}>
         <DayClock />
         <RadioDispatch />
-        <Physics timeStep={PHYSICS_STEP}>
+        <Physics timeStep={PHYSICS_STEP} debug={debugPhysics}>
           <ColoniaGreybox />
           <Ephemerals />
           <DeliveryMarkers />
@@ -53,6 +57,7 @@ export function Scene() {
             vehicleBody={vehicleBody}
           />
         </Physics>
+        <ColliderDebugView />
       </Suspense>
       <RenderStats />
     </Canvas>

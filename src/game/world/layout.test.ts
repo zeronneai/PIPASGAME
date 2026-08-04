@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   ANGOSTURAS,
+  BANQUETA,
   CALLEJONES,
+  banquetasInfo,
   poseEnCalle,
+  worldColliderBoxes,
+  worldColliderCylinders,
   DOMICILIOS,
   EPHEMERAL_SPOTS,
   MAP_SIZE,
@@ -21,6 +25,7 @@ import {
   topes,
 } from './layout'
 import { floodFill } from './raster'
+import { CALLES } from './traza'
 import { PIPA_SPAWN } from '../vehicle/pipaParts'
 import { computeStats, pipaDeFabrica, type ModeloId } from '../systems/garage'
 
@@ -419,8 +424,19 @@ describe('trazo de la colonia', () => {
      * sección 2 ni se entera. Lo que sí se acumula es el conteo de cuboides:
      * seguir el borde de una curva a medio metro cuesta cajas. Este tope está
      * para que no crezca sin que nadie se dé cuenta.
+     *
+     * Subió de 1600 con las banquetas vectoriales: las cadenas de los arcos
+     * cuestan ~230 cajas más que los bloques de 2 m que sustituyen, a cambio
+     * de curvas lisas y de que el bordillo exista SOLO junto al muro. Los
+     * presupuestos del doc (draw calls <100, tris <120k) no se mueven: son
+     * las mismas dos InstancedMesh.
      */
-    expect(layoutStats.colliders).toBeLessThanOrEqual(1600)
+    expect(layoutStats.colliders).toBeLessThanOrEqual(1750)
+    // Y el conteo es EXACTO por construcción: la lista que colisiona es la
+    // que se cuenta.
+    expect(layoutStats.colliders).toBe(
+      worldColliderBoxes.length + worldColliderCylinders.length,
+    )
     // ~12 tris por caja: hay que quedar muy por debajo de los 120 k del doc.
     expect(layoutStats.buildings * 12).toBeLessThan(40_000)
     // Si la colonia es casi la mitad calle, dejó de ser una colonia.
@@ -471,5 +487,181 @@ describe('trazo de la colonia', () => {
         `banquetas ${layoutStats.sidewalks}  colliders ${layoutStats.colliders}  ` +
         `calle ${(layoutStats.fraccionCalle * 100).toFixed(1)}%`,
     )
+  })
+})
+
+/*
+ * Las banquetas vectoriales (la reforma del «choqué con algo que no veo»).
+ * Estas son las promesas nuevas: el bordillo existe SOLO pegado al muro, el
+ * corredor central de toda calle queda libre, y los cruces van ochavados.
+ * Antes no había una sola aserción de banqueta-contra-arroyo, y así fue como
+ * las bahías pavimentaron media calle sin que nadie lo cachara.
+ */
+describe('banquetas vectoriales', () => {
+  const { bandas, chaflanes, plataformas, esquinas } = banquetasInfo
+
+  /** ¿(x,z) cae dentro de la huella de la caja? Respeta rotY. */
+  function dentro(
+    b: { pos: [number, number, number]; size: [number, number, number]; rotY?: number },
+    x: number,
+    z: number,
+    encoge = 0,
+  ) {
+    const wx = x - b.pos[0]
+    const wz = z - b.pos[2]
+    const th = b.rotY ?? 0
+    const lx = wx * Math.cos(th) - wz * Math.sin(th)
+    const lz = wx * Math.sin(th) + wz * Math.cos(th)
+    return (
+      Math.abs(lx) <= b.size[0] / 2 - encoge &&
+      Math.abs(lz) <= b.size[2] / 2 - encoge
+    )
+  }
+
+  /** Muestras de la huella de una caja (marco local → mundo), con inset. */
+  function huella(
+    b: { pos: [number, number, number]; size: [number, number, number]; rotY?: number },
+    inset: number,
+    paso = 0.5,
+  ): [number, number][] {
+    const th = b.rotY ?? 0
+    const hx = Math.max(0.01, b.size[0] / 2 - inset)
+    const hz = Math.max(0.01, b.size[2] / 2 - inset)
+    const pts: [number, number][] = []
+    for (let lx = -hx; lx <= hx + 1e-6; lx += Math.min(paso, hx * 2 || paso)) {
+      for (let lz = -hz; lz <= hz + 1e-6; lz += Math.min(paso, hz * 2 || paso)) {
+        pts.push([
+          b.pos[0] + lx * Math.cos(th) + lz * Math.sin(th),
+          b.pos[2] + (-lx * Math.sin(th) + lz * Math.cos(th)),
+        ])
+      }
+    }
+    return pts
+  }
+
+  it('toda banda pisa calle y queda pegada a un muro', () => {
+    // Inset 0.55: el borde vectorial del pavimento y la rejilla difieren
+    // hasta media celda (0.25) y las cajas giradas de las cadenas suman otro
+    // poco. Lo que caza este test son errores GORDOS (la plancha a 5 m del
+    // muro), no la cuantización.
+    for (const b of bandas) {
+      for (const [x, z] of huella(b, 0.55)) {
+        expect(esLibre(x, z), `banda fuera de calle en (${x.toFixed(1)}, ${z.toFixed(1)})`).toBe(true)
+        expect(
+          holgura(x, z),
+          `bordillo lejos del muro en (${x.toFixed(1)}, ${z.toFixed(1)})`,
+        ).toBeLessThanOrEqual(BANQUETA + 0.8)
+      }
+    }
+  })
+
+  it('los chaflanes pisan calle en la esquina de su cruce', () => {
+    for (const c of chaflanes) {
+      for (const [x, z] of huella(c, 0.55)) {
+        expect(
+          esLibre(x, z),
+          `chaflán fuera de calle en (${x.toFixed(2)}, ${z.toFixed(2)}) — pieza en (${c.pos[0].toFixed(1)}, ${c.pos[2].toFixed(1)})`,
+        ).toBe(true)
+        expect(holgura(x, z)).toBeLessThanOrEqual(2.3)
+      }
+    }
+  })
+
+  it('las plataformas de bahía arrancan en el borde del pavimento, no en el eje', () => {
+    // LA aserción del bug: frente a una bahía debe quedar el arroyo completo
+    // (ancho − 2 banquetas). Antes la plancha llegaba al eje de la calle y
+    // frente a cuatro spots no cabía ni la heredada.
+    expect(plataformas.length).toBe(12)
+    for (const p of plataformas) {
+      const minimo = p.anchoCalle / 2 - BANQUETA - 0.05
+      for (const [x, z] of huella(p.caja, 0.25)) {
+        const offset = Math.abs((p.normal === 'x' ? x : z) - p.ejeCalle)
+        expect(
+          offset,
+          `la plataforma de ${p.id} invade el arroyo`,
+        ).toBeGreaterThanOrEqual(minimo)
+        expect(esLibre(x, z)).toBe(true)
+      }
+    }
+  })
+
+  it('el corredor central de toda calle queda libre de banqueta', () => {
+    const todas = [...bandas, ...chaflanes, ...plataformas.map((p) => p.caja)]
+    const culpable = (x: number, z: number) =>
+      todas.find(
+        (b) =>
+          Math.hypot(x - b.pos[0], z - b.pos[2]) < 8 && dentro(b, x, z),
+      )
+    for (const c of CALLES) {
+      // El arroyo siempre le da paso a la grandota (2.88) con margen.
+      expect(c.ancho - 2 * BANQUETA, c.nombre).toBeGreaterThanOrEqual(2.88 + 0.5)
+      const medio = c.ancho / 2 - BANQUETA - 0.05
+      const puntos: [number, number, number, number][] = [] // x, z, nx, nz
+      if (c.forma === 'recta') {
+        const dx = c.b[0] - c.a[0]
+        const dz = c.b[1] - c.a[1]
+        const largo = Math.hypot(dx, dz)
+        const ux = dx / largo
+        const uz = dz / largo
+        for (let t = 0; t <= largo; t += 1) {
+          puntos.push([c.a[0] + ux * t, c.a[1] + uz * t, -uz, ux])
+        }
+      } else {
+        const paso = 1 / c.r
+        for (let a = c.a0; a <= c.a1; a += paso) {
+          puntos.push([
+            c.c[0] + c.r * Math.cos(a),
+            c.c[1] + c.r * Math.sin(a),
+            Math.cos(a),
+            Math.sin(a),
+          ])
+        }
+      }
+      for (const [x, z, nx, nz] of puntos) {
+        for (const lado of [-1, 0, 1]) {
+          const px = x + nx * medio * lado
+          const pz = z + nz * medio * lado
+          // El anillo perimetral lleva su cordón contra el borde de la losa
+          // (su pavimento nominal sigue de largo fuera del mapa): el arroyo
+          // real ahí está corrido hacia adentro, no centrado en el eje.
+          if (
+            Math.abs(px) > MAP_SIZE / 2 - 1.6 ||
+            Math.abs(pz) > MAP_SIZE / 2 - 1.6
+          )
+            continue
+          const caja = culpable(px, pz)
+          expect(
+            caja,
+            `banqueta en el arroyo de ${c.nombre} en (${px.toFixed(2)}, ${pz.toFixed(2)}): caja pos=(${caja?.pos.map((v) => v.toFixed(2)).join(', ')}) size=(${caja?.size.map((v) => v.toFixed(2)).join(', ')}) rotY=${caja?.rotY?.toFixed(3) ?? 0}`,
+          ).toBeUndefined()
+        }
+      }
+    }
+  })
+
+  it('cada esquina convexa de cruce lleva su chaflán a 45°', () => {
+    expect(chaflanes.length).toBe(esquinas.length)
+    expect(chaflanes.length).toBeGreaterThanOrEqual(20)
+    chaflanes.forEach((c, i) => {
+      const [ex, ez] = esquinas[i]
+      expect(Math.hypot(c.pos[0] - ex, c.pos[2] - ez)).toBeLessThan(1.2)
+      const giro = Math.abs((c.rotY ?? 0) % (Math.PI / 2))
+      expect(
+        Math.min(giro, Math.PI / 2 - giro),
+        'el chaflán no está a 45°',
+      ).toBeCloseTo(Math.PI / 4, 5)
+    })
+  })
+
+  it('los topes terminan contra el cordón, no debajo', () => {
+    const todas = [...bandas, ...chaflanes, ...plataformas.map((p) => p.caja)]
+    for (const t of topes) {
+      for (const [x, z] of huella(t, 0.05, 0.25)) {
+        expect(
+          todas.some((b) => dentro(b, x, z)),
+          `tope enterrado bajo la banqueta en (${x.toFixed(1)}, ${z.toFixed(1)})`,
+        ).toBe(false)
+      }
+    }
   })
 })

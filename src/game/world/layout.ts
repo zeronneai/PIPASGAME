@@ -24,7 +24,6 @@ import {
   aCelda,
   crearRejilla,
   distanciaA,
-  engrosar,
   fusionarRects,
   pintarAnillo,
   pintarArco,
@@ -34,6 +33,7 @@ import {
   type RectCeldas,
   type Rejilla,
 } from './raster'
+import { BANQUETA, generarBanquetas } from './banquetas'
 import {
   ANGOSTURAS,
   ANILLO,
@@ -67,13 +67,12 @@ const BARDA_GRUESO = 0.6
 const ALTURA_MIN = 2.8
 /** Cuánto puede crecer sobre una planta: hasta dos y un pretil. */
 const ALTURA_RANGO = 3.8
-/**
- * Ancho de banqueta a cada lado de la calle. Cada metro de banqueta es un
- * metro menos de asfalto: con 2 m, una calle de 9 dejaba 5 m para una pipa de
- * 2.4 y se sentía un pasillo. El brinco es de 15 cm, así que subirse a la
- * banqueta con la pipa se puede — pero se siente, que es lo que se busca.
+/*
+ * El ancho de banqueta (1.5 m por lado) vive en banquetas.ts, que es quien
+ * las genera del trazo; aquí solo se re-exporta para quien mida contra él.
+ * El brinco es de 15 cm: subirse con la pipa se puede — pero se siente.
  */
-const BANQUETA = 1.5
+export { BANQUETA }
 /** Lado máximo de un lote, en metros: más grande y la manzana es una masa. */
 const LOTE_MAX = 14
 /** Traslape entre lotes vecinos: sella la junta y evita caras coplanares. */
@@ -110,10 +109,6 @@ function mulberry32(seed: number) {
 
 /** 1 = calle (transitable), 0 = sólido. La verdad del mapa. */
 const rejilla: Rejilla = crearRejilla(MAP_SIZE, CELDA)
-/** 1 = calle donde NO va banqueta: los callejones son angostos de por sí. */
-const sinBanqueta: Rejilla = crearRejilla(MAP_SIZE, CELDA)
-/** 1 = banqueta forzada: las bahías son plataforma completa. */
-const conBanqueta: Rejilla = crearRejilla(MAP_SIZE, CELDA)
 /** 1 = sólido que NO genera lote (la isla y las huellas de los locales). */
 const reservado: Rejilla = crearRejilla(MAP_SIZE, CELDA)
 
@@ -126,17 +121,10 @@ for (const c of CALLES) {
 pintarAnillo(rejilla, GLORIETA.c, GLORIETA.rIsla, GLORIETA.rExt)
 pintarDisco(reservado, GLORIETA.c, GLORIETA.rIsla)
 
-for (const c of CALLEJONES) {
+// Callejones y angosturas: calle sin banqueta (son angostos de por sí; el
+// generador vectorial de banquetas los conoce y no les pone bandas).
+for (const c of [...CALLEJONES, ...ANGOSTURAS]) {
   pintarSegmento(rejilla, c.a, c.b, c.ancho)
-  pintarSegmento(sinBanqueta, c.a, c.b, c.ancho)
-}
-
-// Las angosturas se pintan como un callejón: sin banqueta (con ella el cuello
-// de 3 m se llenaría de plataforma) y con los muros de los lotes cerrándolo a
-// los lados, que es lo que lo vuelve un portón.
-for (const a of ANGOSTURAS) {
-  pintarSegmento(rejilla, a.a, a.b, a.ancho)
-  pintarSegmento(sinBanqueta, a.a, a.b, a.ancho)
 }
 
 for (const b of BAHIAS) {
@@ -146,7 +134,6 @@ for (const b of BAHIAS) {
   const sx = largoX ? BAHIA_FONDO : BAHIA_ANCHO
   const sz = largoX ? BAHIA_ANCHO : BAHIA_FONDO
   pintarRect(rejilla, c, sx, sz)
-  pintarRect(conBanqueta, c, sx, sz)
 }
 
 const N = rejilla.n
@@ -356,9 +343,12 @@ export const locales: Local[] = LOCALES_TRAZA.map((l) => {
 })
 
 // La huella de cada local se reserva: el fusionador no debe generar un lote
-// encima (se dibujan aparte, con su color).
+// encima (se dibujan aparte, con su color). El size va EXACTO: con el +1 de
+// antes quedaba un nicho de 0.5 m sólido-para-la-lógica pero hueco-para-la-
+// física alrededor de cada caja; ahora el lote vecino llega hasta la cara (el
+// TRASLAPE lo mete 6 cm adentro, que sella sin caras coplanares).
 for (const l of locales) {
-  pintarRect(reservado, [l.pos[0], l.pos[2]], l.size[0] + 1, l.size[2] + 1)
+  pintarRect(reservado, [l.pos[0], l.pos[2]], l.size[0], l.size[2])
 }
 
 /**
@@ -369,7 +359,14 @@ for (const l of locales) {
 const TALLER_ALTO = 6
 export const taller = (() => {
   const { pos, door } = frente(TALLER, Math.max(TALLER.sx, TALLER.sz))
-  pintarRect(reservado, [pos[0], pos[2]], TALLER.sx + 1, TALLER.sz + 1)
+  pintarRect(reservado, [pos[0], pos[2]], TALLER.sx, TALLER.sz)
+  /*
+   * El letrero va en la cara que DA A LA CALLE, que es de donde viene el
+   * jugador: se deriva de TALLER.dir (dir apunta de la calle a la manzana,
+   * así que la fachada es la cara −dir). Antes estaba clavado en la cara
+   * norte y el portón da al oeste: se veía de canto.
+   */
+  const alFrente = TALLER.dir[0] !== 0
   return {
     id: TALLER.id,
     nombre: TALLER.nombre,
@@ -380,12 +377,14 @@ export const taller = (() => {
     door,
     /** El letrero sobre la nave: lo que se ve desde la calle. */
     letrero: {
-      pos: [pos[0], TALLER_ALTO + 0.9, pos[2] - TALLER.sz / 2 + 0.4] as [
-        number,
-        number,
-        number,
-      ],
-      size: [TALLER.sx * 0.7, 1.4, 0.5] as [number, number, number],
+      pos: [
+        pos[0] - TALLER.dir[0] * (TALLER.sx / 2 - 0.4),
+        TALLER_ALTO + 0.9,
+        pos[2] - TALLER.dir[1] * (TALLER.sz / 2 - 0.4),
+      ] as [number, number, number],
+      size: (alFrente
+        ? [0.5, 1.4, TALLER.sz * 0.7]
+        : [TALLER.sx * 0.7, 1.4, 0.5]) as [number, number, number],
     },
   }
 })()
@@ -399,7 +398,8 @@ export const taller = (() => {
 export const hitos: (Box & { color: string })[] = HITOS.flatMap((h) => {
   const { pos } = frente(h, Math.max(h.sx, h.sz))
   const [cx, , cz] = pos
-  pintarRect(reservado, [cx, cz], h.sx + 1, h.sz + 1)
+  // Size exacto, sin nicho (mismo motivo que los locales).
+  pintarRect(reservado, [cx, cz], h.sx, h.sz)
   const cajas: (Box & { color: string })[] = [
     {
       pos: [cx, h.altura / 2, cz],
@@ -481,6 +481,14 @@ export const waterParts = {
 export const isla = {
   pos: [GLORIETA.c[0], 0.6, GLORIETA.c[1]] as [number, number, number],
   radius: GLORIETA.rIsla,
+  /**
+   * El collider va un pelo ADENTRO del visual: el cilindro dibujado es un
+   * polígono de 48 lados inscrito, y con el radio exacto la física
+   * sobresalía entre vértices (un anillo de choque invisible). Así el error
+   * queda del lado bueno: nunca chocas con aire.
+   */
+  radiusCollider: GLORIETA.rIsla * Math.cos(Math.PI / 48),
+  segmentos: 48,
   height: 1.2,
 }
 
@@ -493,18 +501,6 @@ export const kiosco: Box = {
 export const PLAYER_SPAWN: [number, number, number] = [0, 1, 18]
 
 // ------------------------------------------------------ banquetas y lotes
-
-/*
- * Banqueta = celda de calle a menos de 2 m del sólido, menos los callejones
- * (uno de 1.8 m se llenaría entero) y más las bahías (plataforma completa,
- * para que la cajita del cliente efímero se pare sobre algo).
- */
-const maskBanqueta = new Uint8Array(N * N)
-for (let k = 0; k < maskBanqueta.length; k++) {
-  if (!rejilla.data[k]) continue
-  if (sinBanqueta.data[k]) continue
-  maskBanqueta[k] = conBanqueta.data[k] || distSolido[k] <= BANQUETA ? 1 : 0
-}
 
 /** Rect de celdas → caja de mundo, con el traslape que sella las juntas. */
 function aCaja(r: RectCeldas, y0: number, alto: number): Box {
@@ -521,24 +517,21 @@ function aCaja(r: RectCeldas, y0: number, alto: number): Box {
 }
 
 /*
- * Las banquetas se fusionan a 2 m, no a 0.5: son una plancha de 15 cm que no
- * sella nada, y seguir el borde de una curva con precisión de medio metro
- * cuesta cientos de cajas que a ras de suelo nadie distingue. Donde SÍ importa
- * el medio metro es en los muros, y esos van abajo a resolución fina.
+ * Las banquetas vienen del TRAZO, no de la rejilla: bandas de 1.5 m pegadas
+ * al borde del pavimento de cada calle, cadenas teseladas en los arcos,
+ * chaflanes a 45° en las esquinas de los cruces, y la plataforma de cada
+ * bahía del borde del pavimento al fondo. La versión anterior (rejilla
+ * engrosada a 2 m con umbral del 25 %) inventaba planchas hasta a 5 m del
+ * muro y pavimentaba las bahías hasta el eje — el «choqué con algo que no
+ * veo». Detalle en banquetas.ts; el test cobra que ninguna caja se salga de
+ * su zona.
  */
-const banquetaGruesa = engrosar(maskBanqueta, N, 4, 4)
-export const sidewalks: Box[] = fusionarRects(
-  banquetaGruesa.mask,
-  banquetaGruesa.n,
-  4096,
-).map((r) =>
-  // De -0.1 (enterrada en el asfalto) a 0.15 (nivel de banqueta).
-  aCaja(
-    { i: r.i * 4, j: r.j * 4, w: r.w * 4, h: r.h * 4, etiqueta: 1 },
-    -0.1,
-    0.1 + SIDEWALK_HEIGHT,
-  ),
-)
+export const banquetasInfo = generarBanquetas()
+export const sidewalks: Box[] = [
+  ...banquetasInfo.bandas,
+  ...banquetasInfo.chaflanes,
+  ...banquetasInfo.plataformas.map((p) => p.caja),
+]
 
 /*
  * Los lotes. El sólido se etiqueta con una retícula de 14 m ANTES de fusionar:
@@ -627,24 +620,61 @@ for (const r of lotes) {
 const g70 = (70 * Math.PI) / 180
 
 /** A mano, a media cuadra de calles largas; nunca en cruces ni callejones.
- *  Los de las curvas van girados: en una curva, el tope sigue el radio. */
+ *  Los de las curvas van girados: en una curva, el tope sigue el radio.
+ *  El largo es el ARROYO (ancho − 2·banquetas): el tope termina contra el
+ *  cordón como uno de verdad — antes cruzaba de muro a muro y sus puntas
+ *  quedaban enterradas bajo la banqueta (0.12 < 0.15). */
 export const topes: Box[] = [
-  { pos: [-70, TOPE_HEIGHT / 2, 18], size: [0.7, TOPE_HEIGHT, 9] }, // Morelos
-  { pos: [-30, TOPE_HEIGHT / 2, 40], size: [9, TOPE_HEIGHT, 0.7] }, // Hidalgo
-  { pos: [32.4, TOPE_HEIGHT / 2, -25], size: [9, TOPE_HEIGHT, 0.7] }, // salida norte
+  { pos: [-70, TOPE_HEIGHT / 2, 18], size: [0.7, TOPE_HEIGHT, 6] }, // Morelos
+  { pos: [-30, TOPE_HEIGHT / 2, 40], size: [6, TOPE_HEIGHT, 0.7] }, // Hidalgo
+  { pos: [32.4, TOPE_HEIGHT / 2, -25], size: [6, TOPE_HEIGHT, 0.7] }, // salida norte
   {
     // Avenida Curva a 70°: igual que el de la Media Luna, sobre el radio.
     pos: [-96 + 42 * Math.cos(g70), TOPE_HEIGHT / 2, -60 + 42 * Math.sin(g70)],
-    size: [0.7, TOPE_HEIGHT, 11],
+    size: [0.7, TOPE_HEIGHT, 8],
     rotY: Math.PI / 2 - g70,
   },
-  { pos: [84, TOPE_HEIGHT / 2, 18], size: [0.7, TOPE_HEIGHT, 10] }, // Independencia
-  { pos: [10, TOPE_HEIGHT / 2, -40], size: [0.7, TOPE_HEIGHT, 9] }, // Bravo
+  { pos: [84, TOPE_HEIGHT / 2, 18], size: [0.7, TOPE_HEIGHT, 7] }, // Independencia
+  { pos: [10, TOPE_HEIGHT / 2, -40], size: [0.7, TOPE_HEIGHT, 6] }, // Bravo
   {
     // Media Luna a 30°: el eje largo apunta al centro del arco.
     pos: [-10 + 62 * Math.cos(Math.PI / 6), TOPE_HEIGHT / 2, 40 + 62 * Math.sin(Math.PI / 6)],
-    size: [0.7, TOPE_HEIGHT, 9],
+    size: [0.7, TOPE_HEIGHT, 6],
     rotY: Math.PI / 2 - Math.PI / 6,
+  },
+]
+
+/*
+ * LA LISTA DE COLLIDERS DEL MUNDO, completa y en un solo lugar: WorldColliders
+ * la itera tal cual y el conteo de layoutStats sale de su length — es
+ * imposible que el número vuelva a mentir (antes se sumaba a mano y olvidaba
+ * tres piezas). Cada caja de esta lista SE DIBUJA y cada caja dibujada está
+ * aquí: no hay muros invisibles.
+ */
+export const worldColliderBoxes: Box[] = [
+  groundSlab,
+  ...sidewalks,
+  ...buildings,
+  ...locales.map((l) => ({ pos: l.pos, size: l.size })),
+  ...hitos.map((h) => ({ pos: h.pos, size: h.size })),
+  { pos: taller.pos, size: taller.size },
+  { pos: taller.letrero.pos, size: taller.letrero.size },
+  ...topes,
+  kiosco,
+  waterParts.base,
+  waterParts.valve,
+]
+
+export const worldColliderCylinders: {
+  pos: [number, number, number]
+  radius: number
+  height: number
+}[] = [
+  { pos: isla.pos, radius: isla.radiusCollider, height: isla.height },
+  {
+    pos: waterParts.pipe.pos,
+    radius: waterParts.pipe.radius,
+    height: waterParts.pipe.height,
   },
 ]
 
@@ -656,15 +686,8 @@ export const layoutStats = {
   locales: locales.length,
   topes: topes.length,
   hitos: hitos.length,
-  /** Cuboides estáticos que se le entregan a Rapier. */
-  colliders:
-    1 +
-    buildings.length +
-    sidewalks.length +
-    locales.length +
-    hitos.length +
-    topes.length +
-    3,
+  /** Colliders estáticos que se le entregan a Rapier: exacto por construcción. */
+  colliders: worldColliderBoxes.length + worldColliderCylinders.length,
   /** Fracción del mapa que es calle. */
   fraccionCalle: solido.reduce((a, s) => a + (s ? 0 : 1), 0) / (N * N),
 }

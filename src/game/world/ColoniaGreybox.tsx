@@ -13,6 +13,8 @@ import {
   taller,
   topes,
   waterParts,
+  worldColliderBoxes,
+  worldColliderCylinders,
   type Box,
 } from './layout'
 import { Interactable } from './Interactable'
@@ -163,7 +165,9 @@ export function ColoniaGreybox() {
 
       {/* La isla de la glorieta y su kiosco: el obstáculo que obliga a rodear. */}
       <mesh position={isla.pos}>
-        <cylinderGeometry args={[isla.radius, isla.radius, isla.height, 24]} />
+        <cylinderGeometry
+          args={[isla.radius, isla.radius, isla.height, isla.segmentos]}
+        />
         <meshStandardMaterial color={COLOR.isla} />
       </mesh>
       <mesh position={kiosco.pos}>
@@ -228,21 +232,11 @@ function WorldColliders() {
   const { rapier, world } = useRapier()
 
   useEffect(() => {
-    const cuboides: Box[] = [
-      groundSlab,
-      ...sidewalks,
-      ...buildings,
-      ...locales.map((l) => ({ pos: l.pos, size: l.size })),
-      ...hitos.map((h) => ({ pos: h.pos, size: h.size })),
-      { pos: taller.pos, size: taller.size },
-      ...topes,
-      kiosco,
-      waterParts.base,
-      waterParts.valve,
-    ]
-
+    // Las listas viven en layout.ts (worldColliderBoxes/Cylinders): son las
+    // MISMAS de las que sale el conteo de layoutStats y el visor de debug —
+    // una sola fuente, imposible que diverjan.
     const body = world.createRigidBody(rapier.RigidBodyDesc.fixed())
-    for (const b of cuboides) {
+    for (const b of worldColliderBoxes) {
       const desc = rapier.ColliderDesc.cuboid(
         b.size[0] / 2,
         b.size[1] / 2,
@@ -254,21 +248,14 @@ function WorldColliders() {
       }
       world.createCollider(desc, body)
     }
-
-    // La isla de la glorieta y el tubo de la toma, que son cilindros.
-    world.createCollider(
-      rapier.ColliderDesc.cylinder(isla.height / 2, isla.radius).setTranslation(
-        ...isla.pos,
-      ),
-      body,
-    )
-    world.createCollider(
-      rapier.ColliderDesc.cylinder(
-        waterParts.pipe.height / 2,
-        waterParts.pipe.radius,
-      ).setTranslation(...waterParts.pipe.pos),
-      body,
-    )
+    for (const c of worldColliderCylinders) {
+      world.createCollider(
+        rapier.ColliderDesc.cylinder(c.height / 2, c.radius).setTranslation(
+          ...c.pos,
+        ),
+        body,
+      )
+    }
 
     return () => {
       world.removeRigidBody(body)

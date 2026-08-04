@@ -238,7 +238,11 @@ export const BAHIAS: Bahia[] = [
   { id: 'spot-5', eje: [-12, 70], dir: E }, // Ocampo
   { id: 'spot-6', eje: [8, 56], dir: N }, // Allende
   { id: 'spot-7', eje: [20, -40], dir: N }, // Bravo
-  { id: 'spot-8', eje: [-46, -60], dir: N }, // Reforma
+  // Sobre el EJE de Reforma, mordiendo al sur — como manda la convención de
+  // arriba (antes el eje estaba en el fondo y la marca caía a media calle).
+  // En x=-43.5 y no en -46: el fondo de la bahía rozaba el pavimento de la
+  // Avenida Curva y su plataforma invadía ese arroyo.
+  { id: 'spot-8', eje: [-43.5, -70], dir: S }, // Reforma
   { id: 'spot-9', eje: [-45, -30], dir: S }, // Zaragoza
   { id: 'spot-10', eje: [8, -70], dir: E }, // Corregidora
   // La toma de agua: bahía propia sobre Independencia, a una cuadra de la
