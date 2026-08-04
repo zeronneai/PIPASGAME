@@ -1,5 +1,10 @@
 import { useEffect, useRef } from 'react'
-import { footprints, MAP_SIZE, WATER_SOURCE } from '../game/world/layout'
+import {
+  footprints,
+  MAP_SIZE,
+  taller,
+  WATER_SOURCE,
+} from '../game/world/layout'
 import { useGameStore } from '../state/gameStore'
 import type { PerfilCliente } from '../game/systems/clients'
 
@@ -23,6 +28,7 @@ const COLOR = {
   fondo: '#17171c',
   calle: '#4b4b52',
   pozo: '#37d0a7',
+  taller: '#e0a33a',
   pipa: '#4da3ff',
   jugador: '#f2f2f2',
   perfil: {
@@ -79,6 +85,27 @@ function draw(el: HTMLCanvasElement) {
   // El pozo: cuadrito verde agua.
   ctx.fillStyle = COLOR.pozo
   ctx.fillRect(M(WATER_SOURCE.pos[0]) - lado / 2, M(WATER_SOURCE.pos[2]) - lado / 2, lado, lado)
+
+  /*
+   * El taller: casita ámbar sobre su PORTÓN, que es donde hay que dejar la
+   * pipa, no sobre el centro de la nave. Va con forma propia y no solo con
+   * color propio: a este tamaño, dos cuadritos de distinto color se
+   * confunden de reojo, y un techo no se confunde con nada.
+   */
+  const tx = M(taller.door[0])
+  const tz = M(taller.door[2])
+  const t = lado * 0.75
+  ctx.fillStyle = COLOR.taller
+  ctx.beginPath()
+  ctx.moveTo(tx, tz - t)
+  ctx.lineTo(tx + t, tz)
+  ctx.lineTo(tx + t * 0.55, tz)
+  ctx.lineTo(tx + t * 0.55, tz + t * 0.8)
+  ctx.lineTo(tx - t * 0.55, tz + t * 0.8)
+  ctx.lineTo(tx - t * 0.55, tz)
+  ctx.lineTo(tx - t, tz)
+  ctx.closePath()
+  ctx.fill()
 
   // Pedidos activos: punto del color del perfil en el PUNTO DE ENTREGA.
   for (const o of s.economy.orders) {
