@@ -2,8 +2,6 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useRapier } from '@react-three/rapier'
 import { Color, Matrix4, Quaternion, Vector3, type InstancedMesh } from 'three'
 import {
-  BARDA_ALTURA,
-  buildings,
   groundSlab,
   hitos,
   isla,
@@ -19,7 +17,8 @@ import {
 } from './layout'
 import { Interactable } from './Interactable'
 import { Pintado } from '../render/Pintado'
-import { MUNDO, colorFachada } from '../render/paleta'
+import { MUNDO } from '../render/paleta'
+import { ColoniaFachadas } from './ColoniaFachadas'
 
 // Temporales de módulo: solo se usan en el llenado inicial, pero no hay razón
 // para asignar mil objetos.
@@ -90,41 +89,11 @@ function InstancedBoxes({
 }
 
 export function ColoniaGreybox() {
-  /*
-   * Gris más claro entre más alto: sin esto la manzana es una masa plana
-   * imposible de leer al caminar. El rango va apretado (2.8 a 6.6 m) porque la
-   * colonia es de una y dos plantas, así que el contraste se reparte ahí y no
-   * en una escala de rascacielos que ya no existe. Los patios van en tono de
-   * adobe, para que se lean como barda de predio y no como casa chaparra.
-   */
-  /*
-   * Las fachadas dejan de ser grises. Antes la altura mandaba sobre un gris
-   * más claro o más oscuro, que era lo único que se podía hacer sin paleta;
-   * ahora cada predio toma un color pintado de la tira, y la altura solo
-   * decide si es barda o casa. Los patios siguen en cal, para que se lean
-   * como barda de predio y no como casa chaparra.
-   *
-   * El índice va por posición en el layout y no al azar: la colonia se ve
-   * igual en cada carga, y eso es lo que la vuelve un lugar en vez de un
-   * patrón nuevo cada vez.
-   */
-  const buildingColors = useMemo(
-    () =>
-      buildings.map((b, i) =>
-        b.size[1] <= BARDA_ALTURA + 0.01 ? COLOR.barda : colorFachada(i),
-      ),
-    [],
-  )
   const hitoBoxes = useMemo<Box[]>(
     () => hitos.map((h) => ({ pos: h.pos, size: h.size })),
     [],
   )
   const hitoColors = useMemo(() => hitos.map((h) => h.color), [])
-  const localeColors = useMemo(() => locales.map((l) => l.color), [])
-  const localeBoxes = useMemo<Box[]>(
-    () => locales.map((l) => ({ pos: l.pos, size: l.size })),
-    [],
-  )
 
   return (
     <>
@@ -139,16 +108,15 @@ export function ColoniaGreybox() {
       </mesh>
 
       <InstancedBoxes boxes={sidewalks} color={COLOR.banqueta} />
-      <InstancedBoxes
-        boxes={buildings}
-        color="#ffffff"
-        instanceColors={buildingColors}
-      />
-      <InstancedBoxes
-        boxes={localeBoxes}
-        color="#ffffff"
-        instanceColors={localeColors}
-      />
+
+      {/*
+        LA COLONIA (Fase 3, Paso 2). Los 1059 lotes y los seis locales ya no
+        son cajas instanciadas de color plano: son una sola malla fusionada
+        con color por vértice, con sus bandas de cal, sus manchas de humedad,
+        sus ventanas, sus tinacos y los rótulos de los locales. Un draw call
+        para todo, y ahí está lo que hace viable el detalle.
+      */}
+      <ColoniaFachadas />
       {/*
         Los cuatro hitos. Son lo único que sobresale del perfil de la colonia,
         y para eso están: se ven desde lejos y contestan «¿dónde estoy?» sin

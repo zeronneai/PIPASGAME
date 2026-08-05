@@ -3,6 +3,7 @@ import { formatHora, horaDelDia } from '../game/systems/acceptance'
 import { useInputStore } from '../state/inputStore'
 import { useGameStore } from '../state/gameStore'
 import { renderStats } from '../state/renderStats'
+import { fachadasStats } from '../game/world/fachadasStats'
 
 /**
  * Overlay de debug: FPS y presupuesto de render, valores del joystick, delta
@@ -34,6 +35,9 @@ export function DebugOverlay() {
             ? 'corriendo'
             : 'caminando'
         const kTris = (renderStats.triangles / 1000).toFixed(1)
+        // El costo de la colonia construida (Fase 3, Paso 2): se vigila desde
+        // el teléfono, que es donde el presupuesto de verdad se rompe.
+        const col = `colonia ${(fachadasStats.triangulos / 1000).toFixed(1)}k tris · ${fachadasStats.frentesALaCalle} frentes · ${fachadasStats.tinacos} tinacos`
         const kmh = vehicle.speed * 3.6
         const volante = (vehicle.steer * (180 / Math.PI)).toFixed(0)
         // Cartera y litros EFECTIVOS: durante una carga lo acumulado en la
@@ -43,6 +47,7 @@ export function DebugOverlay() {
         const enTanque = economy.liters + refill.litersLoaded
         ref.current.textContent =
           `${fps.toFixed(0)} fps   ${renderStats.calls} draw calls   ${kTris}k tris\n` +
+          `${col}\n` +
           `cartera $${cartera.toFixed(2)}   tanque ${Math.round(enTanque)} L   día ${economy.day} ${formatHora(horaDelDia(clock.daySeconds))}   radio p${economy.radioPrioridad.toFixed(2)}\n` +
           `cámara Δ  x ${look.x.toFixed(0)}  y ${look.y.toFixed(0)}  ptr ${pointers.look ?? '—'}\n` +
           (mode === 'DRIVING'
