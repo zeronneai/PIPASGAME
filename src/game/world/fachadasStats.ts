@@ -7,9 +7,17 @@
  */
 export const fachadasStats = {
   lotes: 0,
-  frentesALaCalle: 0,
+  /** Predios de verdad: cajas agrupadas por etiqueta de lote. */
+  predios: 0,
+  /** Paños que recibieron fachada completa (frente ≥ 4 m). */
+  fachadas: 0,
+  /** Mediana del frente de esos paños. Es la cifra que dice si la colonia se
+   *  ve de casas o de columnas. */
+  frenteMediano: 0,
   tinacos: 0,
   locales: 0,
+  bolardos: 0,
+  glorieta: 0,
   triangulos: 0,
   vertices: 0,
 }

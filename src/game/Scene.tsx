@@ -30,7 +30,26 @@ export function Scene() {
   return (
     <Canvas
       dpr={[1, 1.5]}
-      camera={{ position: [0, 5, 8], fov: tuning.camera.fovFoot }}
+      /*
+       * `near` y `far` DECLARADOS, y no es un detalle: los defaults de r3f
+       * son 0.1 y 1000, un rango de 1:10,000 que deja la precisión de
+       * profundidad por los suelos a media cuadra. Ahí nacía la mitad del
+       * parpadeo de las fachadas — el z-fighting no era solo por geometría
+       * coplanar, era por un buffer sin resolución para distinguirla.
+       *
+       * La precisión es proporcional a `near`, así que subirlo de 0.1 a 0.35
+       * la multiplica por 3.5 en todo el mapa. 0.35 sigue por dentro del
+       * colchón de la cámara contra muros (`collisionRadius` 0.35), así que
+       * no abre el plano cercano a atravesar paredes. Y con 200 m de mapa,
+       * 400 de `far` sobra: lo único más lejos era la cúpula del cielo, que
+       * se encogió a 320 para caber.
+       */
+      camera={{
+        position: [0, 5, 8],
+        fov: tuning.camera.fovFoot,
+        near: 0.35,
+        far: 400,
+      }}
       gl={{ powerPreference: 'high-performance' }}
     >
       {/*

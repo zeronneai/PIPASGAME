@@ -51,17 +51,19 @@ function cubeta(m: Malla, x: number, z: number, i: number) {
  * al alcance de la manguera es el motivo por el que existe una pipa.
  */
 function tinacoALaVista(m: Malla, x: number, z: number, i: number) {
-  const patas = 1.35
-  const r = 0.62
+  // Más alto y más gordo que el de una azotea cualquiera: este es el que el
+  // jugador tiene que ver desde la calle para saber que ahí hay trabajo.
+  const patas = 1.7
+  const r = 0.8
   // Las cuatro patas del burro.
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
     m.caja([x + sx * r * 0.62, patas / 2, z + sz * r * 0.62], [0.1, patas, 0.1], PALETA.metal)
   }
   m.caja([x, patas + 0.06, z], [r * 2.1, 0.12, r * 2.1], tinte(PALETA.metal, 1.1))
   const color = dado(i, 31) < 0.75 ? '#2b2b30' : PALETA.terracota
-  m.cilindro([x, patas + 0.12 + 0.55, z], r, 1.1, 8, color, tinte(color, 1.3))
+  m.cilindro([x, patas + 0.12 + 0.7, z], r, 1.4, 8, color, tinte(color, 1.3))
   // La tapa, más clara y más chica: el tinaco de verdad la trae encima.
-  m.cilindro([x, patas + 0.12 + 1.14, z], r * 0.42, 0.12, 6, tinte(color, 1.6))
+  m.cilindro([x, patas + 0.12 + 1.46, z], r * 0.42, 0.14, 6, tinte(color, 1.6))
 }
 
 /** Cimbra: tablones parados y su travesaño. Lo que se ve en toda obra. */
@@ -115,10 +117,10 @@ export function construirEfimero(tipo: 'casa' | 'obra', semilla: number) {
     // Tambos y cubetas arrimados a la fachada, no repartidos en el solar.
     const n = 2 + Math.floor(dado(semilla, 2) * 2)
     for (let k = 0; k < n; k++) {
-      tambo(m, -s * 0.3 + k * 0.72, s * 0.5 + 0.45, semilla + k)
+      tambo(m, -s * 0.3 + k * 0.82, s * 0.5 + 0.85, semilla + k)
     }
     for (let k = 0; k < 3; k++) {
-      cubeta(m, s * 0.5 + 0.4, -s * 0.35 + k * 0.42, semilla + k)
+      cubeta(m, s * 0.5 + 0.7, -s * 0.35 + k * 0.46, semilla + k)
     }
   } else {
     const s = 4.5

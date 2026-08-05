@@ -337,7 +337,13 @@ export const locales: Local[] = LOCALES_TRAZA.map((l) => {
     name: l.name,
     color: l.color,
     pos,
-    size: [LOCAL_LADO, 4, LOCAL_LADO] as [number, number, number],
+    /*
+     * 5.5 m y no 4 (Fase 3, Paso 2): medio nivel por encima del vecino de una
+     * planta (2.8 m) para que el rótulo asome por encima de su barda y el
+     * local se lea desde media cuadra. No compite con los hitos, que arrancan
+     * en 12 m y siguen siendo lo único que domina el perfil.
+     */
+    size: [LOCAL_LADO, 5.5, LOCAL_LADO] as [number, number, number],
     door,
   }
 })
@@ -561,6 +567,22 @@ for (let j = 0; j < N; j++) {
 const lotes = fusionarRects(etiquetas, N, LADO_LOTE)
 
 export const buildings: Box[] = []
+/**
+ * La ETIQUETA de lote de cada caja de `buildings`, en el mismo orden.
+ *
+ * Existe para el render, no para la física (Fase 3, Paso 2). El fusionador
+ * parte un lote en 5 rectángulos de media —y sobre una curva rasterizada,
+ * hasta en 41 astillas de 62 cm—, así que pintar por índice de caja hacía que
+ * un mismo predio saliera de cinco colores pegados: el código de barras.
+ *
+ * Con la etiqueta a la mano, las fachadas agrupan por PREDIO y componen un
+ * paño continuo, sin que la física se entere: las cajas y sus colliders son
+ * exactamente los mismos. Publicarla es más barato y muchísimo menos
+ * arriesgado que tocar el fusionador — nada en el suite verifica que
+ * `buildings` cubra las celdas sólidas, así que un agrupamiento distinto
+ * podría abrir un hueco en una manzana sin que un solo test se quejara.
+ */
+export const buildingLote: number[] = []
 /** Huella plana de cada lote. La usa el minimapa: dibujar solo las bardas de
  *  un patio dejaría el interior en blanco, como si se pudiera pasar. */
 export const footprints: Box[] = []
@@ -607,11 +629,13 @@ for (const r of lotes) {
       { pos: [cx - sx / 2 + BARDA_GRUESO / 2, y, cz], size: [BARDA_GRUESO, BARDA_ALTURA, sz] },
       { pos: [cx + sx / 2 - BARDA_GRUESO / 2, y, cz], size: [BARDA_GRUESO, BARDA_ALTURA, sz] },
     )
+    for (let k = 0; k < 4; k++) buildingLote.push(r.etiqueta)
   } else {
     buildings.push({
       pos: [plano.pos[0], (esPatio ? BARDA_ALTURA : altura) / 2, plano.pos[2]],
       size: [sx, esPatio ? BARDA_ALTURA : altura, sz],
     })
+    buildingLote.push(r.etiqueta)
   }
 }
 

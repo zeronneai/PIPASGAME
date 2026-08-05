@@ -128,6 +128,50 @@ export class Malla {
     }
   }
 
+  /**
+   * Un prisma de `segs` lados con radio distinto abajo y arriba. Con radios
+   * iguales es un cilindro; con el de arriba en 0, un cono. Lo piden el
+   * kiosco de la glorieta (base octagonal, columnas, techo en punta) y los
+   * tinacos, así que vale la pena tenerlo en un solo sitio.
+   *
+   * `giro` gira el prisma sobre su eje: un octágono con una cara al frente se
+   * lee muy distinto a uno con un vértice al frente.
+   */
+  prisma(
+    pos: P3,
+    rAbajo: number,
+    rArriba: number,
+    alto: number,
+    segs: number,
+    color: string,
+    tapaColor = color,
+    giro = 0,
+  ) {
+    const [x, y, z] = pos
+    const y0 = y - alto / 2
+    const y1 = y + alto / 2
+    const centro: P3 = [x, y1, z]
+    for (let i = 0; i < segs; i++) {
+      const a0 = giro + (i / segs) * Math.PI * 2
+      const a1 = giro + ((i + 1) / segs) * Math.PI * 2
+      const c0 = Math.cos(a0), s0 = Math.sin(a0)
+      const c1 = Math.cos(a1), s1 = Math.sin(a1)
+      if (rArriba <= 0.001) {
+        // Cono: la cara lateral es un triángulo y no hay tapa.
+        this.tri([x + c0 * rAbajo, y0, z + s0 * rAbajo], [x + c1 * rAbajo, y0, z + s1 * rAbajo], centro, color)
+        continue
+      }
+      this.quad(
+        [x + c0 * rAbajo, y0, z + s0 * rAbajo],
+        [x + c1 * rAbajo, y0, z + s1 * rAbajo],
+        [x + c1 * rArriba, y1, z + s1 * rArriba],
+        [x + c0 * rArriba, y1, z + s0 * rArriba],
+        color,
+      )
+      this.tri(centro, [x + c0 * rArriba, y1, z + s0 * rArriba], [x + c1 * rArriba, y1, z + s1 * rArriba], tapaColor)
+    }
+  }
+
   /** La geometría lista para three. Se llama una vez. */
   geometria(): BufferGeometry {
     const g = new BufferGeometry()

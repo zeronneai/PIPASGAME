@@ -20,9 +20,14 @@ import { PALETA } from './paleta'
  * no estorbar a nada: se comporta como el fondo, pero con gradiente.
  */
 
-/** Radio de la cúpula. Grande para que nada del mundo la atraviese, y con
- *  `depthTest` apagado el tamaño real da igual: nunca ocluye. */
-const RADIO = 600
+/**
+ * Radio de la cúpula. Con `depthTest` apagado el tamaño no cambia nada de lo
+ * que se ve; lo único que importa es que quepa DENTRO del plano lejano de la
+ * cámara, o el recorte la borra y el cielo desaparece. Bajó de 600 a 320
+ * cuando `far` se apretó a 400 para recuperar precisión de profundidad
+ * (`Scene.tsx`). Sigue a la cámara, así que 320 sobra para 200 m de mapa.
+ */
+const RADIO = 320
 
 const VERT = /* glsl */ `
   varying vec3 vDir;

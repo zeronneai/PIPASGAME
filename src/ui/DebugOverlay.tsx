@@ -37,7 +37,7 @@ export function DebugOverlay() {
         const kTris = (renderStats.triangles / 1000).toFixed(1)
         // El costo de la colonia construida (Fase 3, Paso 2): se vigila desde
         // el teléfono, que es donde el presupuesto de verdad se rompe.
-        const col = `colonia ${(fachadasStats.triangulos / 1000).toFixed(1)}k tris · ${fachadasStats.frentesALaCalle} frentes · ${fachadasStats.tinacos} tinacos`
+        const col = `colonia ${(fachadasStats.triangulos / 1000).toFixed(1)}k tris · ${fachadasStats.predios} predios · ${fachadasStats.fachadas} fachadas (frente ${fachadasStats.frenteMediano.toFixed(1)} m) · ${fachadasStats.tinacos} tinacos`
         const kmh = vehicle.speed * 3.6
         const volante = (vehicle.steer * (180 / Math.PI)).toFixed(0)
         // Cartera y litros EFECTIVOS: durante una carga lo acumulado en la

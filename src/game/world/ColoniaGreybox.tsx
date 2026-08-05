@@ -4,8 +4,6 @@ import { Color, Matrix4, Quaternion, Vector3, type InstancedMesh } from 'three'
 import {
   groundSlab,
   hitos,
-  isla,
-  kiosco,
   locales,
   sidewalks,
   taller,
@@ -37,8 +35,6 @@ const COLOR = {
   banqueta: MUNDO.banqueta,
   barda: MUNDO.barda,
   tope: MUNDO.tope,
-  isla: MUNDO.isla,
-  kiosco: MUNDO.kiosco,
   taller: MUNDO.taller,
   tallerLetrero: MUNDO.tallerLetrero,
   waterBase: MUNDO.tomaBase,
@@ -143,17 +139,14 @@ export function ColoniaGreybox() {
         <Pintado color={COLOR.tallerLetrero} />
       </mesh>
 
-      {/* La isla de la glorieta y su kiosco: el obstáculo que obliga a rodear. */}
-      <mesh position={isla.pos}>
-        <cylinderGeometry
-          args={[isla.radius, isla.radius, isla.height, isla.segmentos]}
-        />
-        <Pintado color={COLOR.isla} />
-      </mesh>
-      <mesh position={kiosco.pos}>
-        <boxGeometry args={kiosco.size} />
-        <Pintado color={COLOR.kiosco} />
-      </mesh>
+      {/*
+        La glorieta ya NO se dibuja aquí. Era un cilindro liso más una caja
+        de 6×2.5×6 —«una caja roja flotando sobre el pasto»— y ahora es una
+        plaza entera (guarnición pintada, caminos radiales, jardineras y un
+        kiosco con columnas) que se construye dentro de la malla fusionada de
+        `fachadas.ts`. Ahí cuesta cero draw calls; aquí costaba dos y se veía
+        peor. Los colliders no se movieron: siguen saliendo de `layout.ts`.
+      */}
 
       {/* Toma de agua: pocas piezas, no vale la pena instanciar */}
       <mesh position={waterParts.base.pos}>
