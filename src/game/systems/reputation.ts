@@ -23,9 +23,12 @@ export function applyRep(
 }
 
 /**
- * Delta por una entrega. Sale del perfil: surtir a un exigente a tiempo es
- * lo que más sube (sección 2.7), y fallarle es lo que más tumba —su
- * `veryLate` ya es el castigo de la cancelación.
+ * Delta por una entrega. Sale del perfil, y desde el Paso 7 va al revés que
+ * el dinero: el que más sube la reputación es el PACIENTE, no el exigente.
+ * La obra paga y se va; la señora paga poco y te recomienda con la cuadra.
+ * Fallarle al exigente sigue siendo lo que más tumba —su `veryLate` ya es el
+ * castigo de la cancelación—, así que es dinero contra riesgo, sin premio de
+ * reputación que lo acompañe. El porqué completo está en `balance.ts`.
  */
 export function deliveryRepDelta(
   puntualidad: Puntualidad,

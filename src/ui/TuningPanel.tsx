@@ -1,6 +1,11 @@
-import { button, Leva, useControls } from 'leva'
+import { button, Leva, monitor, useControls } from 'leva'
 import { tuning } from '../game/tuning'
 import { balance } from '../game/balance'
+import {
+  ESCENARIOS,
+  primeraMejora,
+  proyeccionJornada,
+} from '../game/systems/proyeccion'
 import { COLONIAS, type PerfilCliente } from '../game/systems/clients'
 import { clearSave } from '../game/systems/persistence'
 import { capacidadPipa, useGameStore } from '../state/gameStore'
@@ -145,6 +150,49 @@ function perfilSchema(id: PerfilCliente) {
   }
 }
 
+/*
+ * LA PROYECCIÓN EN VIVO (Paso 7).
+ *
+ * Solo lectura: son los números que salen de `proyeccion.ts` con el balance
+ * de ESTE momento. Existe porque rebalancear a ciegas es lo que hace que el
+ * Paso 7 se eternice — mueves el precio del agua en la carpeta de abajo y
+ * aquí ves, sin recargar y sin jugar una jornada, si la primera mejora se
+ * salió de sus dos o tres días.
+ *
+ * `monitor` relee cada 400 ms. Es aritmética pura sobre objetos que ya están
+ * en memoria, así que no cuesta nada aunque el panel quede abierto.
+ */
+const REFRESCO = { graph: false, interval: 400 }
+const redondo = (n: number) => Math.round(n)
+const decimal = (n: number) => Math.round(n * 10) / 10
+
+function proyeccionSchema() {
+  const neta = (esc: keyof typeof ESCENARIOS) =>
+    proyeccionJornada(ESCENARIOS[esc]).neta
+  return {
+    'neta · arranque': monitor(() => redondo(neta('arranque')), REFRESCO),
+    'neta · asentado': monitor(() => redondo(neta('asentado')), REFRESCO),
+    'neta · veterano': monitor(() => redondo(neta('veterano')), REFRESCO),
+    'entregas por jornada': monitor(
+      () => decimal(proyeccionJornada(ESCENARIOS.arranque).entregas),
+      REFRESCO,
+    ),
+    // Las tres metas del documento, en la unidad en que están escritas.
+    'jornadas · 1ª mejora (meta 2-3)': monitor(
+      () => decimal(primeraMejora().precio / neta('arranque')),
+      REFRESCO,
+    ),
+    'jornadas · la mediana (meta 10-15)': monitor(
+      () => decimal(balance.garage.modelos.mediana / neta('asentado')),
+      REFRESCO,
+    ),
+    'jornadas · la grandota': monitor(
+      () => decimal(balance.garage.modelos.grandota / neta('veterano')),
+      REFRESCO,
+    ),
+  }
+}
+
 export default function TuningPanel() {
   const v = tuning.vehicle
 
@@ -203,9 +251,36 @@ export default function TuningPanel() {
     },
   })
 
+  /*
+   * EL ORDEN DE LAS CARPETAS ES EL ORDEN EN QUE SE REBALANCEA (Paso 7).
+   *
+   * Primero la proyección —dónde estás—, luego las perillas del dinero
+   * juntas: economía, los tres perfiles de cliente, y los precios del garage.
+   * Lo demás (mundo, radio, entrega, aceptación, la pipa, la cámara) va
+   * abajo. En el teléfono la lista se recorre con el pulgar y una carpeta
+   * fuera de lugar cuesta media pantalla de scroll cada vez.
+   */
+  useControls('economía · proyección', proyeccionSchema(), CERRADA)
+
   useControls(
     'economía',
     {
+      // Con lo que amaneces el día uno. Está aquí y no en el garage porque
+      // es el primer número de la economía, no una compra.
+      'dinero inicial': {
+        value: balance.dineroInicial,
+        min: 0,
+        max: 2_000,
+        step: 25,
+        onChange: (n: number) => void (balance.dineroInicial = n),
+      },
+      'reputación inicial': {
+        value: balance.reputacion.start,
+        min: 0,
+        max: 100,
+        step: 1,
+        onChange: (n: number) => void (balance.reputacion.start = n),
+      },
       'capacidad (L)': {
         value: balance.tank.capacity,
         min: 1000,
@@ -302,6 +377,170 @@ export default function TuningPanel() {
         clearSave()
         location.reload()
       }),
+    },
+    CERRADA,
+  )
+
+  useControls('economía · paciente', perfilSchema('paciente'), CERRADA)
+
+  useControls('economía · normal', perfilSchema('normal'), CERRADA)
+
+  useControls('economía · exigente', perfilSchema('exigente'), CERRADA)
+
+  /*
+   * EL GARAGE (Fase 2, Paso 1). Hasta que exista el taller, esta carpeta es la
+   * única forma de comprobar en el teléfono que la física de verdad lee del
+   * garage: subes «motor» y la pipa empuja más sin recargar nada.
+   *
+   * Equipar y subir nivel NO cobran: cobrar es del Paso 3.
+   */
+
+  useControls(
+    'garage · precios',
+    {
+      ...Object.fromEntries(
+        (Object.keys(MODELOS) as ModeloId[])
+          .filter((id) => balance.garage.modelos[id] > 0)
+          .map((id) => [
+            MODELOS[id].nombre.toLowerCase(),
+            {
+              value: balance.garage.modelos[id],
+              min: 0,
+              max: 400_000,
+              step: 5_000,
+              onChange: (n: number) => void (balance.garage.modelos[id] = n),
+            },
+          ]),
+      ),
+      ...Object.fromEntries(
+        CATEGORIAS.flatMap((cat) =>
+          [0, 1, 2].map((i) => [
+            `${MEJORAS[cat].nombre.toLowerCase()} n${i + 1}`,
+            {
+              value: balance.garage.mejoras[cat].precios[i],
+              min: 500,
+              max: 60_000,
+              step: 500,
+              onChange: (n: number) =>
+                void (balance.garage.mejoras[cat].precios[i] = n),
+            },
+          ]),
+        ),
+      ),
+    },
+    CERRADA,
+  )
+
+  // Depuración visual: los flags viven en el store (leva se desmonta al
+  // cerrar el cajón) y el Canvas se suscribe a ellos.
+
+  useControls(
+    'garage · estilo',
+    {
+      'pintar cabina': {
+        value: balance.garage.estilo.pintura.cabina,
+        min: 0, max: 5_000, step: 50,
+        onChange: (n: number) => void (balance.garage.estilo.pintura.cabina = n),
+      },
+      'pintar tanque': {
+        value: balance.garage.estilo.pintura.tanque,
+        min: 0, max: 5_000, step: 50,
+        onChange: (n: number) => void (balance.garage.estilo.pintura.tanque = n),
+      },
+      rotular: {
+        value: balance.garage.estilo.rotulo,
+        min: 0, max: 5_000, step: 50,
+        onChange: (n: number) => void (balance.garage.estilo.rotulo = n),
+      },
+      calca: {
+        value: balance.garage.estilo.calca,
+        min: 0, max: 5_000, step: 50,
+        onChange: (n: number) => void (balance.garage.estilo.calca = n),
+      },
+      ...Object.fromEntries(
+        (Object.keys(PIEZAS) as PiezaEstilo[]).map((pieza) => [
+          PIEZAS[pieza].nombre.toLowerCase(),
+          {
+            value: balance.garage.estilo.piezas[pieza],
+            min: 0, max: 10_000, step: 50,
+            onChange: (n: number) => void (balance.garage.estilo.piezas[pieza] = n),
+          },
+        ]),
+      ),
+    },
+    CERRADA,
+  )
+
+  /*
+   * Y los EFECTOS, que son la otra mitad del Paso 3: cada eje que toca cada
+   * nivel, como factor. Son muchos controles y por eso van en su propia
+   * carpeta cerrada, pero tienen que estar: el documento pide poder mover
+   * precios Y efectos en vivo, y ajustar cuánto rinde una mejora sin poder
+   * sentirla en la misma sesión es adivinar.
+   */
+
+  useControls(
+    'garage · efectos',
+    {
+      ...Object.fromEntries(
+        CATEGORIAS.flatMap((cat) =>
+          balance.garage.mejoras[cat].niveles.flatMap((nivel, i) =>
+            (Object.keys(nivel) as Eje[]).map((eje) => [
+              `${MEJORAS[cat].nombre.toLowerCase()} n${i + 1} · ${eje}`,
+              {
+                value: nivel[eje] ?? 1,
+                min: 0.5,
+                max: 2,
+                step: 0.01,
+                onChange: (n: number) => void (nivel[eje] = n),
+              },
+            ]),
+          ),
+        ),
+      ),
+    },
+    CERRADA,
+  )
+
+  useControls(
+    'garage',
+    {
+      pipa: {
+        value: useGameStore.getState().garage.equipada,
+        options: Object.fromEntries(
+          (Object.keys(MODELOS) as ModeloId[]).map((id) => [
+            MODELOS[id].nombre,
+            id,
+          ]),
+        ),
+        onChange: (id: ModeloId) => {
+          const s = useGameStore.getState()
+          // Desde leva se puede probar una pipa que aún no tienes: si no está
+          // en el lote, se agrega de fábrica y se equipa.
+          if (!s.garage.pipas[id]) {
+            useGameStore.setState({
+              garage: {
+                ...s.garage,
+                pipas: { ...s.garage.pipas, [id]: pipaDeFabrica(id) },
+              },
+            })
+          }
+          useGameStore.getState().equiparPipa(id)
+        },
+      },
+      ...Object.fromEntries(
+        CATEGORIAS.map((cat) => [
+          MEJORAS[cat].nombre.toLowerCase(),
+          {
+            value: 0,
+            min: 0,
+            max: NIVEL_MAX,
+            step: 1,
+            onChange: (n: number) =>
+              useGameStore.getState().setMejora(cat, n as Nivel),
+          },
+        ]),
+      ),
     },
     CERRADA,
   )
@@ -605,6 +844,27 @@ export default function TuningPanel() {
         step: 0.5,
         onChange: (n: number) => void (balance.aceptacion.cooldownMinutes = n),
       },
+      /*
+       * Los dos topes de la probabilidad final. Estaban fuera del panel y son
+       * perillas de INGRESO, no de simpatía: aprietan cuántos «sí» caben en
+       * una jornada, y de ahí cuelga todo lo demás. Con el modelo del Paso 7
+       * a la vista, mover el piso se siente al instante en «entregas por
+       * jornada» de la carpeta de proyección.
+       */
+      'prob mínima': {
+        value: balance.aceptacion.chanceMin,
+        min: 0,
+        max: 0.3,
+        step: 0.01,
+        onChange: (n: number) => void (balance.aceptacion.chanceMin = n),
+      },
+      'prob máxima': {
+        value: balance.aceptacion.chanceMax,
+        min: 0.5,
+        max: 1,
+        step: 0.01,
+        onChange: (n: number) => void (balance.aceptacion.chanceMax = n),
+      },
       'día empieza (h)': {
         value: balance.jornada.startHour,
         min: 5,
@@ -623,98 +883,6 @@ export default function TuningPanel() {
     CERRADA,
   )
 
-  useControls('economía · paciente', perfilSchema('paciente'), CERRADA)
-  useControls('economía · normal', perfilSchema('normal'), CERRADA)
-  useControls('economía · exigente', perfilSchema('exigente'), CERRADA)
-
-  /*
-   * EL GARAGE (Fase 2, Paso 1). Hasta que exista el taller, esta carpeta es la
-   * única forma de comprobar en el teléfono que la física de verdad lee del
-   * garage: subes «motor» y la pipa empuja más sin recargar nada.
-   *
-   * Equipar y subir nivel NO cobran: cobrar es del Paso 3.
-   */
-  useControls(
-    'garage',
-    {
-      pipa: {
-        value: useGameStore.getState().garage.equipada,
-        options: Object.fromEntries(
-          (Object.keys(MODELOS) as ModeloId[]).map((id) => [
-            MODELOS[id].nombre,
-            id,
-          ]),
-        ),
-        onChange: (id: ModeloId) => {
-          const s = useGameStore.getState()
-          // Desde leva se puede probar una pipa que aún no tienes: si no está
-          // en el lote, se agrega de fábrica y se equipa.
-          if (!s.garage.pipas[id]) {
-            useGameStore.setState({
-              garage: {
-                ...s.garage,
-                pipas: { ...s.garage.pipas, [id]: pipaDeFabrica(id) },
-              },
-            })
-          }
-          useGameStore.getState().equiparPipa(id)
-        },
-      },
-      ...Object.fromEntries(
-        CATEGORIAS.map((cat) => [
-          MEJORAS[cat].nombre.toLowerCase(),
-          {
-            value: 0,
-            min: 0,
-            max: NIVEL_MAX,
-            step: 1,
-            onChange: (n: number) =>
-              useGameStore.getState().setMejora(cat, n as Nivel),
-          },
-        ]),
-      ),
-    },
-    CERRADA,
-  )
-
-  useControls(
-    'garage · precios',
-    {
-      ...Object.fromEntries(
-        (Object.keys(MODELOS) as ModeloId[])
-          .filter((id) => balance.garage.modelos[id] > 0)
-          .map((id) => [
-            MODELOS[id].nombre.toLowerCase(),
-            {
-              value: balance.garage.modelos[id],
-              min: 0,
-              max: 400_000,
-              step: 5_000,
-              onChange: (n: number) => void (balance.garage.modelos[id] = n),
-            },
-          ]),
-      ),
-      ...Object.fromEntries(
-        CATEGORIAS.flatMap((cat) =>
-          [0, 1, 2].map((i) => [
-            `${MEJORAS[cat].nombre.toLowerCase()} n${i + 1}`,
-            {
-              value: balance.garage.mejoras[cat].precios[i],
-              min: 500,
-              max: 60_000,
-              step: 500,
-              onChange: (n: number) =>
-                void (balance.garage.mejoras[cat].precios[i] = n),
-            },
-          ]),
-        ),
-      ),
-    },
-    CERRADA,
-  )
-
-  // Depuración visual: los flags viven en el store (leva se desmonta al
-  // cerrar el cajón) y el Canvas se suscribe a ellos.
   useControls(
     'debug',
     {
@@ -732,72 +900,6 @@ export default function TuningPanel() {
 
   // Los precios del estilo (Paso 5). Puro dinero: los efectos no existen
   // porque el estilo por diseño no tiene ninguno.
-  useControls(
-    'garage · estilo',
-    {
-      'pintar cabina': {
-        value: balance.garage.estilo.pintura.cabina,
-        min: 0, max: 5_000, step: 50,
-        onChange: (n: number) => void (balance.garage.estilo.pintura.cabina = n),
-      },
-      'pintar tanque': {
-        value: balance.garage.estilo.pintura.tanque,
-        min: 0, max: 5_000, step: 50,
-        onChange: (n: number) => void (balance.garage.estilo.pintura.tanque = n),
-      },
-      rotular: {
-        value: balance.garage.estilo.rotulo,
-        min: 0, max: 5_000, step: 50,
-        onChange: (n: number) => void (balance.garage.estilo.rotulo = n),
-      },
-      calca: {
-        value: balance.garage.estilo.calca,
-        min: 0, max: 5_000, step: 50,
-        onChange: (n: number) => void (balance.garage.estilo.calca = n),
-      },
-      ...Object.fromEntries(
-        (Object.keys(PIEZAS) as PiezaEstilo[]).map((pieza) => [
-          PIEZAS[pieza].nombre.toLowerCase(),
-          {
-            value: balance.garage.estilo.piezas[pieza],
-            min: 0, max: 10_000, step: 50,
-            onChange: (n: number) => void (balance.garage.estilo.piezas[pieza] = n),
-          },
-        ]),
-      ),
-    },
-    CERRADA,
-  )
-
-  /*
-   * Y los EFECTOS, que son la otra mitad del Paso 3: cada eje que toca cada
-   * nivel, como factor. Son muchos controles y por eso van en su propia
-   * carpeta cerrada, pero tienen que estar: el documento pide poder mover
-   * precios Y efectos en vivo, y ajustar cuánto rinde una mejora sin poder
-   * sentirla en la misma sesión es adivinar.
-   */
-  useControls(
-    'garage · efectos',
-    {
-      ...Object.fromEntries(
-        CATEGORIAS.flatMap((cat) =>
-          balance.garage.mejoras[cat].niveles.flatMap((nivel, i) =>
-            (Object.keys(nivel) as Eje[]).map((eje) => [
-              `${MEJORAS[cat].nombre.toLowerCase()} n${i + 1} · ${eje}`,
-              {
-                value: nivel[eje] ?? 1,
-                min: 0.5,
-                max: 2,
-                step: 0.01,
-                onChange: (n: number) => void (nivel[eje] = n),
-              },
-            ]),
-          ),
-        ),
-      ),
-    },
-    CERRADA,
-  )
 
   useControls(
     'pipa · segunda',

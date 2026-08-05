@@ -69,9 +69,21 @@ describe('deliveryRepDelta', () => {
     }
   })
 
-  it('invariante: surtir al exigente sube más que surtir al paciente (sección 2.7)', () => {
-    expect(deliveryRepDelta('A_TIEMPO', 'exigente')).toBeGreaterThan(
-      deliveryRepDelta('A_TIEMPO', 'paciente'),
+  /*
+   * ESTE INVARIANTE SE INVIRTIÓ EN EL PASO 7, a propósito.
+   *
+   * La sección 2.7 decía que surtirle al exigente subía más la reputación.
+   * Con la economía completa eso se volvió insostenible: el exigente ya
+   * ganaba la columna del dinero por mucho, y darle también la de la
+   * reputación lo dejaba dominando las dos. Un cliente que gana en todo no
+   * es un trade-off; convierte a los otros dos en decorado.
+   *
+   * Ahora la obra paga y se va, y la señora paga poco pero te recomienda.
+   * El razonamiento largo está en `balance.ts`, junto a los números.
+   */
+  it('invariante: el paciente es el que construye reputación (Paso 7)', () => {
+    expect(deliveryRepDelta('A_TIEMPO', 'paciente')).toBeGreaterThan(
+      deliveryRepDelta('A_TIEMPO', 'exigente'),
     )
   })
 

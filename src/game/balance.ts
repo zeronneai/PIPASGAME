@@ -57,9 +57,29 @@ export type MejoraBalance = {
   niveles: Factores[]
 }
 
+/*
+ * LA ESCALERA DE PRECIOS (afinada en el Paso 7).
+ *
+ * Los precios de arranque salían de la nada y la proyección los reprobó: la
+ * mejora más barata costaba 0.8 jornadas, así que la primera compra caía
+ * antes de que el jugador entendiera qué estaba comprando. El documento pide
+ * dos o tres jornadas, y esa cifra es la que fija TODA la escalera.
+ *
+ * Las tres reglas que la sostienen, verificadas en `proyeccion.test.ts`:
+ *
+ *   1. El n1 más barato ≈ 2.5 jornadas de arranque. Es la primera meta y
+ *      tiene que costar lo suficiente para ser una.
+ *   2. Ningún escalón rebasa 5 jornadas del momento en que se llega a él
+ *      (n1 de arranque, n2 asentado, n3 veterano). Es el criterio de «nunca
+ *      pasas cinco jornadas sin poder comprar nada»: comprando de lo barato
+ *      a lo caro, siempre hay algo al alcance.
+ *   3. Las mejoras LIMPIAS —bomba, llantas, enfriamiento, las que no cobran
+ *      nada en la física— son las caras de cada escalón. Es la regla de la
+ *      sección 4 y `garage.test.ts` no deja abaratarlas.
+ */
 const MEJORAS_GARAGE: Record<Categoria, MejoraBalance> = {
   tanque: {
-    precios: [3_500, 8_000, 17_000],
+    precios: [6_500, 12_000, 20_000],
     niveles: [
       { capacidad: 1.1, tara: 1.05 },
       { capacidad: 1.22, tara: 1.11 },
@@ -67,7 +87,7 @@ const MEJORAS_GARAGE: Record<Categoria, MejoraBalance> = {
     ],
   },
   motor: {
-    precios: [2_500, 6_000, 13_000],
+    precios: [6_000, 11_000, 18_500],
     niveles: [
       { motor: 1.1, velocidad: 1.04, calor: 1.1 },
       { motor: 1.22, velocidad: 1.08, calor: 1.2 },
@@ -75,7 +95,7 @@ const MEJORAS_GARAGE: Record<Categoria, MejoraBalance> = {
     ],
   },
   bomba: {
-    precios: [4_000, 9_000, 18_000],
+    precios: [8_500, 15_000, 22_000],
     niveles: [
       { carga: 1.15, descarga: 1.15 },
       { carga: 1.32, descarga: 1.32 },
@@ -83,7 +103,7 @@ const MEJORAS_GARAGE: Record<Categoria, MejoraBalance> = {
     ],
   },
   suspension: {
-    precios: [1_800, 4_500, 9_000],
+    precios: [5_500, 10_000, 17_000],
     niveles: [
       { suspension: 1.08, vuelco: 1.06, tara: 1.03 },
       { suspension: 1.16, vuelco: 1.12, tara: 1.06 },
@@ -91,7 +111,7 @@ const MEJORAS_GARAGE: Record<Categoria, MejoraBalance> = {
     ],
   },
   llantas: {
-    precios: [4_200, 9_500, 19_000],
+    precios: [8_000, 14_000, 21_000],
     niveles: [
       { agarre: 1.08, freno: 1.06 },
       { agarre: 1.17, freno: 1.12 },
@@ -99,7 +119,7 @@ const MEJORAS_GARAGE: Record<Categoria, MejoraBalance> = {
     ],
   },
   enfriamiento: {
-    precios: [4_500, 10_000, 20_000],
+    precios: [9_000, 16_000, 23_000],
     niveles: [
       { enfria: 1.15, calor: 0.92 },
       { enfria: 1.32, calor: 0.85 },
@@ -116,6 +136,13 @@ const MEJORAS_GARAGE: Record<Categoria, MejoraBalance> = {
  * Pintura, rótulo y calca cobran CADA aplicada (quitar es gratis); las piezas
  * se compran una vez por pipa. El catálogo (colores, motivos, qué es cada
  * pieza) vive en `systems/estilo.ts`.
+ *
+ * EL PASO 7 LOS SUBIÓ ~2.5×. No para castigar: con la jornada en su escala
+ * real, 250 pesos por un rótulo no se sentían. Barato tiene que significar
+ * «media jornada», no «gratis» — si no cuesta nada, elegir no es elegir. Aun
+ * así lo más caro de aquí (los rines) sigue siendo la mitad de la mejora más
+ * barata, que es la regla que sostiene `estilo.test.ts`: puedes verte bien
+ * desde temprano, y hacerlo te atrasa una mejora, no diez.
  */
 const ESTILO_GARAGE: {
   pintura: { cabina: number; tanque: number }
@@ -123,17 +150,17 @@ const ESTILO_GARAGE: {
   calca: number
   piezas: Record<PiezaEstilo, number>
 } = {
-  pintura: { cabina: 350, tanque: 550 },
-  rotulo: 250,
-  calca: 400,
+  pintura: { cabina: 900, tanque: 1_400 },
+  rotulo: 700,
+  calca: 1_000,
   piezas: {
-    defensa: 900,
-    espejos: 700,
-    escapes: 850,
-    rines: 1_200,
-    claxon: 500,
-    luces: 650,
-    cortinas: 300,
+    defensa: 2_200,
+    espejos: 1_600,
+    escapes: 1_900,
+    rines: 2_800,
+    claxon: 1_200,
+    luces: 1_500,
+    cortinas: 800,
   },
 }
 
@@ -157,20 +184,40 @@ export const balance = {
    * Los tres arquetipos de la sección 2.3. La regla del trade-off: el que
    * mejor paga es el que más te puede quemar. Paciente pide poco y perdona;
    * exigente pide mucho, paga mejor por litro, y cancela si te tardas.
+   *
+   * EL AJUSTE DEL PASO 7 — LA REPUTACIÓN VA AL REVÉS QUE EL DINERO.
+   *
+   * Antes el exigente ganaba en las dos columnas: pagaba ~12 veces más que el
+   * paciente por entrega Y daba más reputación (5 contra 2). Dos ejes que
+   * apuntan al mismo cliente no son un trade-off, son un cliente dominante:
+   * el paciente dejaba de existir y con él la mitad del mapa.
+   *
+   * Ahora el eje se cruza. La obra PAGA y se va: +1.5 de reputación, porque
+   * el que viene una vez no te recomienda con nadie. Doña Chela paga poco
+   * pero habla: +4, que es lo que de verdad abre la colonia —el radio a 70,
+   * la segunda a 60, y la propina, que escala con la reputación—. Surtir
+   * barato deja de ser caridad y se vuelve la inversión.
+   *
+   * Si prefieres el reparto viejo, son dos números en leva
+   * (`economía · paciente → rep a tiempo` y el del exigente) y se revierte
+   * sin tocar código.
    */
   perfiles: {
     paciente: {
-      sellPricePerLiter: 0.1,
+      // Margen 0.065/L contra 0.05 de antes: el pedido chico tenía que dejar
+      // algo o servirlo era perder el turno.
+      sellPricePerLiter: 0.115,
       tipPct: 0.1,
       windowMinutes: 8,
       lateFactor: 2.0,
       latePayFactor: 0.9,
       veryLatePayFactor: 0.4,
-      litros: { min: 500, max: 1500 },
-      rep: { onTime: 2, late: 0, veryLate: -3 },
+      // Sube el piso: 500 L era medio minuto de manguera y un viaje entero.
+      litros: { min: 900, max: 2100 },
+      rep: { onTime: 4, late: 0, veryLate: -3 },
     },
     normal: {
-      sellPricePerLiter: 0.13,
+      sellPricePerLiter: 0.135,
       tipPct: 0.08,
       windowMinutes: 5,
       lateFactor: 1.5,
@@ -180,15 +227,19 @@ export const balance = {
       rep: { onTime: 3, late: -2, veryLate: -4 },
     },
     exigente: {
-      sellPricePerLiter: 0.18,
+      // Baja de 0.18: sigue siendo el que mejor paga por litro, pero ya no
+      // por tanto. Lo suyo es el VOLUMEN, no el precio.
+      sellPricePerLiter: 0.15,
       tipPct: 0.15,
-      windowMinutes: 3,
+      // 2.5 min contra un ciclo de entrega de ~90 s: alcanza para una, no
+      // para dos. Aceptarle a dos obras a la vez ahora es apostar.
+      windowMinutes: 2.5,
       lateFactor: 1.15,
       latePayFactor: 0.6,
       // No se usa: muy tarde el exigente cancela (economy.ts paga 0).
       veryLatePayFactor: 0,
       litros: { min: 4000, max: 6000 },
-      rep: { onTime: 5, late: -4, veryLate: -8 },
+      rep: { onTime: 1.5, late: -4, veryLate: -8 },
     },
   } satisfies Record<PerfilCliente, PerfilBalance>,
   reputacion: {
@@ -376,12 +427,23 @@ export const balance = {
    * tres jornadas, y la segunda pipa en diez o quince.
    */
   garage: {
-    /** Precio de cada modelo en el lote. La heredada no se compra: con esa
-     *  empiezas, y por eso vale 0. */
+    /**
+     * Precio de cada modelo en el lote. La heredada no se compra: con esa
+     * empiezas, y por eso vale 0.
+     *
+     * La mediana se quedó donde estaba: la proyección la puso en ~12 jornadas
+     * de la jornada asentada, justo en la ventana de «diez o quince» que pide
+     * el documento. Fue lo único de la economía que ya estaba bien.
+     *
+     * La grandota bajó de 140,000: a ese precio eran 29 jornadas contra las 12
+     * de la mediana, y una meta al doble de lejos que la anterior deja de
+     * leerse como meta. En 105,000 son ~21, que es «el año que viene» y no
+     * «nunca».
+     */
     modelos: {
       heredada: 0,
       mediana: 45_000,
-      grandota: 140_000,
+      grandota: 105_000,
     },
     /**
      * Las seis categorías de mejora: qué rinde cada nivel y qué cuesta.
