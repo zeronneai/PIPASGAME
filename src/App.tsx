@@ -1,84 +1,32 @@
 import { lazy, Suspense, useState } from 'react'
-import { useGameStore } from './state/gameStore'
-import { CameraDragArea } from './ui/CameraDragArea'
-import { ClockChip } from './ui/ClockChip'
-import { ContextButton } from './ui/ContextButton'
-import { DebugOverlay } from './ui/DebugOverlay'
-import { DriveControls } from './ui/DriveControls'
-import { HoseMinigame } from './ui/HoseMinigame'
-import { HUD } from './ui/HUD'
-import { LogroSegunda } from './ui/LogroSegunda'
-import { Minimap } from './ui/Minimap'
-import { NoticeToast } from './ui/NoticeToast'
-import { OfferPanel } from './ui/OfferPanel'
-import { OrdersHUD } from './ui/OrdersHUD'
 import { OrientationGate } from './ui/OrientationGate'
-import { RadioCallCard } from './ui/RadioCallCard'
-import { RescueFade } from './ui/RescueFade'
-import { StatusBar } from './ui/StatusBar'
-import { RefillMeter } from './ui/RefillMeter'
-import { SummaryScreen } from './ui/SummaryScreen'
-import { TallerScreen } from './ui/TallerScreen'
 import { TapToStart } from './ui/TapToStart'
-import { TuningDrawer } from './ui/TuningDrawer'
-import { VirtualJoystick } from './ui/VirtualJoystick'
 
 /*
- * El motor 3D (three + fiber + rapier) pesa ~1 MB gzip, así que va en chunks
- * aparte y el chunk inicial queda solo con React y el HUD. La descarga
- * arranca ya mismo (import() a nivel de módulo), en paralelo con la pantalla
- * de "Toca para empezar", no cuando el jugador toca.
+ * EL CASCARÓN, y nada más.
+ *
+ * Lo único que este chunk necesita para pintar el primer cuadro es React, el
+ * gate de orientación y el «toca para empezar». El juego entero —motor 3D,
+ * HUD, store, sistemas, geometría— cuelga de `./Game`, que se descarga en
+ * paralelo con esta pantalla y no antes de ella.
+ *
+ * La descarga arranca YA (el import() está a nivel de módulo, no dentro del
+ * onClick): para cuando el jugador termina de leer el botón, el motor va a
+ * medio camino. Diferir no es hacer esperar; es dejar de bloquear el primer
+ * cuadro con cosas que no se ven todavía.
  */
-const scenePromise = import('./game/Scene')
-const Scene = lazy(() => scenePromise.then((m) => ({ default: m.Scene })))
+const gamePromise = import('./Game')
+const Game = lazy(() => gamePromise)
 
 export default function App() {
-  const [started, setStarted] = useState(false)
-  // El modo cambia poco, así que sí puede re-renderizar el HUD.
-  const mode = useGameStore((s) => s.mode)
-  const minimapExpanded = useGameStore((s) => s.minimapExpanded)
-  const tallerAbierto = useGameStore((s) => s.tallerAbierto)
+  const [jugando, setJugando] = useState(false)
 
   return (
     <>
       <Suspense fallback={null}>
-        <Scene />
+        <Game jugando={jugando} />
       </Suspense>
-      {started && (
-        <>
-          {/* Lo que se lee va en el HUD; lo que se toca, aparte */}
-          <HUD />
-          <StatusBar />
-          <ClockChip />
-          <OrdersHUD />
-          <Minimap />
-          {/* Con el mapa a pantalla completa, los controles de manejo se
-              esconden: nadie maneja mirando el mapa. */}
-          {mode === 'ON_FOOT' ? (
-            <VirtualJoystick />
-          ) : (
-            !minimapExpanded && !tallerAbierto && <DriveControls />
-          )}
-          <CameraDragArea />
-          <ContextButton />
-          <RefillMeter />
-          <RadioCallCard />
-          <NoticeToast />
-          {/* Encima de todo lo jugable: aceptar un pedido es LA decisión. */}
-          <OfferPanel />
-          <HoseMinigame />
-          {/* El taller: encima de lo jugable, debajo del fin de día. */}
-          <TallerScreen />
-          {/* El momento del logro de la segunda: el mundo espera. */}
-          <LogroSegunda />
-          {/* El último de la pila jugable: cuando aparece, el día terminó. */}
-          <SummaryScreen />
-          <RescueFade />
-          <DebugOverlay />
-          <TuningDrawer />
-        </>
-      )}
-      {!started && <TapToStart onStart={() => setStarted(true)} />}
+      {!jugando && <TapToStart onStart={() => setJugando(true)} />}
       <OrientationGate />
     </>
   )
