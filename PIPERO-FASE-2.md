@@ -149,16 +149,16 @@ Ahora el dinero tiene destino. Hay que rebalancear todo: cuánto ganas por jorna
 
 En el iPhone:
 
-- [ ] Todo lo de la Fase 1 sigue funcionando igual
-- [ ] 60 FPS y bundle bajo control
-- [ ] Los tres modelos base se sienten distintos, y ninguno es superior en todo
-- [ ] La grandota tiene desventajas reales de navegación en el mapa
-- [ ] Cada mejora se nota al manejar, no solo en un número
-- [ ] Las mejoras con costo (tara, calentamiento, desgaste) hacen que dudes antes de comprar
-- [ ] La personalización visual se ve en el mundo, no solo en el menú
-- [ ] La segunda se siente ganada, no regalada
-- [ ] Después de una jornada tienes algo concreto que quieres comprar
-- [ ] El progreso se siente constante: nunca pasas cinco jornadas sin poder comprar nada
+- [x] Todo lo de la Fase 1 sigue funcionando igual
+- [x] 60 FPS y bundle bajo control
+- [x] Los tres modelos base se sienten distintos, y ninguno es superior en todo
+- [x] La grandota tiene desventajas reales de navegación en el mapa
+- [x] Cada mejora se nota al manejar, no solo en un número
+- [x] Las mejoras con costo (tara, calentamiento, desgaste) hacen que dudes antes de comprar
+- [x] La personalización visual se ve en el mundo, no solo en el menú
+- [x] La segunda se siente ganada, no regalada
+- [x] Después de una jornada tienes algo concreto que quieres comprar
+- [x] El progreso se siente constante: nunca pasas cinco jornadas sin poder comprar nada
 
 **El penúltimo punto es el que importa.** Si terminas una jornada y no hay nada que quieras, la progresión no está funcionando y lo que hay que mover son los precios, no el código.
 
