@@ -4,8 +4,10 @@ import { Physics, type RapierRigidBody } from '@react-three/rapier'
 import { Player } from './player/Player'
 import { Pipa } from './vehicle/Pipa'
 import { ThirdPersonCamera } from './camera/ThirdPersonCamera'
+import { Cielo } from './world/Cielo'
 import { ColliderDebugView } from './world/ColliderDebugView'
 import { ColoniaGreybox } from './world/ColoniaGreybox'
+import { PALETA } from './paleta'
 import { useGameStore } from '../state/gameStore'
 import { DayClock } from './systems/DayClock'
 import { DeliveryMarkers } from './systems/DeliveryMarkers'
@@ -27,12 +29,36 @@ export function Scene() {
   return (
     <Canvas
       dpr={[1, 1.5]}
-      camera={{ position: [0, 5, 8], fov: tuning.camera.fovFoot }}
+      /* near explícito: el default (0.1) regala precisión de depth y hace
+         vibrar caras cercanas-paralelas a distancia. La cámara nunca se
+         acerca a menos de ~0.85 m de un muro (minDistance/collisionRadius),
+         así que 0.3 es seguro y triplica la precisión. */
+      camera={{ position: [0, 5, 8], fov: tuning.camera.fovFoot, near: 0.3, far: 500 }}
       gl={{ powerPreference: 'high-performance' }}
+      /* Sin tone mapping (Fase 3): la información visual vive en el color
+         declarado, no en la curva de la cámara. Los hex de la paleta son
+         literales en pantalla — look plano, de rótulo. */
+      flat
     >
-      <color attach="background" args={['#5c6b7a']} />
-      <directionalLight position={[10, 15, 5]} intensity={2.2} />
-      <ambientLight intensity={0.35} />
+      {/* Respaldo detrás del domo, en el tono del horizonte. */}
+      <color attach="background" args={[PALETA.cieloHorizonte]} />
+      {/* Niebla lineal LEJANA: mediodía de calor seco, no bruma. Empieza a
+          120 m (antes 45: se comía la profundidad desde media cuadra) y solo
+          el fondo se funde con el horizonte del domo. */}
+      <fog attach="fog" args={[PALETA.niebla, 120, 420]} />
+      <Cielo />
+      {/*
+        MEDIODÍA: sol alto y casi neutro (el calor lo pone la paleta, no la
+        luz) apenas ladeado para que las fachadas modelen, y un hemisferio
+        (cielo azul arriba, rebote terroso abajo) en lugar del ambient plano
+        — las caras en sombra se tiñen, no se apagan.
+      */}
+      {/* Elevación ~60°: alto para leer mediodía, ladeado lo justo para que
+          los muros verticales SÍ reciban sol (vertical puro los apaga). */}
+      <directionalLight position={[35, 70, 18]} color={PALETA.sol} intensity={1.85} />
+      {/* El azul del hemisferio es MÁS claro que el del domo a propósito:
+          con el cenit puro las sombras se teñían de azul marino. */}
+      <hemisphereLight args={['#a9c6e6', PALETA.rebote, 0.95]} />
       <Suspense fallback={null}>
         <DayClock />
         <RadioDispatch />

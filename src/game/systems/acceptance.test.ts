@@ -35,6 +35,9 @@ B.aceptacion = {
   servedTodayFactor: 0.05,
   servedYesterdayFactor: 0.5,
   cooldownMinutes: 2,
+  cooldownPropioMinutes: 1,
+  piedadPorRechazo: 0.1,
+  piedadMax: 0.3,
   chanceMin: 0.02,
   chanceMax: 0.95,
   litersStep: 100,
@@ -170,10 +173,31 @@ describe('acceptanceChance', () => {
     const mejor = acceptanceChance({ ...base, rep: 100, history: bueno }, B)
     expect(mejor.p).toBe(0.95)
   })
+
+  it('la piedad SUMA por cada rechazo seguido, con tope', () => {
+    expect(acceptanceChance({ ...base, rep: 50, racha: 1 }, B).p).toBeCloseTo(0.6, 10)
+    expect(acceptanceChance({ ...base, rep: 50, racha: 2 }, B).p).toBeCloseTo(0.7, 10)
+    // 5 rechazos: 0.5 · 0.1 = 0.5 superaría el tope de 0.3 → 0.5 + 0.3
+    expect(acceptanceChance({ ...base, rep: 50, racha: 5 }, B).p).toBeCloseTo(0.8, 10)
+  })
+
+  it('la piedad es un piso: se suma DESPUÉS de los castigos', () => {
+    // Fuera de horario: 0.5 · 0.25 = 0.125; con racha 2 sube a 0.325.
+    const { p, factores } = acceptanceChance(
+      { ...base, rep: 50, hora: 18, racha: 2 },
+      B,
+    )
+    expect(factores.piedad).toBeCloseTo(0.2, 10)
+    expect(p).toBeCloseTo(0.325, 10)
+  })
+
+  it('sin racha no hay piedad y nada cambia', () => {
+    expect(acceptanceChance({ ...base, rep: 50 }, B).factores.piedad).toBe(0)
+  })
 })
 
 describe('motivoDominante', () => {
-  const neutro = { rep: 0.6, hora: 1, historial: 1, agua: 1 }
+  const neutro = { rep: 0.6, hora: 1, historial: 1, agua: 1, piedad: 0 }
 
   it('gana el multiplicador que más castigó', () => {
     expect(motivoDominante({ ...neutro, hora: 0.25, agua: 0.5 }, B)).toBe('FUERA_DE_HORARIO')

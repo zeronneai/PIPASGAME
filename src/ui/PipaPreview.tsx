@@ -2,7 +2,6 @@ import { useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
 import type { Group } from 'three'
 import { PipaCarroceria, Wheel } from '../game/vehicle/PipaCarroceria'
-import { useCromoEnvMap } from '../game/vehicle/useCromoEnvMap'
 import { wheelAnchors } from '../game/vehicle/pipaParts'
 import type { Estilo } from '../game/systems/estilo'
 import { statsPipa } from '../state/gameStore'
@@ -30,7 +29,6 @@ import { statsPipa } from '../state/gameStore'
 function Contenido({ estilo }: { estilo: Estilo }) {
   const stats = statsPipa()
   const rinCromado = estilo.cromo.rines === true
-  const envMap = useCromoEnvMap(rinCromado)
   return (
     <>
       <PipaCarroceria estilo={estilo} escala={stats.escala} />
@@ -42,7 +40,7 @@ function Contenido({ estilo }: { estilo: Estilo }) {
           key={i}
           position={[a.x, a.y - stats.fisica.suspension.restLength, a.z]}
         >
-          <Wheel w={stats.fisica.wheel} rinCromado={rinCromado} envMap={envMap} />
+          <Wheel w={stats.fisica.wheel} rinCromado={rinCromado} />
         </group>
       ))}
     </>

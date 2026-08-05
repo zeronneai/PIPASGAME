@@ -39,12 +39,12 @@ export function Player({
       <group ref={visualRef} rotation={[0, inicial.yaw, 0]} visible={!driving}>
         <mesh>
           <capsuleGeometry args={[0.35, 1.1, 6, 12]} />
-          <meshStandardMaterial color="#c8c8c8" />
+          <meshLambertMaterial color="#c8c8c8" />
         </mesh>
         {/* nariz: marca hacia dónde mira el personaje (local +z = frente) */}
         <mesh position={[0, 0.3, 0.35]}>
           <boxGeometry args={[0.15, 0.15, 0.3]} />
-          <meshStandardMaterial color="#4da3ff" />
+          <meshLambertMaterial color="#4da3ff" />
         </mesh>
       </group>
     </RigidBody>

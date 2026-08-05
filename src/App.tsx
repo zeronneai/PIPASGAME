@@ -5,6 +5,7 @@ import { ClockChip } from './ui/ClockChip'
 import { ContextButton } from './ui/ContextButton'
 import { DebugOverlay } from './ui/DebugOverlay'
 import { DriveControls } from './ui/DriveControls'
+import { FpsToggle } from './ui/FpsToggle'
 import { HoseMinigame } from './ui/HoseMinigame'
 import { HUD } from './ui/HUD'
 import { LogroSegunda } from './ui/LogroSegunda'
@@ -38,6 +39,7 @@ export default function App() {
   const mode = useGameStore((s) => s.mode)
   const minimapExpanded = useGameStore((s) => s.minimapExpanded)
   const tallerAbierto = useGameStore((s) => s.tallerAbierto)
+  const fpsVisible = useGameStore((s) => s.debug.fps)
 
   return (
     <>
@@ -74,7 +76,8 @@ export default function App() {
           {/* El último de la pila jugable: cuando aparece, el día terminó. */}
           <SummaryScreen />
           <RescueFade />
-          <DebugOverlay />
+          {fpsVisible && <DebugOverlay />}
+          <FpsToggle />
           <TuningDrawer />
         </>
       )}

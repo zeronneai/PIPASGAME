@@ -23,11 +23,11 @@ export function DeliveryMarkers() {
         <group key={o.id} position={[o.delivery[0], o.delivery[1], o.delivery[2]]}>
           <mesh position={[0, 2, 0]}>
             <boxGeometry args={[0.22, 4, 0.22]} />
-            <meshStandardMaterial color={PERFIL_COLOR[o.perfil]} />
+            <meshLambertMaterial color={PERFIL_COLOR[o.perfil]} />
           </mesh>
           <mesh position={[0, 4.6, 0]}>
             <boxGeometry args={[1, 1, 1]} />
-            <meshStandardMaterial color={PERFIL_COLOR[o.perfil]} />
+            <meshLambertMaterial color={PERFIL_COLOR[o.perfil]} />
           </mesh>
         </group>
       ))}

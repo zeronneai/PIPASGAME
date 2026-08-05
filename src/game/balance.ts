@@ -259,10 +259,14 @@ export const balance = {
    *  spots del layout, para que el mundo no se sienta un circuito. */
   efimeros: {
     /** Cuántos pueden estar activos a la vez. */
-    maxActivos: 3,
+    maxActivos: 5,
+    /** Con cuántos amanece la colonia: el día NO empieza en seco — hay
+     *  trabajo visible desde el primer minuto (arreglo de la entrada al
+     *  ciclo: antes el mapa arrancaba vacío y 4 de 6 locales cerrados). */
+    siembraInicial: 2,
     /** Segundos reales entre intentos de aparición (se sortea en el rango). */
-    spawnMin: 20,
-    spawnMax: 45,
+    spawnMin: 10,
+    spawnMax: 25,
     /** Minutos reales que se queda uno antes de irse. */
     vidaMin: 2.5,
     vidaMax: 5,
@@ -335,9 +339,12 @@ export const balance = {
    * neutros valen 1; castigar es bajar de 1.
    */
   aceptacion: {
-    /** Probabilidad base con reputación 0 y con reputación 100. */
-    repChanceMin: 0.08,
-    repChanceMax: 0.85,
+    /** Probabilidad base con reputación 0 y con reputación 100. Con la
+     *  reputación inicial (50) la base queda en 0.575: tocar puertas tiene
+     *  que funcionar más veces de las que falla, o la entrada al ciclo se
+     *  siente una tómbola. */
+    repChanceMin: 0.25,
+    repChanceMax: 0.9,
     /** Multiplicador fuera del horario del negocio. */
     offHoursFactor: 0.2,
     /** Multiplicador según historial: de «siempre me quedas mal» (todo muy
@@ -347,8 +354,17 @@ export const balance = {
     /** «Si le surtiste ayer, no necesita hoy» — y hoy, menos todavía. */
     servedTodayFactor: 0.05,
     servedYesterdayFactor: 0.45,
-    /** Enfriamiento tras un «no», en minutos reales del reloj de la jornada. */
-    cooldownMinutes: 2.5,
+    /** Enfriamiento tras un «no», en minutos reales del reloj de la jornada
+     *  (1 min real = 1 hora de juego). */
+    cooldownMinutes: 1,
+    /** Enfriamiento cuando el que dijo que no fuiste TÚ (rechazar la oferta):
+     *  más corto — explorar ofertas no castiga como un desplante. */
+    cooldownPropioMinutes: 0.5,
+    /** Piedad contra rachas: cada «no» seguido del cliente suma esto a la
+     *  probabilidad del siguiente toque (con tope), y aceptar la resetea.
+     *  Acota el peor caso de mala suerte a 3–4 puertas. */
+    piedadPorRechazo: 0.12,
+    piedadMax: 0.36,
     /** La probabilidad final nunca sale de este rango: siempre hay una
      *  esperanza y nunca una garantía. */
     chanceMin: 0.03,

@@ -1163,6 +1163,14 @@ canvas {
   background: color-mix(in srgb, var(--color-accent) 55%, transparent);
 }
 
+/* Cliente en enfriamiento: el botón lo dice antes de dejarte tocar en balde. */
+.context-button--espera {
+  border-color: color-mix(in srgb, var(--color-text) 30%, transparent);
+  background: color-mix(in srgb, var(--color-text) 10%, transparent);
+  color: color-mix(in srgb, var(--color-text) 60%, transparent);
+  font-weight: 500;
+}
+
 /* ---- Panel de ajustes (leva) ----
    Arriba a la izquierda y hacia abajo por ese costado. A la derecha están el
    acelerador, el freno y el botón de contexto, y ajustar en vivo sirve de poco
@@ -1187,6 +1195,30 @@ canvas {
 
 .tuning-toggle:active {
   background: color-mix(in srgb, var(--color-accent) 45%, transparent);
+}
+
+/* Chip de FPS: debajo del ☰, mismo lenguaje. Apagado se atenúa. */
+.fps-toggle {
+  position: fixed;
+  top: calc(66px + var(--safe-top));
+  left: calc(10px + var(--safe-left));
+  z-index: 16;
+  width: 48px;
+  height: 32px;
+  border-radius: 10px;
+  border: 2px solid color-mix(in srgb, var(--color-text) 25%, transparent);
+  background: color-mix(in srgb, var(--color-bg) 78%, transparent);
+  color: color-mix(in srgb, var(--color-text) 45%, transparent);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  touch-action: none;
+}
+
+.fps-toggle--on {
+  border-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  color: var(--color-text);
 }
 
 .tuning-drawer {

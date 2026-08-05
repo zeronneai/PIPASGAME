@@ -1,9 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useRapier } from '@react-three/rapier'
 import { Color, Matrix4, Quaternion, Vector3, type InstancedMesh } from 'three'
+import { PALETA } from '../paleta'
 import {
-  BARDA_ALTURA,
-  buildings,
   groundSlab,
   hitos,
   isla,
@@ -17,7 +16,9 @@ import {
   worldColliderCylinders,
   type Box,
 } from './layout'
+import { CortinasLocales } from './CortinasLocales'
 import { Interactable } from './Interactable'
+import { MallaColonia } from './MallaColonia'
 
 // Temporales de módulo: solo se usan en el llenado inicial, pero no hay razón
 // para asignar mil objetos.
@@ -28,16 +29,18 @@ const _quat = new Quaternion()
 const _up = new Vector3(0, 1, 0)
 const _color = new Color()
 
+// De la paleta de la fase de arte (paleta.ts): el asfalto es lo único
+// desaturado; lo demás es colonia — cal, ocre, terracota y acentos.
 const COLOR = {
-  asfalto: '#54545a',
-  banqueta: '#8d8d93',
-  barda: '#8a7f6b',
-  tope: '#b9a44e',
-  isla: '#6f7a5f',
-  kiosco: '#9a8a5c',
-  taller: '#57616e',
-  tallerLetrero: '#e0a33a',
-  waterBase: '#6a6a70',
+  asfalto: PALETA.asfalto,
+  banqueta: PALETA.banqueta,
+  barda: PALETA.bloque,
+  tope: PALETA.ocre,
+  isla: '#7a9455',
+  kiosco: PALETA.terracota,
+  taller: PALETA.anil,
+  tallerLetrero: PALETA.ocre,
+  waterBase: PALETA.bloque,
   waterPipe: '#4d8fbf',
   waterValve: '#37d0a7',
 }
@@ -79,30 +82,12 @@ function InstancedBoxes({
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, boxes.length]}>
       <boxGeometry />
-      <meshStandardMaterial color={color} />
+      <meshLambertMaterial color={color} />
     </instancedMesh>
   )
 }
 
 export function ColoniaGreybox() {
-  /*
-   * Gris más claro entre más alto: sin esto la manzana es una masa plana
-   * imposible de leer al caminar. El rango va apretado (2.8 a 6.6 m) porque la
-   * colonia es de una y dos plantas, así que el contraste se reparte ahí y no
-   * en una escala de rascacielos que ya no existe. Los patios van en tono de
-   * adobe, para que se lean como barda de predio y no como casa chaparra.
-   */
-  const buildingColors = useMemo(
-    () =>
-      buildings.map((b) =>
-        b.size[1] <= BARDA_ALTURA + 0.01
-          ? COLOR.barda
-          : _color
-              .setHSL(0, 0, 0.4 + Math.min(1, (b.size[1] - 2.8) / 3.8) * 0.26)
-              .getStyle(),
-      ),
-    [],
-  )
   const hitoBoxes = useMemo<Box[]>(
     () => hitos.map((h) => ({ pos: h.pos, size: h.size })),
     [],
@@ -123,15 +108,19 @@ export function ColoniaGreybox() {
       */}
       <mesh position={groundSlab.pos}>
         <boxGeometry args={groundSlab.size} />
-        <meshStandardMaterial color={COLOR.asfalto} />
+        <meshLambertMaterial color={COLOR.asfalto} />
       </mesh>
 
       <InstancedBoxes boxes={sidewalks} color={COLOR.banqueta} />
-      <InstancedBoxes
-        boxes={buildings}
-        color="#ffffff"
-        instanceColors={buildingColors}
-      />
+      {/*
+        FACHADAS (Fase 3): toda la edificación genérica en UNA malla fusionada
+        con colores por vértice — predios de 6–10 m, un color dominante por
+        predio, y el detalle (portón, ventanas, banda de cal, cornisa, pretil)
+        en la geometría misma, sin planos encimados. Los COLLIDERS siguen
+        siendo las cajas de `buildings` (WorldColliders): la malla es capa
+        visual derivada, la física no se movió.
+      */}
+      <MallaColonia />
       <InstancedBoxes
         boxes={localeBoxes}
         color="#ffffff"
@@ -156,11 +145,11 @@ export function ColoniaGreybox() {
       */}
       <mesh position={taller.pos}>
         <boxGeometry args={taller.size} />
-        <meshStandardMaterial color={COLOR.taller} />
+        <meshLambertMaterial color={COLOR.taller} />
       </mesh>
       <mesh position={taller.letrero.pos}>
         <boxGeometry args={taller.letrero.size} />
-        <meshStandardMaterial color={COLOR.tallerLetrero} />
+        <meshLambertMaterial color={COLOR.tallerLetrero} />
       </mesh>
 
       {/* La isla de la glorieta y su kiosco: el obstáculo que obliga a rodear. */}
@@ -168,17 +157,17 @@ export function ColoniaGreybox() {
         <cylinderGeometry
           args={[isla.radius, isla.radius, isla.height, isla.segmentos]}
         />
-        <meshStandardMaterial color={COLOR.isla} />
+        <meshLambertMaterial color={COLOR.isla} />
       </mesh>
       <mesh position={kiosco.pos}>
         <boxGeometry args={kiosco.size} />
-        <meshStandardMaterial color={COLOR.kiosco} />
+        <meshLambertMaterial color={COLOR.kiosco} />
       </mesh>
 
       {/* Toma de agua: pocas piezas, no vale la pena instanciar */}
       <mesh position={waterParts.base.pos}>
         <boxGeometry args={waterParts.base.size} />
-        <meshStandardMaterial color={COLOR.waterBase} />
+        <meshLambertMaterial color={COLOR.waterBase} />
       </mesh>
       <mesh position={waterParts.pipe.pos}>
         <cylinderGeometry
@@ -189,11 +178,11 @@ export function ColoniaGreybox() {
             12,
           ]}
         />
-        <meshStandardMaterial color={COLOR.waterPipe} />
+        <meshLambertMaterial color={COLOR.waterPipe} />
       </mesh>
       <mesh position={waterParts.valve.pos}>
         <boxGeometry args={waterParts.valve.size} />
-        <meshStandardMaterial color={COLOR.waterValve} />
+        <meshLambertMaterial color={COLOR.waterValve} />
       </mesh>
 
       {/*
@@ -209,6 +198,9 @@ export function ColoniaGreybox() {
           position={l.door}
         />
       ))}
+
+      {/* Abierto/cerrado legible desde la calle: la señal de dónde tocar. */}
+      <CortinasLocales />
 
       <WorldColliders />
     </>

@@ -98,6 +98,8 @@ export type FactoresAceptacion = {
   hora: number
   historial: number
   agua: number
+  /** Bono ADITIVO por racha de rechazos (piedad); 0 sin racha. */
+  piedad: number
 }
 
 /** La probabilidad ponderada de la sección 2.4, con su desglose. */
@@ -109,6 +111,8 @@ export function acceptanceChance(
     hora: number
     history: ClientHistory
     day: number
+    /** «No»s seguidos que lleva el jugador hoy (piedad contra rachas). */
+    racha?: number
   },
   b: Balance = balance,
 ): { p: number; factores: FactoresAceptacion } {
@@ -121,8 +125,13 @@ export function acceptanceChance(
       : a.offHoursFactor,
     historial: historialFactor(args.history, b),
     agua: aguaFactor(args.history, args.day, b),
+    piedad: Math.min(a.piedadMax, (args.racha ?? 0) * a.piedadPorRechazo),
   }
-  const cruda = factores.rep * factores.hora * factores.historial * factores.agua
+  // La piedad SUMA en vez de multiplicar: es un piso que sube con la mala
+  // suerte, no un factor que se anule con los castigos.
+  const cruda =
+    factores.rep * factores.hora * factores.historial * factores.agua +
+    factores.piedad
   return {
     p: Math.min(a.chanceMax, Math.max(a.chanceMin, cruda)),
     factores,
@@ -216,6 +225,8 @@ export function evaluarOferta(
     day: number
     daySeconds: number
     tienePedidoActivo: boolean
+    /** «No»s seguidos que lleva el jugador (piedad contra rachas). */
+    racha?: number
   },
   b: Balance = balance,
   rng: Rng = Math.random,
@@ -234,6 +245,7 @@ export function evaluarOferta(
       hora: horaDelDia(args.daySeconds, b),
       history: args.history,
       day: args.day,
+      racha: args.racha,
     },
     b,
   )

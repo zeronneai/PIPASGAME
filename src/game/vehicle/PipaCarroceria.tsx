@@ -1,9 +1,8 @@
-import type { Texture } from 'three'
+import { PALETA } from '../paleta'
 import { COLORES, type Estilo } from '../systems/estilo'
 import type { VehicleStats } from '../systems/garage'
 import { Claxon, Cortina, Escapes, Espejos, Luces } from './PipaExtras'
 import { PIPA_BODY, PIPA_MATERIALS } from './pipaParts'
-import { useCromoEnvMap } from './useCromoEnvMap'
 import { usePlacaTexture } from './usePlacaTexture'
 
 /*
@@ -18,30 +17,17 @@ import { usePlacaTexture } from './usePlacaTexture'
  * piezas.
  */
 
-/** Cromado: claro, metálico, con el entorno encima. El swap va por IDENTIDAD
- *  de material (key por rama): añadir envMap a un material vivo no recompila
- *  el shader, cambiar el elemento crea uno correcto y r3f dispone el viejo. */
+/** Cromado a la Fase 3: PLATA PINTADA, plana como de rótulo — sin PBR ni
+ *  envMap (Lambert no los tiene y el estilo tampoco los quiere). El espejeo
+ *  de verdad regresa pintado en la textura con el Paso 7. */
 function MaterialCromable({
   cromada,
-  envMap,
   color,
 }: {
   cromada: boolean
-  envMap: Texture | null
   color: string
 }) {
-  return cromada && envMap ? (
-    <meshStandardMaterial
-      key="cromo"
-      color="#f2f4f6"
-      metalness={1}
-      roughness={0.13}
-      envMap={envMap}
-      envMapIntensity={0.9}
-    />
-  ) : (
-    <meshStandardMaterial key="plano" color={color} />
-  )
+  return <meshLambertMaterial color={cromada ? PALETA.plata : color} />
 }
 
 /**
@@ -52,11 +38,9 @@ function MaterialCromable({
 export function Wheel({
   w,
   rinCromado,
-  envMap,
 }: {
   w: VehicleStats['wheel']
   rinCromado: boolean
-  envMap: Texture | null
 }) {
   return (
     <group>
@@ -64,18 +48,14 @@ export function Wheel({
         {/* El cilindro nace sobre Y; se acuesta para quedar sobre el eje X */}
         <mesh name="llanta" rotation={[0, 0, Math.PI / 2]}>
           <cylinderGeometry args={[w.radius, w.radius, w.width, 12]} />
-          <meshStandardMaterial color={PIPA_MATERIALS.llanta} />
+          <meshLambertMaterial color={PIPA_MATERIALS.llanta} />
         </mesh>
         {/* El rin va aparte: se croma sin tocar la llanta (Paso 5). */}
         <mesh name="rin" rotation={[0, 0, Math.PI / 2]}>
           <cylinderGeometry
             args={[w.radius * 0.58, w.radius * 0.58, w.width * 1.05, 10]}
           />
-          <MaterialCromable
-            cromada={rinCromado}
-            envMap={envMap}
-            color={PIPA_MATERIALS.rin}
-          />
+          <MaterialCromable cromada={rinCromado} color={PIPA_MATERIALS.rin} />
         </mesh>
       </group>
     </group>
@@ -98,7 +78,6 @@ export function PipaCarroceria({
     espejos: estilo.cromo.espejos === true,
     escapes: estilo.cromo.escapes === true,
   }
-  const envMap = useCromoEnvMap(cromo.defensa || cromo.espejos || cromo.escapes)
   const lateral = usePlacaTexture(estilo.rotulo, estilo.calca, tanqueHex, 512, 160)
   const trasera = usePlacaTexture(estilo.rotulo, estilo.calca, tanqueHex, 256, 112)
 
@@ -107,39 +86,39 @@ export function PipaCarroceria({
       <group name="bastidor" position={[0, B.bastidor.y, 0]}>
         <mesh>
           <boxGeometry args={B.bastidor.size} />
-          <meshStandardMaterial color={PIPA_MATERIALS.bastidor} />
+          <meshLambertMaterial color={PIPA_MATERIALS.bastidor} />
         </mesh>
       </group>
 
       <group name="cabina" position={[0, B.cabina.y, B.cabina.z]}>
         <mesh>
           <boxGeometry args={B.cabina.size} />
-          <meshStandardMaterial color={cabinaHex} />
+          <meshLambertMaterial color={cabinaHex} />
         </mesh>
         <mesh name="parabrisas" position={[0, 0.35, 1.16]}>
           <boxGeometry args={[1.9, 0.85, 0.06]} />
-          <meshStandardMaterial color={PIPA_MATERIALS.cabinaVidrio} />
+          <meshLambertMaterial color={PIPA_MATERIALS.cabinaVidrio} />
         </mesh>
         {[-0.8, 0.8].map((x) => (
           <mesh key={x} name="faro" position={[x, -0.7, 1.16]}>
             <boxGeometry args={[0.45, 0.25, 0.06]} />
-            <meshStandardMaterial color={PIPA_MATERIALS.faro} />
+            <meshLambertMaterial color={PIPA_MATERIALS.faro} />
           </mesh>
         ))}
-        {cromo.espejos && envMap && <Espejos envMap={envMap} />}
+        {cromo.espejos && <Espejos />}
         {estilo.detalles.claxon === true && <Claxon />}
         {estilo.detalles.luces === true && <Luces />}
         {estilo.detalles.cortinas === true && <Cortina />}
       </group>
 
-      {cromo.escapes && envMap && <Escapes envMap={envMap} />}
+      {cromo.escapes && <Escapes />}
 
       <group name="tanque" position={[0, B.tanque.y, B.tanque.z]}>
         <mesh rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry
             args={[B.tanque.radius, B.tanque.radius, B.tanque.length, 16]}
           />
-          <meshStandardMaterial color={tanqueHex} />
+          <meshLambertMaterial color={tanqueHex} />
         </mesh>
         {[-1, 1].map((s) => (
           <mesh
@@ -156,12 +135,12 @@ export function PipaCarroceria({
                 16,
               ]}
             />
-            <meshStandardMaterial color={PIPA_MATERIALS.tanqueTapa} />
+            <meshLambertMaterial color={PIPA_MATERIALS.tanqueTapa} />
           </mesh>
         ))}
         <mesh name="escotilla" position={[0, B.tanque.radius, 0.6]}>
           <cylinderGeometry args={[0.32, 0.32, 0.2, 10]} />
-          <meshStandardMaterial color={PIPA_MATERIALS.escotilla} />
+          <meshLambertMaterial color={PIPA_MATERIALS.escotilla} />
         </mesh>
 
         {/*
@@ -181,18 +160,18 @@ export function PipaCarroceria({
             >
               <boxGeometry args={B.calcaLateral.size} />
               {lateral ? (
-                <meshStandardMaterial key="map" map={lateral} color="#ffffff" />
+                <meshLambertMaterial key="map" map={lateral} color="#ffffff" />
               ) : (
-                <meshStandardMaterial key="plano" color={PIPA_MATERIALS.calca} />
+                <meshLambertMaterial key="plano" color={PIPA_MATERIALS.calca} />
               )}
             </mesh>
           ))}
           <mesh name="calca-trasera" position={[0, 0, B.calcaTrasera.z]}>
             <boxGeometry args={B.calcaTrasera.size} />
             {trasera ? (
-              <meshStandardMaterial key="map" map={trasera} color="#ffffff" />
+              <meshLambertMaterial key="map" map={trasera} color="#ffffff" />
             ) : (
-              <meshStandardMaterial key="plano" color={PIPA_MATERIALS.calca} />
+              <meshLambertMaterial key="plano" color={PIPA_MATERIALS.calca} />
             )}
           </mesh>
         </group>
@@ -203,7 +182,6 @@ export function PipaCarroceria({
           <boxGeometry args={B.defensaFrente.size} />
           <MaterialCromable
             cromada={cromo.defensa}
-            envMap={envMap}
             color={PIPA_MATERIALS.defensa}
           />
         </mesh>
@@ -211,7 +189,6 @@ export function PipaCarroceria({
           <boxGeometry args={B.defensaAtras.size} />
           <MaterialCromable
             cromada={cromo.defensa}
-            envMap={envMap}
             color={PIPA_MATERIALS.defensa}
           />
         </mesh>
