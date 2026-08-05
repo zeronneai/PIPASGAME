@@ -6,6 +6,8 @@ import { useGameStore } from '../../state/gameStore'
 import { generarEfimero, intervaloSpawn } from './ephemeral'
 import { EPHEMERAL_SPOTS } from '../world/layout'
 import { Interactable } from '../world/Interactable'
+import { Pintado } from '../render/Pintado'
+import { PALETA } from '../render/paleta'
 
 /*
  * Ciclo de vida de los clientes efímeros: aparecen sobre spots libres a
@@ -72,8 +74,8 @@ export function Ephemerals() {
               <boxGeometry
                 args={e.tipo === 'casa' ? [3.5, 2.8, 3.5] : [4.5, 1.6, 4.5]}
               />
-              <meshStandardMaterial
-                color={e.tipo === 'casa' ? '#7fa06b' : '#b0855c'}
+              <Pintado
+                color={e.tipo === 'casa' ? PALETA.limon : PALETA.terracota}
               />
             </mesh>
           </RigidBody>

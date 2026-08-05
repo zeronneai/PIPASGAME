@@ -1,4 +1,6 @@
 import type { Texture } from 'three'
+import { Pintado } from '../render/Pintado'
+import { PALETA } from '../render/paleta'
 
 /*
  * Las piezas compradas del estilo (Fase 2, sección 5): espejos, escapes,
@@ -14,16 +16,8 @@ import type { Texture } from 'three'
  */
 
 /** Material de cromo: claro, metálico y con el entorno del taller encima. */
-function Cromo({ envMap, roughness = 0.12 }: { envMap: Texture; roughness?: number }) {
-  return (
-    <meshStandardMaterial
-      color="#f2f4f6"
-      metalness={1}
-      roughness={roughness}
-      envMap={envMap}
-      envMapIntensity={0.9}
-    />
-  )
+function Cromo({ envMap, reflectivity = 0.9 }: { envMap: Texture; reflectivity?: number }) {
+  return <Pintado color={PALETA.cromo} envMap={envMap} reflectivity={reflectivity} />
 }
 
 /** Dos orejas cromadas a los lados de la cabina. Va DENTRO del grupo cabina. */
@@ -34,11 +28,11 @@ export function Espejos({ envMap }: { envMap: Texture }) {
         <group key={s} name="espejo">
           <mesh position={[s * 1.22, 0.45, 1.0]}>
             <boxGeometry args={[0.05, 0.05, 0.4]} />
-            <meshStandardMaterial color="#54575f" />
+            <Pintado color={PALETA.metal} />
           </mesh>
           <mesh position={[s * 1.38, 0.45, 1.05]}>
             <boxGeometry args={[0.06, 0.42, 0.28]} />
-            <Cromo envMap={envMap} roughness={0.08} />
+            <Cromo envMap={envMap} reflectivity={0.95} />
           </mesh>
         </group>
       ))}
@@ -54,7 +48,7 @@ export function Escapes({ envMap }: { envMap: Texture }) {
       {[-1, 1].map((s) => (
         <mesh key={s} name="escape" position={[s * 1.0, 1.1, 1.25]}>
           <cylinderGeometry args={[0.09, 0.09, 1.6, 8]} />
-          <Cromo envMap={envMap} roughness={0.25} />
+          <Cromo envMap={envMap} reflectivity={0.75} />
         </mesh>
       ))}
     </>
@@ -74,7 +68,7 @@ export function Claxon() {
         >
           {/* Cono: boca ancha al frente (la base del cilindro cónico). */}
           <cylinderGeometry args={[0.12, 0.035, 0.5, 8]} />
-          <meshStandardMaterial color="#e3c65b" metalness={0.6} roughness={0.3} />
+          <Pintado color={PALETA.ocre} emissive={PALETA.ocre} emissiveIntensity={0.5} />
         </mesh>
       ))}
     </>
@@ -95,7 +89,7 @@ export function Luces() {
       {LUCES.map((l) => (
         <mesh key={l.x} name="luz" position={[l.x, 1.02, 0.75]}>
           <boxGeometry args={[0.3, 0.12, 0.3]} />
-          <meshStandardMaterial
+          <Pintado
             color="#1a1a1a"
             emissive={l.color}
             emissiveIntensity={1.1}
@@ -111,7 +105,7 @@ export function Cortina() {
   return (
     <mesh name="cortina" position={[0, 0.84, 1.2]}>
       <boxGeometry args={[1.95, 0.18, 0.05]} />
-      <meshStandardMaterial color="#8a2f3b" roughness={0.9} />
+      <Pintado color={PALETA.rosa} />
     </mesh>
   )
 }

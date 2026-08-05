@@ -18,6 +18,8 @@ import {
   type Box,
 } from './layout'
 import { Interactable } from './Interactable'
+import { Pintado } from '../render/Pintado'
+import { MUNDO, colorFachada } from '../render/paleta'
 
 // Temporales de módulo: solo se usan en el llenado inicial, pero no hay razón
 // para asignar mil objetos.
@@ -28,18 +30,21 @@ const _quat = new Quaternion()
 const _up = new Vector3(0, 1, 0)
 const _color = new Color()
 
+/* Los colores viven en `render/paleta.ts`. Este alias existe para no tocar
+ * los veintitantos usos de abajo, y para que se lea de un golpe qué parte de
+ * la colonia toma qué color. */
 const COLOR = {
-  asfalto: '#54545a',
-  banqueta: '#8d8d93',
-  barda: '#8a7f6b',
-  tope: '#b9a44e',
-  isla: '#6f7a5f',
-  kiosco: '#9a8a5c',
-  taller: '#57616e',
-  tallerLetrero: '#e0a33a',
-  waterBase: '#6a6a70',
-  waterPipe: '#4d8fbf',
-  waterValve: '#37d0a7',
+  asfalto: MUNDO.asfalto,
+  banqueta: MUNDO.banqueta,
+  barda: MUNDO.barda,
+  tope: MUNDO.tope,
+  isla: MUNDO.isla,
+  kiosco: MUNDO.kiosco,
+  taller: MUNDO.taller,
+  tallerLetrero: MUNDO.tallerLetrero,
+  waterBase: MUNDO.tomaBase,
+  waterPipe: MUNDO.tomaTubo,
+  waterValve: MUNDO.tomaValvula,
 }
 
 /**
@@ -79,7 +84,7 @@ function InstancedBoxes({
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, boxes.length]}>
       <boxGeometry />
-      <meshStandardMaterial color={color} />
+      <Pintado color={color} />
     </instancedMesh>
   )
 }
@@ -92,14 +97,21 @@ export function ColoniaGreybox() {
    * en una escala de rascacielos que ya no existe. Los patios van en tono de
    * adobe, para que se lean como barda de predio y no como casa chaparra.
    */
+  /*
+   * Las fachadas dejan de ser grises. Antes la altura mandaba sobre un gris
+   * más claro o más oscuro, que era lo único que se podía hacer sin paleta;
+   * ahora cada predio toma un color pintado de la tira, y la altura solo
+   * decide si es barda o casa. Los patios siguen en cal, para que se lean
+   * como barda de predio y no como casa chaparra.
+   *
+   * El índice va por posición en el layout y no al azar: la colonia se ve
+   * igual en cada carga, y eso es lo que la vuelve un lugar en vez de un
+   * patrón nuevo cada vez.
+   */
   const buildingColors = useMemo(
     () =>
-      buildings.map((b) =>
-        b.size[1] <= BARDA_ALTURA + 0.01
-          ? COLOR.barda
-          : _color
-              .setHSL(0, 0, 0.4 + Math.min(1, (b.size[1] - 2.8) / 3.8) * 0.26)
-              .getStyle(),
+      buildings.map((b, i) =>
+        b.size[1] <= BARDA_ALTURA + 0.01 ? COLOR.barda : colorFachada(i),
       ),
     [],
   )
@@ -123,7 +135,7 @@ export function ColoniaGreybox() {
       */}
       <mesh position={groundSlab.pos}>
         <boxGeometry args={groundSlab.size} />
-        <meshStandardMaterial color={COLOR.asfalto} />
+        <Pintado color={COLOR.asfalto} />
       </mesh>
 
       <InstancedBoxes boxes={sidewalks} color={COLOR.banqueta} />
@@ -156,11 +168,11 @@ export function ColoniaGreybox() {
       */}
       <mesh position={taller.pos}>
         <boxGeometry args={taller.size} />
-        <meshStandardMaterial color={COLOR.taller} />
+        <Pintado color={COLOR.taller} />
       </mesh>
       <mesh position={taller.letrero.pos}>
         <boxGeometry args={taller.letrero.size} />
-        <meshStandardMaterial color={COLOR.tallerLetrero} />
+        <Pintado color={COLOR.tallerLetrero} />
       </mesh>
 
       {/* La isla de la glorieta y su kiosco: el obstáculo que obliga a rodear. */}
@@ -168,17 +180,17 @@ export function ColoniaGreybox() {
         <cylinderGeometry
           args={[isla.radius, isla.radius, isla.height, isla.segmentos]}
         />
-        <meshStandardMaterial color={COLOR.isla} />
+        <Pintado color={COLOR.isla} />
       </mesh>
       <mesh position={kiosco.pos}>
         <boxGeometry args={kiosco.size} />
-        <meshStandardMaterial color={COLOR.kiosco} />
+        <Pintado color={COLOR.kiosco} />
       </mesh>
 
       {/* Toma de agua: pocas piezas, no vale la pena instanciar */}
       <mesh position={waterParts.base.pos}>
         <boxGeometry args={waterParts.base.size} />
-        <meshStandardMaterial color={COLOR.waterBase} />
+        <Pintado color={COLOR.waterBase} />
       </mesh>
       <mesh position={waterParts.pipe.pos}>
         <cylinderGeometry
@@ -189,11 +201,11 @@ export function ColoniaGreybox() {
             12,
           ]}
         />
-        <meshStandardMaterial color={COLOR.waterPipe} />
+        <Pintado color={COLOR.waterPipe} />
       </mesh>
       <mesh position={waterParts.valve.pos}>
         <boxGeometry args={waterParts.valve.size} />
-        <meshStandardMaterial color={COLOR.waterValve} />
+        <Pintado color={COLOR.waterValve} />
       </mesh>
 
       {/*

@@ -5,6 +5,8 @@ import { Claxon, Cortina, Escapes, Espejos, Luces } from './PipaExtras'
 import { PIPA_BODY, PIPA_MATERIALS } from './pipaParts'
 import { useCromoEnvMap } from './useCromoEnvMap'
 import { usePlacaTexture } from './usePlacaTexture'
+import { Pintado } from '../render/Pintado'
+import { PALETA } from '../render/paleta'
 
 /*
  * La CARROCERÍA de la pipa: presentacional pura, sin rapier y sin store.
@@ -31,16 +33,9 @@ function MaterialCromable({
   color: string
 }) {
   return cromada && envMap ? (
-    <meshStandardMaterial
-      key="cromo"
-      color="#f2f4f6"
-      metalness={1}
-      roughness={0.13}
-      envMap={envMap}
-      envMapIntensity={0.9}
-    />
+    <Pintado key="cromo" color={PALETA.cromo} envMap={envMap} reflectivity={0.9} />
   ) : (
-    <meshStandardMaterial key="plano" color={color} />
+    <Pintado key="plano" color={color} />
   )
 }
 
@@ -64,7 +59,7 @@ export function Wheel({
         {/* El cilindro nace sobre Y; se acuesta para quedar sobre el eje X */}
         <mesh name="llanta" rotation={[0, 0, Math.PI / 2]}>
           <cylinderGeometry args={[w.radius, w.radius, w.width, 12]} />
-          <meshStandardMaterial color={PIPA_MATERIALS.llanta} />
+          <Pintado color={PIPA_MATERIALS.llanta} />
         </mesh>
         {/* El rin va aparte: se croma sin tocar la llanta (Paso 5). */}
         <mesh name="rin" rotation={[0, 0, Math.PI / 2]}>
@@ -107,23 +102,23 @@ export function PipaCarroceria({
       <group name="bastidor" position={[0, B.bastidor.y, 0]}>
         <mesh>
           <boxGeometry args={B.bastidor.size} />
-          <meshStandardMaterial color={PIPA_MATERIALS.bastidor} />
+          <Pintado color={PIPA_MATERIALS.bastidor} />
         </mesh>
       </group>
 
       <group name="cabina" position={[0, B.cabina.y, B.cabina.z]}>
         <mesh>
           <boxGeometry args={B.cabina.size} />
-          <meshStandardMaterial color={cabinaHex} />
+          <Pintado color={cabinaHex} />
         </mesh>
         <mesh name="parabrisas" position={[0, 0.35, 1.16]}>
           <boxGeometry args={[1.9, 0.85, 0.06]} />
-          <meshStandardMaterial color={PIPA_MATERIALS.cabinaVidrio} />
+          <Pintado color={PIPA_MATERIALS.cabinaVidrio} />
         </mesh>
         {[-0.8, 0.8].map((x) => (
           <mesh key={x} name="faro" position={[x, -0.7, 1.16]}>
             <boxGeometry args={[0.45, 0.25, 0.06]} />
-            <meshStandardMaterial color={PIPA_MATERIALS.faro} />
+            <Pintado color={PIPA_MATERIALS.faro} />
           </mesh>
         ))}
         {cromo.espejos && envMap && <Espejos envMap={envMap} />}
@@ -139,7 +134,7 @@ export function PipaCarroceria({
           <cylinderGeometry
             args={[B.tanque.radius, B.tanque.radius, B.tanque.length, 16]}
           />
-          <meshStandardMaterial color={tanqueHex} />
+          <Pintado color={tanqueHex} />
         </mesh>
         {[-1, 1].map((s) => (
           <mesh
@@ -156,12 +151,12 @@ export function PipaCarroceria({
                 16,
               ]}
             />
-            <meshStandardMaterial color={PIPA_MATERIALS.tanqueTapa} />
+            <Pintado color={PIPA_MATERIALS.tanqueTapa} />
           </mesh>
         ))}
         <mesh name="escotilla" position={[0, B.tanque.radius, 0.6]}>
           <cylinderGeometry args={[0.32, 0.32, 0.2, 10]} />
-          <meshStandardMaterial color={PIPA_MATERIALS.escotilla} />
+          <Pintado color={PIPA_MATERIALS.escotilla} />
         </mesh>
 
         {/*
@@ -181,18 +176,18 @@ export function PipaCarroceria({
             >
               <boxGeometry args={B.calcaLateral.size} />
               {lateral ? (
-                <meshStandardMaterial key="map" map={lateral} color="#ffffff" />
+                <Pintado key="map" map={lateral} color="#ffffff" />
               ) : (
-                <meshStandardMaterial key="plano" color={PIPA_MATERIALS.calca} />
+                <Pintado key="plano" color={PIPA_MATERIALS.calca} />
               )}
             </mesh>
           ))}
           <mesh name="calca-trasera" position={[0, 0, B.calcaTrasera.z]}>
             <boxGeometry args={B.calcaTrasera.size} />
             {trasera ? (
-              <meshStandardMaterial key="map" map={trasera} color="#ffffff" />
+              <Pintado key="map" map={trasera} color="#ffffff" />
             ) : (
-              <meshStandardMaterial key="plano" color={PIPA_MATERIALS.calca} />
+              <Pintado key="plano" color={PIPA_MATERIALS.calca} />
             )}
           </mesh>
         </group>

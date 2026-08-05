@@ -6,6 +6,7 @@ import { useCromoEnvMap } from '../game/vehicle/useCromoEnvMap'
 import { wheelAnchors } from '../game/vehicle/pipaParts'
 import type { Estilo } from '../game/systems/estilo'
 import { statsPipa } from '../state/gameStore'
+import { PALETA } from '../game/render/paleta'
 
 /*
  * La pipa del aparador: una SEGUNDA escena 3D chiquita dentro del taller,
@@ -85,8 +86,19 @@ export function PipaPreview({ estilo }: { estilo: Estilo }) {
           state.camera.lookAt(0, 0.4, 0)
         }}
       >
-        <directionalLight position={[6, 8, 4]} intensity={2.2} />
-        <ambientLight intensity={0.4} />
+        {/*
+          El aparador usa la MISMA calibración que la calle (Fase 3, Paso 1):
+          sol moderado y rebote de cielo generoso, en vez del sol fuerte con
+          ambiente mínimo que pedía Standard. Tiene que ser la misma o el
+          taller miente: lo que ves aquí es lo que sale a la calle, y con dos
+          iluminaciones distintas el mismo color se ve de dos maneras.
+        */}
+        <directionalLight position={[6, 8, 4]} color="#fff0d4" intensity={1.9} />
+        <hemisphereLight
+          color={PALETA.cieloAlto}
+          groundColor={PALETA.terracota}
+          intensity={1.6}
+        />
         {/* Arranca en 3/4: se ven costado y frente de un vistazo. */}
         <group ref={giroRef} rotation={[0, 0.7, 0]}>
           <Contenido estilo={estilo} />

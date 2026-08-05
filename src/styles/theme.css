@@ -4,6 +4,29 @@
  * debe declarar colores ni familias de fuente en duro.
  */
 :root {
+  /*
+   * LA PALETA DEL JUEGO (Fase 3, sección 1). Estilizado con toque de rótulo
+   * mexicano: saturada y cálida, con el asfalto y el cielo como lo único
+   * desaturado para que todo lo demás resalte.
+   *
+   * Estos seis son los MISMOS que `src/game/render/paleta.ts`, escritos a
+   * mano y no inyectados: la UI y el mundo 3D comparten identidad, no
+   * runtime. Si cambias uno aquí, cámbialo allá — son dos archivos y un
+   * puente entre CSS y WebGL costaría más que la sincronización.
+   */
+  --pipero-cal: #f4efe2;
+  --pipero-ocre: #d9a441;
+  --pipero-terracota: #c05a38;
+  --pipero-anil: #2e4a7d;
+  --pipero-limon: #9fc131;
+  --pipero-rosa: #d93a82; /* rosa mexicano: el acento de máximo contraste */
+
+  /* Lo desaturado, a propósito */
+  --pipero-asfalto: #4e4b4a;
+  --pipero-concreto: #a49c90;
+  --pipero-cielo-alto: #8fa8bd;
+  --pipero-cielo-bajo: #e0d5c2;
+
   /* Paleta base */
   --color-bg: #141418;
   --color-text: #f2f2f2;

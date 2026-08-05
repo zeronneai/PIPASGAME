@@ -6,6 +6,7 @@ import type { VehicleStats } from '../systems/garage'
 import { PipaCarroceria, Wheel } from './PipaCarroceria'
 import { PIPA_BODY } from './pipaParts'
 import { useCromoEnvMap } from './useCromoEnvMap'
+import { Pintado } from '../render/Pintado'
 
 /*
  * Modelo de la pipa EN EL MUNDO: el adaptador entre el store y la carrocería
@@ -66,7 +67,7 @@ export function PipaModel({
         >
           <mesh name="debug-agua">
             <sphereGeometry args={[0.3, 10, 8]} />
-            <meshStandardMaterial color="#2f9ee0" wireframe />
+            <Pintado color="#2f9ee0" wireframe />
           </mesh>
         </group>
       )}

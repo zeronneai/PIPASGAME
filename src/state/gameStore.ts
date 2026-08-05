@@ -3,6 +3,7 @@ import { resetInput } from './inputStore'
 import type { SteeringId } from '../game/vehicle/steering'
 import { PIPA_SPAWN } from '../game/vehicle/pipaParts'
 import { balance } from '../game/balance'
+import type { Sombreado } from '../game/render/Pintado'
 import {
   CLIENTES,
   COLONIAS,
@@ -393,7 +394,19 @@ type GameState = {
    * cuerpos dinámicos — herramienta de escritorio). Viven aquí y no en leva
    * porque leva se desmonta al cerrar el cajón.
    */
-  debug: { colliders: boolean; physics: boolean }
+  debug: {
+    colliders: boolean
+    physics: boolean
+    /**
+     * El modelo de sombreado de TODA la escena (Fase 3, Paso 1). Vive aquí y
+     * no en `tuning` porque cambiarlo tiene que RE-RENDERIZAR: los materiales
+     * se construyen de nuevo, y tuning se muta sin avisarle a React.
+     *
+     * `standard` es el patrón de control de la medición del Paso 1, no una
+     * opción de arte. El detalle está en `render/Pintado.tsx`.
+     */
+    sombreado: Sombreado
+  }
   /** Clientes efímeros activos (casas y obras). Los administra el sistema
    *  Ephemerals; transitorios, nunca se guardan. */
   ephemeral: EphemeralClient[]
@@ -446,6 +459,7 @@ type GameState = {
   setLogroSegunda: (on: boolean) => void
   setDebugColliders: (on: boolean) => void
   setDebugPhysics: (on: boolean) => void
+  setSombreado: (sombreado: Sombreado) => void
   setEphemeral: (list: EphemeralClient[]) => void
   /** Llegaste con la pipa a un local con pedido: abre el minijuego, o
    *  resuelve sin abrirlo (exigente que cancela, tanque que no alcanza). */
@@ -531,7 +545,7 @@ export const useGameStore = create<GameState>((set, get) => {
   minimapExpanded: false,
   tallerAbierto: false,
   logroSegunda: false,
-  debug: { colliders: false, physics: false },
+  debug: { colliders: false, physics: false, sombreado: 'lambert' },
   ephemeral: [],
   stats: newDayStats(eco0.reputation),
   summary: null,
@@ -724,6 +738,7 @@ export const useGameStore = create<GameState>((set, get) => {
   setLogroSegunda: (logroSegunda) => set({ logroSegunda }),
   setDebugColliders: (on) => set((s) => ({ debug: { ...s.debug, colliders: on } })),
   setDebugPhysics: (on) => set((s) => ({ debug: { ...s.debug, physics: on } })),
+  setSombreado: (sombreado) => set((s) => ({ debug: { ...s.debug, sombreado } })),
   setEphemeral: (ephemeral) => set({ ephemeral }),
   startDelivery: (clientId) => {
     const s = get()

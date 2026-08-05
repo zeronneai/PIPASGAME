@@ -16,6 +16,9 @@ import { Refill } from './systems/Refill'
 import { Rescue } from './systems/Rescue'
 import { Volcadura } from './systems/Volcadura'
 import { RenderStats } from './systems/RenderStats'
+import { AmbienteEscena } from './render/AmbienteEscena'
+import { Cielo } from './render/Cielo'
+import { PALETA } from './render/paleta'
 import { PHYSICS_STEP, tuning } from './tuning'
 
 export function Scene() {
@@ -30,9 +33,13 @@ export function Scene() {
       camera={{ position: [0, 5, 8], fov: tuning.camera.fovFoot }}
       gl={{ powerPreference: 'high-performance' }}
     >
-      <color attach="background" args={['#5c6b7a']} />
-      <directionalLight position={[10, 15, 5]} intensity={2.2} />
-      <ambientLight intensity={0.35} />
+      {/*
+        El fondo, del color del horizonte. Con la cúpula del cielo encima casi
+        nunca se ve; existe para el primer cuadro y para cualquier hueco.
+      */}
+      <color attach="background" args={[PALETA.cieloBajo]} />
+      <Cielo />
+      <AmbienteEscena />
       <Suspense fallback={null}>
         <DayClock />
         <RadioDispatch />
