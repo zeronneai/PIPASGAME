@@ -2,10 +2,10 @@ import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import type { DirectionalLight, Fog } from 'three'
 import { PALETA } from './paleta'
-import { tuning } from '../tuning'
+import { tuning } from './tuning'
 
 /*
- * LA LUZ Y LA NIEBLA (Fase 3, Paso 1).
+ * LA LUZ Y LA NIEBLA (Fase 3).
  *
  * La niebla y la posición del sol se aplican por frame desde `tuning.arte`,
  * igual que el resto del juego: leva muta el objeto sin re-renders y esto lo
@@ -52,25 +52,27 @@ export function AmbienteEscena() {
 
   return (
     <>
+      {/* Niebla lineal LEJANA: mediodía de calor seco, no bruma — empieza
+          pasada media cuadra y solo el fondo se funde con el horizonte. */}
       <fog
         ref={niebla}
         attach="fog"
-        args={[PALETA.cieloBajo, tuning.arte.nieblaCerca, tuning.arte.nieblaLejos]}
+        args={[PALETA.niebla, tuning.arte.nieblaCerca, tuning.arte.nieblaLejos]}
       />
-      {/* El sol: cálido, porque la luz de la tarde en la colonia lo es. */}
+      {/* MEDIODÍA: sol alto y casi neutro (el calor lo pone la paleta, no la
+          luz), ladeado lo justo para que los muros verticales SÍ reciban sol
+          — a plomo se apagan. */}
       <directionalLight
         ref={sol}
-        color="#fff0d4"
+        color={PALETA.sol}
         intensity={tuning.arte.solIntensidad}
       />
-      {/*
-        El rebote. Cielo arriba, calle abajo — y la calle rebota terracota,
-        no gris: el suelo caliente es la mitad de por qué una colonia se ve
-        cálida aunque el cielo esté pálido.
-      */}
+      {/* El rebote: cielo arriba, tierra abajo. El azul es MÁS claro que el
+          del domo a propósito — con el cenit puro las sombras se teñían de
+          azul marino. */}
       <hemisphereLight
-        color={PALETA.cieloAlto}
-        groundColor={PALETA.terracota}
+        color="#a9c6e6"
+        groundColor={PALETA.rebote}
         intensity={tuning.arte.hemiIntensidad}
       />
     </>

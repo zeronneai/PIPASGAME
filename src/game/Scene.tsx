@@ -4,6 +4,7 @@ import { Physics, type RapierRigidBody } from '@react-three/rapier'
 import { Player } from './player/Player'
 import { Pipa } from './vehicle/Pipa'
 import { ThirdPersonCamera } from './camera/ThirdPersonCamera'
+import { AmbienteEscena } from './AmbienteEscena'
 import { Cielo } from './world/Cielo'
 import { ColliderDebugView } from './world/ColliderDebugView'
 import { ColoniaGreybox } from './world/ColoniaGreybox'
@@ -56,22 +57,9 @@ export function Scene() {
     >
       {/* Respaldo detrás del domo, en el tono del horizonte. */}
       <color attach="background" args={[PALETA.cieloHorizonte]} />
-      {/* Niebla lineal LEJANA: mediodía de calor seco, no bruma. Empieza a
-          120 m (antes 45: se comía la profundidad desde media cuadra) y solo
-          el fondo se funde con el horizonte del domo. */}
-      <fog attach="fog" args={[PALETA.niebla, 120, 420]} />
       <Cielo />
-      {/*
-        MEDIODÍA: sol alto y casi neutro (el calor lo pone la paleta, no la
-        luz), a ~60° de elevación — lo justo de ladeado para que los muros
-        verticales SÍ reciban sol (vertical puro los apaga) — y un hemisferio
-        (cielo azul arriba, rebote terroso abajo) en lugar del ambient plano:
-        las caras en sombra se tiñen, no se apagan.
-      */}
-      <directionalLight position={[35, 70, 18]} color={PALETA.sol} intensity={1.85} />
-      {/* El azul del hemisferio es MÁS claro que el del domo a propósito:
-          con el cenit puro las sombras se teñían de azul marino. */}
-      <hemisphereLight args={['#a9c6e6', PALETA.rebote, 0.95]} />
+      {/* Sol, hemisferio y niebla, ajustables en vivo desde leva (arte). */}
+      <AmbienteEscena />
       <Suspense fallback={null}>
         <DayClock />
         <RadioDispatch />

@@ -21,7 +21,6 @@ import {
 } from '../game/systems/garage'
 import { PIEZAS, type Pieza as PiezaEstilo } from '../game/systems/estilo'
 import { STEERING_SOURCES, type SteeringId } from '../game/vehicle/steering'
-import type { Sombreado } from '../game/render/Pintado'
 
 /** La colonia de los botones de reputación de leva (hoy hay una sola). */
 const COLONIA_LEVA = Object.keys(COLONIAS)[0]
@@ -264,27 +263,13 @@ export default function TuningPanel() {
   useControls('economía · proyección', proyeccionSchema(), CERRADA)
 
   /*
-   * ARTE (Fase 3, Paso 1). Arriba y a la mano: durante la fase de arte esto
+   * ARTE (Fase 3). Arriba y a la mano: durante la fase de arte esto
    * es lo que se mueve a cada rato, y afinar luz sin ver la escena no se
    * puede — hay que estar parado en la calle con el pulgar en el deslizador.
-   *
-   * «modelo de sombreado» es además el instrumento de medición del paso: el
-   * criterio es que los FPS SUBAN al dejar Standard, y eso solo se comprueba
-   * pudiendo volver a Standard en el mismo aparato y la misma esquina. Se
-   * cambia, se lee el contador de arriba del overlay, y se regresa a lambert.
    */
   useControls(
     'arte',
     {
-      'modelo de sombreado': {
-        value: useGameStore.getState().debug.sombreado,
-        options: {
-          'lambert (el del juego)': 'lambert',
-          toon: 'toon',
-          'standard (solo para medir)': 'standard',
-        } as Record<string, Sombreado>,
-        onChange: (s: Sombreado) => useGameStore.getState().setSombreado(s),
-      },
       'sol · intensidad': {
         value: tuning.arte.solIntensidad,
         min: 0,

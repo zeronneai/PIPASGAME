@@ -9,7 +9,7 @@
    * mexicano: saturada y cálida, con el asfalto y el cielo como lo único
    * desaturado para que todo lo demás resalte.
    *
-   * Estos seis son los MISMOS que `src/game/render/paleta.ts`, escritos a
+   * Estos seis son los MISMOS que `src/game/paleta.ts`, escritos a
    * mano y no inyectados: la UI y el mundo 3D comparten identidad, no
    * runtime. Si cambias uno aquí, cámbialo allá — son dos archivos y un
    * puente entre CSS y WebGL costaría más que la sincronización.

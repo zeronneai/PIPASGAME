@@ -16,25 +16,22 @@ export const PHYSICS_STEP = 1 / 60
 
 export const tuning = {
   /*
-   * AMBIENTE (Fase 3, Paso 1). La luz y la niebla; los COLORES viven en
-   * `render/paleta.ts`, que es la fuente única. Aquí solo van los números,
+   * AMBIENTE (Fase 3). La luz y la niebla; los COLORES viven en
+   * `paleta.ts`, que es la fuente única. Aquí solo van los números,
    * que son los que se mueven con el pulgar.
    *
-   * La regla del estilo pintado: la luz aporta poco, el color aporta todo.
-   * Con Standard había un sol fuerte (2.2) y un ambiente mínimo (0.35),
-   * porque el PBR necesitaba contraste para que las superficies se leyeran.
-   * En Lambert eso deja las caras a contraluz en negro, que es exactamente el
-   * aspecto de «greybox sin terminar» que la fase viene a quitar. Así que se
-   * invierte: sol moderado para que se note de dónde viene la luz, y un
-   * rebote de cielo generoso para que ninguna cara se apague.
+   * La calibración es MEDIODÍA de calor seco: sol alto (~60°) y casi neutro,
+   * ladeado lo justo para que los muros verticales reciban luz (a plomo se
+   * apagan y todo queda en manos del hemisferio), y rebote de cielo generoso
+   * para que ninguna cara en sombra se vaya a negro — en Lambert la sombra
+   * se tiñe, no se apaga.
    */
   arte: {
-    /** El sol. Bajo y de lado: un sol a plomo aplana el relieve pintado. */
-    solIntensidad: 1.9,
+    solIntensidad: 1.85,
     /** Grados. Azimut es el rumbo; altura, qué tan alto está sobre el
      *  horizonte. Se convierten a posición en `AmbienteEscena`. */
-    solAzimut: 35,
-    solAltura: 42,
+    solAzimut: 63,
+    solAltura: 61,
     /**
      * El rebote, con luz de hemisferio en vez de ambiente plano: cielo
      * arriba, suelo abajo. Cuesta lo mismo que el ambiente que sustituye
@@ -42,15 +39,15 @@ export const tuning = {
      * arriba de una barda recibe cielo y la de abajo, calle. Es sombreado
      * gratis, y en un juego sin normal maps eso es justo lo que hace falta.
      */
-    hemiIntensidad: 1.6,
+    hemiIntensidad: 0.95,
     /**
-     * Niebla LINEAL y cálida, del color del horizonte. No es clima: es lo que
-     * hace que la colonia tenga fondo en vez de recortarse contra el cielo, y
-     * de paso perdona lo que haya lejos. Lineal y no exponencial porque con
-     * un mapa de 200 m se controla mejor a mano dónde empieza a disolverse.
+     * Niebla LINEAL, del color del horizonte. Empieza pasada media cuadra
+     * (120 m): mediodía seco, no bruma — el barrio cercano queda limpio y
+     * solo el fondo se funde con el cielo. Lineal y no exponencial porque
+     * con un mapa de 200 m se controla mejor a mano dónde se disuelve.
      */
-    nieblaCerca: 55,
-    nieblaLejos: 240,
+    nieblaCerca: 120,
+    nieblaLejos: 420,
   },
   player: {
     walkSpeed: 4, // m/s

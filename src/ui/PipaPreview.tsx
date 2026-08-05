@@ -5,7 +5,7 @@ import { PipaCarroceria, Wheel } from '../game/vehicle/PipaCarroceria'
 import { wheelAnchors } from '../game/vehicle/pipaParts'
 import type { Estilo } from '../game/systems/estilo'
 import { statsPipa } from '../state/gameStore'
-import { PALETA } from '../game/render/paleta'
+import { PALETA } from '../game/paleta'
 
 /*
  * La pipa del aparador: una SEGUNDA escena 3D chiquita dentro del taller,
@@ -91,11 +91,11 @@ export function PipaPreview({ estilo }: { estilo: Estilo }) {
           taller miente: lo que ves aquí es lo que sale a la calle, y con dos
           iluminaciones distintas el mismo color se ve de dos maneras.
         */}
-        <directionalLight position={[6, 8, 4]} color="#fff0d4" intensity={1.9} />
+        <directionalLight position={[6, 8, 4]} color={PALETA.sol} intensity={1.85} />
         <hemisphereLight
-          color={PALETA.cieloAlto}
-          groundColor={PALETA.terracota}
-          intensity={1.6}
+          color="#a9c6e6"
+          groundColor={PALETA.rebote}
+          intensity={1.1}
         />
         {/* Arranca en 3/4: se ven costado y frente de un vistazo. */}
         <group ref={giroRef} rotation={[0, 0.7, 0]}>
