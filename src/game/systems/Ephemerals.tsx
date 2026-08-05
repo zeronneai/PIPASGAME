@@ -1,13 +1,12 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { CuboidCollider, RigidBody } from '@react-three/rapier'
+import { RigidBody } from '@react-three/rapier'
 import { balance } from '../balance'
+import { PALETA } from '../paleta'
 import { useGameStore } from '../../state/gameStore'
 import { generarEfimero, intervaloSpawn, type EphemeralClient } from './ephemeral'
 import { EPHEMERAL_SPOTS } from '../world/layout'
 import { Interactable } from '../world/Interactable'
-import { Pintado } from '../render/Pintado'
-import { EFIMERO_CAJA, construirEfimero } from '../world/efimerosGeom'
 
 /*
  * Ciclo de vida de los clientes efímeros: aparecen sobre spots libres a
@@ -23,49 +22,6 @@ import { EFIMERO_CAJA, construirEfimero } from '../world/efimerosGeom'
 
 let seq = 0
 
-/**
- * Un cliente eventual: su volumen más las señas de que ahí hace falta agua
- * (`efimerosGeom.ts`). Todo va en UNA malla fusionada, así que los tres que
- * puede haber a la vez cuestan tres draw calls y no veinte.
- *
- * El collider se declara a mano en vez de dejar que rapier lo deduzca: con
- * `colliders="cuboid"` envolvería también los tambos y la varilla, y el
- * jugador chocaría con una caja invisible mucho más grande que la casa. Las
- * señas son estorbo visual, no muro.
- */
-function Efimero({ e }: { e: EphemeralClient }) {
-  const caja = EFIMERO_CAJA[e.tipo]
-  // La semilla sale del id: dos casas no acomodan igual sus tambos, y la
-  // misma casa se ve igual mientras exista.
-  const geometria = useMemo(
-    () => construirEfimero(e.tipo, hashId(e.id)),
-    [e.tipo, e.id],
-  )
-  useEffect(() => () => geometria.dispose(), [geometria])
-
-  return (
-    <group>
-      <RigidBody type="fixed" colliders={false} position={e.pos}>
-        <CuboidCollider
-          args={[caja.size[0] / 2, caja.size[1] / 2, caja.size[2] / 2]}
-          position={[0, caja.y, 0]}
-        />
-        <mesh geometry={geometria}>
-          <Pintado color="#ffffff" vertexColors />
-        </mesh>
-      </RigidBody>
-      <Interactable id={e.id} label="Ofrecer servicio" position={e.pos} />
-    </group>
-  )
-}
-
-/** El id a un entero estable. No necesita ser bueno, solo determinista. */
-function hashId(id: string): number {
-  let h = 0
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0
-  return Math.abs(h)
-}
-
 export function Ephemerals() {
   const list = useGameStore((s) => s.ephemeral)
   const nextAt = useRef<number | null>(null)
@@ -76,11 +32,24 @@ export function Ephemerals() {
     if (s.summary || s.logroSegunda) return
     const t = s.clock.daySeconds
 
-    // Día nuevo: la colonia amanece distinta.
+    // Día nuevo: la colonia amanece distinta — pero NO en seco. Se siembran
+    // unos cuantos de arranque para que haya trabajo visible desde el primer
+    // minuto (la entrada al ciclo no debe depender del primer spawn).
     if (dia.current !== s.economy.day) {
       dia.current = s.economy.day
       nextAt.current = null
-      if (s.ephemeral.length) s.setEphemeral([])
+      const libres = [...EPHEMERAL_SPOTS]
+      const siembra: EphemeralClient[] = []
+      for (
+        let i = 0;
+        i < balance.efimeros.siembraInicial && libres.length > 0;
+        i++
+      ) {
+        const k = Math.floor(Math.random() * libres.length)
+        siembra.push(generarEfimero(libres[k], ++seq, t))
+        libres.splice(k, 1)
+      }
+      s.setEphemeral(siembra)
       return
     }
 
@@ -104,7 +73,48 @@ export function Ephemerals() {
   return (
     <>
       {list.map((e) => (
-        <Efimero key={e.id} e={e} />
+        <group key={e.id}>
+          {/* Cajita en greybox: casa compacta o plancha de obra. Colores
+              SATURADOS de la paleta: lo que ofrece trabajo resalta contra la
+              colonia desaturada (jerarquía por contraste, sin marcadores). */}
+          <RigidBody type="fixed" colliders="cuboid">
+            <mesh
+              position={[
+                e.pos[0],
+                e.pos[1] + (e.tipo === 'casa' ? 1.4 : 0.8),
+                e.pos[2],
+              ]}
+            >
+              <boxGeometry
+                args={e.tipo === 'casa' ? [3.5, 2.8, 3.5] : [4.5, 1.6, 4.5]}
+              />
+              <meshLambertMaterial
+                color={e.tipo === 'casa' ? PALETA.verdeLimon : PALETA.ocre}
+              />
+            </mesh>
+          </RigidBody>
+          {/* Prop alto y saturado FUERA del RigidBody (sin collider): el
+              tinaco de la casa o la bandera de la obra asoman por encima de
+              las bardas y se ven a media cuadra. */}
+          {e.tipo === 'casa' ? (
+            <mesh position={[e.pos[0] + 1, e.pos[1] + 2.8 + 0.55, e.pos[2] + 1]}>
+              <cylinderGeometry args={[0.55, 0.55, 1.1, 10]} />
+              <meshLambertMaterial color={PALETA.anil} />
+            </mesh>
+          ) : (
+            <group position={[e.pos[0] + 1.6, e.pos[1], e.pos[2] + 1.6]}>
+              <mesh position={[0, 2, 0]}>
+                <boxGeometry args={[0.08, 4, 0.08]} />
+                <meshLambertMaterial color={PALETA.bloque} />
+              </mesh>
+              <mesh position={[0.4, 3.7, 0]}>
+                <boxGeometry args={[0.75, 0.45, 0.05]} />
+                <meshLambertMaterial color={PALETA.rosa} />
+              </mesh>
+            </group>
+          )}
+          <Interactable id={e.id} label="Ofrecer servicio" position={e.pos} />
+        </group>
       ))}
     </>
   )

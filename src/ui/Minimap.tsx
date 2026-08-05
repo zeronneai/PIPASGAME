@@ -1,12 +1,18 @@
 import { useEffect, useRef } from 'react'
 import {
   footprints,
+  locales,
   MAP_SIZE,
   taller,
   WATER_SOURCE,
 } from '../game/world/layout'
 import { useGameStore } from '../state/gameStore'
-import type { PerfilCliente } from '../game/systems/clients'
+import { CLIENTES, type PerfilCliente } from '../game/systems/clients'
+import {
+  cooldownRestante,
+  dentroDeHorario,
+  horaDelDia,
+} from '../game/systems/acceptance'
 import { COLORES } from '../game/systems/estilo'
 
 /*
@@ -115,6 +121,35 @@ function draw(el: HTMLCanvasElement) {
   ctx.lineTo(tx - t, tz)
   ctx.closePath()
   ctx.fill()
+
+  /*
+   * DÓNDE HAY TRABAJO (la señal que faltaba): anillo hueco del color del
+   * perfil sobre cada punto al que vale la pena ir a tocar — locales EN
+   * HORARIO y efímeros vivos. Hueco = «puedes preguntar»; relleno (abajo) =
+   * «ya es pedido tuyo». Enfriados o con pedido activo no se pintan: tocar
+   * ahí es tiempo perdido y el mapa no debe mandarte a perderlo.
+   */
+  const hora = horaDelDia(s.clock.daySeconds)
+  const candidatos: { id: string; x: number; z: number; perfil: PerfilCliente }[] = []
+  for (const l of locales) {
+    const c = CLIENTES[l.id]
+    if (c && dentroDeHorario(hora, c.horario))
+      candidatos.push({ id: l.id, x: l.door[0], z: l.door[2], perfil: c.perfil })
+  }
+  for (const e of s.ephemeral) {
+    if (dentroDeHorario(hora, e.horario))
+      candidatos.push({ id: e.id, x: e.pos[0], z: e.pos[2], perfil: e.perfil })
+  }
+  ctx.lineWidth = Math.max(1.5, lado * 0.18)
+  for (const c of candidatos) {
+    if (s.economy.orders.some((o) => o.clientId === c.id)) continue
+    const h = s.economy.clientHistory[c.id]
+    if (h && cooldownRestante(h, s.economy.day, s.clock.daySeconds) > 0) continue
+    ctx.strokeStyle = COLOR.perfil[c.perfil]
+    ctx.beginPath()
+    ctx.arc(M(c.x), M(c.z), lado * 0.5, 0, Math.PI * 2)
+    ctx.stroke()
+  }
 
   // Pedidos activos: punto del color del perfil en el PUNTO DE ENTREGA.
   for (const o of s.economy.orders) {

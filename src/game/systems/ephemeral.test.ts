@@ -3,7 +3,7 @@ import { balance, type Balance } from '../balance'
 import { generarEfimero, intervaloSpawn } from './ephemeral'
 
 const B: Balance = structuredClone(balance)
-B.efimeros = { maxActivos: 3, spawnMin: 20, spawnMax: 40, vidaMin: 2, vidaMax: 4 }
+B.efimeros = { maxActivos: 3, siembraInicial: 2, spawnMin: 20, spawnMax: 40, vidaMin: 2, vidaMax: 4 }
 
 const SPOT_CASA = { id: 'spot-1', tipo: 'casa' as const, pos: [10, 0.15, 20] as [number, number, number] }
 const SPOT_OBRA = { id: 'spot-2', tipo: 'obra' as const, pos: [-30, 0.15, 5] as [number, number, number] }

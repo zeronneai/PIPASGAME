@@ -3,8 +3,6 @@ import type { Group } from 'three'
 import { CapsuleCollider, RigidBody, type RapierRigidBody } from '@react-three/rapier'
 import { usePlayerMovement } from './usePlayerMovement'
 import { useGameStore } from '../../state/gameStore'
-import { Pintado } from '../render/Pintado'
-import { PALETA } from '../render/paleta'
 
 // Cápsula de 1.8 m de alto: cilindro de 1.1 (halfHeight 0.55) + tapas de 0.35
 export function Player({
@@ -41,12 +39,12 @@ export function Player({
       <group ref={visualRef} rotation={[0, inicial.yaw, 0]} visible={!driving}>
         <mesh>
           <capsuleGeometry args={[0.35, 1.1, 6, 12]} />
-          <Pintado color={PALETA.cal} />
+          <meshLambertMaterial color="#c8c8c8" />
         </mesh>
         {/* nariz: marca hacia dónde mira el personaje (local +z = frente) */}
         <mesh position={[0, 0.3, 0.35]}>
           <boxGeometry args={[0.15, 0.15, 0.3]} />
-          <Pintado color={PALETA.anil} />
+          <meshLambertMaterial color="#4da3ff" />
         </mesh>
       </group>
     </RigidBody>

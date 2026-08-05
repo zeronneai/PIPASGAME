@@ -3,7 +3,6 @@ import { resetInput } from './inputStore'
 import type { SteeringId } from '../game/vehicle/steering'
 import { PIPA_SPAWN } from '../game/vehicle/pipaParts'
 import { balance } from '../game/balance'
-import type { Sombreado } from '../game/render/Pintado'
 import {
   CLIENTES,
   COLONIAS,
@@ -392,24 +391,17 @@ type GameState = {
    * geometría estática, +1 draw call); `physics` prende el debugRender de
    * rapier (caro, ~33k vértices POR FRAME, pero es el único que enseña los
    * cuerpos dinámicos — herramienta de escritorio). Viven aquí y no en leva
-   * porque leva se desmonta al cerrar el cajón.
+   * porque leva se desmonta al cerrar el cajón. `fps` muestra u oculta el
+   * overlay de FPS/draw calls (botón junto al ☰).
    */
-  debug: {
-    colliders: boolean
-    physics: boolean
-    /**
-     * El modelo de sombreado de TODA la escena (Fase 3, Paso 1). Vive aquí y
-     * no en `tuning` porque cambiarlo tiene que RE-RENDERIZAR: los materiales
-     * se construyen de nuevo, y tuning se muta sin avisarle a React.
-     *
-     * `standard` es el patrón de control de la medición del Paso 1, no una
-     * opción de arte. El detalle está en `render/Pintado.tsx`.
-     */
-    sombreado: Sombreado
-  }
+  debug: { colliders: boolean; physics: boolean; fps: boolean }
   /** Clientes efímeros activos (casas y obras). Los administra el sistema
    *  Ephemerals; transitorios, nunca se guardan. */
   ephemeral: EphemeralClient[]
+  /** «No»s seguidos de clientes (piedad contra rachas): cada uno sube la
+   *  probabilidad del siguiente toque y una oferta lo resetea. Transitorio,
+   *  como el reloj: no persiste. */
+  rachaRechazos: number
   /** Acumulador del día (Paso 8). Lo consume el resumen; no persiste. */
   stats: DayStats
   /** Pantalla de fin de día. Mientras exista, el mundo espera. */
@@ -459,7 +451,7 @@ type GameState = {
   setLogroSegunda: (on: boolean) => void
   setDebugColliders: (on: boolean) => void
   setDebugPhysics: (on: boolean) => void
-  setSombreado: (sombreado: Sombreado) => void
+  setDebugFps: (on: boolean) => void
   setEphemeral: (list: EphemeralClient[]) => void
   /** Llegaste con la pipa a un local con pedido: abre el minijuego, o
    *  resuelve sin abrirlo (exigente que cancela, tanque que no alcanza). */
@@ -545,8 +537,9 @@ export const useGameStore = create<GameState>((set, get) => {
   minimapExpanded: false,
   tallerAbierto: false,
   logroSegunda: false,
-  debug: { colliders: false, physics: false, sombreado: 'lambert' },
+  debug: { colliders: false, physics: false, fps: true },
   ephemeral: [],
+  rachaRechazos: 0,
   stats: newDayStats(eco0.reputation),
   summary: null,
   player: {
@@ -654,12 +647,15 @@ export const useGameStore = create<GameState>((set, get) => {
       day: economy.day,
       daySeconds: clock.daySeconds,
       tienePedidoActivo: economy.orders.some((o) => o.clientId === clientId),
+      racha: s.rachaRechazos,
     })
 
     if (resultado.kind === 'OFERTA') {
       const { litros, windowMinutes, estimate } = resultado.oferta
       const p = s.player.pos
       set({
+        // El cliente dijo que sí: la mala racha se rompió, con o sin trato.
+        rachaRechazos: 0,
         offer: {
           clientId,
           name: cliente.name,
@@ -682,9 +678,10 @@ export const useGameStore = create<GameState>((set, get) => {
         clientId,
         withDecline(history, economy.day, clock.daySeconds),
       )
-      set({
+      set((prev) => ({
+        rachaRechazos: prev.rachaRechazos + 1,
         notice: { id: ++noticeSeq, text: `${cliente.name}: ${VOZ_RECHAZO[resultado.motivo]}` },
-      })
+      }))
       return
     }
 
@@ -720,9 +717,14 @@ export const useGameStore = create<GameState>((set, get) => {
     const { offer, economy, clock } = get()
     if (!offer) return
     const history = economy.clientHistory[offer.clientId] ?? newClientHistory()
+    // El «no» fue tuyo: enfría menos que el del cliente. Se logra RETRO-
+    // fechando el rechazo — el restante queda en cooldownPropioMinutes sin
+    // cambiar el esquema del historial.
+    const a = balance.aceptacion
+    const backdate = Math.max(0, a.cooldownMinutes - a.cooldownPropioMinutes) * 60
     get().setClientHistory(
       offer.clientId,
-      withDecline(history, economy.day, clock.daySeconds),
+      withDecline(history, economy.day, clock.daySeconds - backdate),
     )
     set({ offer: null })
   },
@@ -738,7 +740,7 @@ export const useGameStore = create<GameState>((set, get) => {
   setLogroSegunda: (logroSegunda) => set({ logroSegunda }),
   setDebugColliders: (on) => set((s) => ({ debug: { ...s.debug, colliders: on } })),
   setDebugPhysics: (on) => set((s) => ({ debug: { ...s.debug, physics: on } })),
-  setSombreado: (sombreado) => set((s) => ({ debug: { ...s.debug, sombreado } })),
+  setDebugFps: (on) => set((s) => ({ debug: { ...s.debug, fps: on } })),
   setEphemeral: (ephemeral) => set({ ephemeral }),
   startDelivery: (clientId) => {
     const s = get()
@@ -1000,6 +1002,7 @@ export const useGameStore = create<GameState>((set, get) => {
     s.clock.daySeconds = 0
     set((st) => ({
       summary: null,
+      rachaRechazos: 0,
       stats: newDayStats(st.economy.reputation),
       economy: { ...st.economy, day: st.economy.day + 1 },
     }))

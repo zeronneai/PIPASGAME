@@ -49,7 +49,7 @@ const Y0 = -0.1
 const ALTO = 0.25
 /** El chaflán remata 1 mm abajo: sus puntas traslapan las bandas y dos tapas
  *  coplanares harían z-fighting. */
-const ALTO_CHAFLAN = 0.249
+const ALTO_CHAFLAN = 0.244
 /** pintarArco alarga las puntas este margen; el pavimento vectorial también. */
 const MARGEN_ARCO = 6
 /** Paso de muestreo del eje de banda en rectas. */

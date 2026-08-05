@@ -5,8 +5,6 @@ import { ESTILO_DE_FABRICA, type Estilo } from '../systems/estilo'
 import type { VehicleStats } from '../systems/garage'
 import { PipaCarroceria, Wheel } from './PipaCarroceria'
 import { PIPA_BODY } from './pipaParts'
-import { useCromoEnvMap } from './useCromoEnvMap'
-import { Pintado } from '../render/Pintado'
 
 /*
  * Modelo de la pipa EN EL MUNDO: el adaptador entre el store y la carrocería
@@ -45,7 +43,6 @@ export function PipaModel({
     (s) => s.garage.pipas[s.garage.equipada]?.estilo ?? ESTILO_DE_FABRICA,
   )
   const rinCromado = estilo.cromo.rines === true
-  const envMap = useCromoEnvMap(rinCromado)
 
   return (
     <group name="pipa">
@@ -67,7 +64,7 @@ export function PipaModel({
         >
           <mesh name="debug-agua">
             <sphereGeometry args={[0.3, 10, 8]} />
-            <Pintado color="#2f9ee0" wireframe />
+            <meshStandardMaterial color="#2f9ee0" wireframe />
           </mesh>
         </group>
       )}
@@ -76,7 +73,7 @@ export function PipaModel({
           0 delantera izq, 1 delantera der, 2 trasera izq, 3 trasera der. */}
       <group name="ruedas" ref={wheelsRef}>
         {Array.from({ length: wheelCount }, (_, i) => (
-          <Wheel key={i} w={stats.wheel} rinCromado={rinCromado} envMap={envMap} />
+          <Wheel key={i} w={stats.wheel} rinCromado={rinCromado} />
         ))}
       </group>
     </group>

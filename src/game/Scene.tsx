@@ -4,8 +4,10 @@ import { Physics, type RapierRigidBody } from '@react-three/rapier'
 import { Player } from './player/Player'
 import { Pipa } from './vehicle/Pipa'
 import { ThirdPersonCamera } from './camera/ThirdPersonCamera'
+import { Cielo } from './world/Cielo'
 import { ColliderDebugView } from './world/ColliderDebugView'
 import { ColoniaGreybox } from './world/ColoniaGreybox'
+import { PALETA } from './paleta'
 import { useGameStore } from '../state/gameStore'
 import { DayClock } from './systems/DayClock'
 import { DeliveryMarkers } from './systems/DeliveryMarkers'
@@ -16,9 +18,6 @@ import { Refill } from './systems/Refill'
 import { Rescue } from './systems/Rescue'
 import { Volcadura } from './systems/Volcadura'
 import { RenderStats } from './systems/RenderStats'
-import { AmbienteEscena } from './render/AmbienteEscena'
-import { Cielo } from './render/Cielo'
-import { PALETA } from './render/paleta'
 import { PHYSICS_STEP, tuning } from './tuning'
 
 export function Scene() {
@@ -40,9 +39,8 @@ export function Scene() {
        * La precisión es proporcional a `near`, así que subirlo de 0.1 a 0.35
        * la multiplica por 3.5 en todo el mapa. 0.35 sigue por dentro del
        * colchón de la cámara contra muros (`collisionRadius` 0.35), así que
-       * no abre el plano cercano a atravesar paredes. Y con 200 m de mapa,
-       * 400 de `far` sobra: lo único más lejos era la cúpula del cielo, que
-       * se encogió a 320 para caber.
+       * no abre el plano cercano a atravesar paredes. Con 200 m de mapa,
+       * 400 de `far` sobra: el domo del cielo (350) cabe por dentro.
        */
       camera={{
         position: [0, 5, 8],
@@ -51,14 +49,29 @@ export function Scene() {
         far: 400,
       }}
       gl={{ powerPreference: 'high-performance' }}
+      /* Sin tone mapping (Fase 3): la información visual vive en el color
+         declarado, no en la curva de la cámara. Los hex de la paleta son
+         literales en pantalla — look plano, de rótulo. */
+      flat
     >
-      {/*
-        El fondo, del color del horizonte. Con la cúpula del cielo encima casi
-        nunca se ve; existe para el primer cuadro y para cualquier hueco.
-      */}
-      <color attach="background" args={[PALETA.cieloBajo]} />
+      {/* Respaldo detrás del domo, en el tono del horizonte. */}
+      <color attach="background" args={[PALETA.cieloHorizonte]} />
+      {/* Niebla lineal LEJANA: mediodía de calor seco, no bruma. Empieza a
+          120 m (antes 45: se comía la profundidad desde media cuadra) y solo
+          el fondo se funde con el horizonte del domo. */}
+      <fog attach="fog" args={[PALETA.niebla, 120, 420]} />
       <Cielo />
-      <AmbienteEscena />
+      {/*
+        MEDIODÍA: sol alto y casi neutro (el calor lo pone la paleta, no la
+        luz), a ~60° de elevación — lo justo de ladeado para que los muros
+        verticales SÍ reciban sol (vertical puro los apaga) — y un hemisferio
+        (cielo azul arriba, rebote terroso abajo) en lugar del ambient plano:
+        las caras en sombra se tiñen, no se apagan.
+      */}
+      <directionalLight position={[35, 70, 18]} color={PALETA.sol} intensity={1.85} />
+      {/* El azul del hemisferio es MÁS claro que el del domo a propósito:
+          con el cenit puro las sombras se teñían de azul marino. */}
+      <hemisphereLight args={['#a9c6e6', PALETA.rebote, 0.95]} />
       <Suspense fallback={null}>
         <DayClock />
         <RadioDispatch />
